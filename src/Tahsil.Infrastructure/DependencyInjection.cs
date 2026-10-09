@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Infrastructure.Clock;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Security;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
 
         AddPersistence(services);
         AddSecurity(services);
+        AddBillingClock(services);
 
         return services;
     }
@@ -76,6 +78,13 @@ public static class DependencyInjection
             .SetApplicationName("Tahsil")
             .PersistKeysToDbContext<TahsilDbContext>();
         services.AddSingleton<IConfigureOptions<KeyManagementOptions>, ConfigureKeyRingEncryption>();
+    }
+
+    private static void AddBillingClock(IServiceCollection services)
+    {
+        services.AddSingleton<TestClockOffset>();
+        services.AddSingleton<BillingClock, OffsetBillingClock>();
+        services.AddHostedService<TestClockRefresher>();
     }
 
     private static TahsilMode ReadMode(IConfiguration configuration) =>

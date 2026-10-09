@@ -27,6 +27,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddSingleton<IPublicUrls, PublicUrls>();
+        services.AddScoped<IAuthorizer, Authorizer>();
 
         return services;
     }

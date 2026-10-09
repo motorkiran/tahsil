@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Tahsil.Application;
+using Tahsil.Application.Common;
 using Tahsil.Infrastructure;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Security;
@@ -12,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
 builder.Services.AddErrorHandling();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IRequestContext, HttpRequestContext>();
 builder.Services.AddTahsilApi();
 
 var app = builder.Build();
