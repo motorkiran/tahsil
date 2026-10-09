@@ -4,6 +4,7 @@ using Tahsil.Infrastructure.Persistence;
 namespace Tahsil.Server.Tests.Diagnostics;
 
 [Trait("Requirement", "FND-46")]
+[Trait("Requirement", "FND-51")]
 public sealed class HealthTests(TahsilServerFixture server)
 {
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;

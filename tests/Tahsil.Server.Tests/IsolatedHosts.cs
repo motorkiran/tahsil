@@ -1,14 +1,19 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Tahsil.Application.Common;
 using Tahsil.Infrastructure.Persistence;
+using Tahsil.Infrastructure.Workers;
 
-namespace Tahsil.Server.Tests.Workers;
+namespace Tahsil.Server.Tests;
 
-/// <summary>Hosts whose workers do not run on their own: tests drive them, on a fake billing clock.</summary>
-internal static class WorkerHosts
+/// <summary>
+/// Hosts with a database of their own and a billing clock the test moves, whose workers do not run on their own:
+/// the test drives them, so what happens in time is deterministic.
+/// </summary>
+internal static class IsolatedHosts
 {
     public static WebApplicationFactory<Program> Create(
         TahsilServerFixture server, string database, FakeTimeProvider time, Action<IServiceCollection>? services = null) =>
@@ -23,6 +28,25 @@ internal static class WorkerHosts
                 collection.AddSingleton<BillingClock>(new FakeBillingClock(time));
                 services?.Invoke(collection);
             });
+
+    /// <summary>
+    /// Runs every worker until none finds anything due at the billing clock's current time, as the hosted workers
+    /// would, but within the test.
+    /// </summary>
+    public static async Task RunWorkersUntilIdleAsync(this WebApplicationFactory<Program> host)
+    {
+        var workers = host.Services.GetServices<IHostedService>().OfType<DueWorker>().ToList();
+        int processed;
+        do
+        {
+            processed = 0;
+            foreach (var worker in workers)
+            {
+                processed += await worker.RunBatchAsync(TestContext.Current.CancellationToken);
+            }
+        }
+        while (processed > 0);
+    }
 
     public static async Task ExecuteSqlAsync(this WebApplicationFactory<Program> host, FormattableString sql)
     {

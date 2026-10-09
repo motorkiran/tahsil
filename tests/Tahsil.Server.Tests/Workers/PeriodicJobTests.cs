@@ -15,8 +15,8 @@ public sealed class PeriodicJobTests(TahsilServerFixture server)
     {
         var time = new FakeTimeProvider(FakeBillingClock.Start);
         var database = server.NewDatabase("jobs");
-        await using var first = WorkerHosts.Create(server, database, time);
-        await using var second = WorkerHosts.Create(server, database, time);
+        await using var first = IsolatedHosts.Create(server, database, time);
+        await using var second = IsolatedHosts.Create(server, database, time);
         var gate = new TaskCompletionSource();
         var started = new TaskCompletionSource();
         var blocking = ActivatorUtilities.CreateInstance<GatedJob>(first.Services, new Gate(started, gate.Task));

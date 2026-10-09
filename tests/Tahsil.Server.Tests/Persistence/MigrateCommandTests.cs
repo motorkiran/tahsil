@@ -4,6 +4,7 @@ using Npgsql;
 namespace Tahsil.Server.Tests.Persistence;
 
 [Trait("Requirement", "FND-18")]
+[Trait("Requirement", "FND-12")]
 public sealed class MigrateCommandTests(TahsilServerFixture server)
 {
     [Fact]

@@ -13,6 +13,7 @@ public sealed class DependencyRuleTests
     private static readonly string[] ProjectFolders = ["src", "sdk"];
 
     [Fact]
+    [Trait("Requirement", "FND-2")]
     public void TheFoundationProjectsAreChecked()
     {
         string[] names = [.. TahsilAssemblies.Loaded.Select(assembly => assembly.GetName().Name!)];

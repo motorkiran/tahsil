@@ -6,7 +6,6 @@ using Npgsql;
 using Tahsil.Application.Common;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence;
-using Tahsil.Server.Tests.Workers;
 
 namespace Tahsil.Server.Tests.Outbox;
 
@@ -26,6 +25,21 @@ public sealed class OutboxTests(TahsilServerFixture server)
 
         handler.Received.ShouldBe(["Ayşe"]);
         (await StatusesAsync(host)).ShouldBe(["processed"]);
+    }
+
+    [Fact]
+    [Trait("Requirement", "FND-52")]
+    public async Task RunningTheWorkersUntilIdle_DeliversWhatIsDue()
+    {
+        var (host, handler, _) = Create();
+        await using var _ = host;
+        await EnqueueAsync(host, new Greeting("Can"));
+        await EnqueueAsync(host, new Greeting("Deniz"));
+
+        await host.RunWorkersUntilIdleAsync();
+
+        handler.Received.ShouldBe(["Can", "Deniz"], ignoreOrder: true);
+        (await StatusesAsync(host)).ShouldAllBe(status => status == "processed");
     }
 
     [Fact]
@@ -77,7 +91,7 @@ public sealed class OutboxTests(TahsilServerFixture server)
         var time = new FakeTimeProvider(FakeBillingClock.Start);
         var database = server.NewDatabase("outbox");
         var handler = new GreetingHandler(database);
-        var host = WorkerHosts.Create(server, database, time, services =>
+        var host = IsolatedHosts.Create(server, database, time, services =>
         {
             services.AddSingleton(new OutboxMessageTypes([typeof(Application.DependencyInjection).Assembly, typeof(OutboxTests).Assembly]));
             services.AddSingleton<IOutboxMessageHandler<Greeting>>(handler);

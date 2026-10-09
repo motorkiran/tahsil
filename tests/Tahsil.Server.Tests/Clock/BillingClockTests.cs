@@ -7,6 +7,7 @@ using Tahsil.Infrastructure.Persistence;
 namespace Tahsil.Server.Tests.Clock;
 
 [Trait("Requirement", "ENG-21")]
+[Trait("Requirement", "FND-34")]
 public sealed class BillingClockTests(TahsilServerFixture server)
 {
     private static readonly TimeSpan OneDay = TimeSpan.FromDays(1);

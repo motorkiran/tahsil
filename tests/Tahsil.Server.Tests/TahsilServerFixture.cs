@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -18,14 +19,34 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
 {
     public const string PostgreSqlImage = "docker.io/library/postgres:18-alpine";
 
+    private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(PostgreSqlImage).Build();
 
     public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
 
-        // Starts the host, which migrates the database.
-        _ = Services;
+        // Starting the host migrates the database; tests begin once the instance reports ready.
+        await WaitUntilReadyAsync(this);
+    }
+
+    /// <summary>Waits until <paramref name="factory"/> answers its readiness probe; also for hosts derived from this one.</summary>
+    public static async Task WaitUntilReadyAsync(WebApplicationFactory<Program> factory)
+    {
+        using var client = factory.CreateClient();
+        using var timeout = new CancellationTokenSource(ReadinessTimeout);
+
+        while (true)
+        {
+            using var response = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), timeout.Token);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), timeout.Token);
+        }
     }
 
     /// <summary>A connection string for another database on the same server.</summary>

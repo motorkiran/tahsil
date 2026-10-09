@@ -18,8 +18,8 @@ public sealed class DueWorkerTests(TahsilServerFixture server)
     {
         var time = new FakeTimeProvider(FakeBillingClock.Start);
         var database = server.NewDatabase("workers");
-        await using var first = WorkerHosts.Create(server, database, time);
-        await using var second = WorkerHosts.Create(server, database, time);
+        await using var first = IsolatedHosts.Create(server, database, time);
+        await using var second = IsolatedHosts.Create(server, database, time);
         await first.ExecuteRawAsync(TestItemsWorker.CreateTable);
         await AddItemsAsync(first, time, 200);
         var behavior = new TestItemsWorker.Behavior { Leased = leased, BeforeProcessing = (_, _) => Task.Delay(1, CancellationToken) };
@@ -37,8 +37,8 @@ public sealed class DueWorkerTests(TahsilServerFixture server)
     {
         var time = new FakeTimeProvider(FakeBillingClock.Start);
         var database = server.NewDatabase("leases");
-        await using var dying = WorkerHosts.Create(server, database, time);
-        await using var survivor = WorkerHosts.Create(server, database, time);
+        await using var dying = IsolatedHosts.Create(server, database, time);
+        await using var survivor = IsolatedHosts.Create(server, database, time);
         await dying.ExecuteRawAsync(TestItemsWorker.CreateTable);
         await AddItemsAsync(dying, time, 1);
 
@@ -73,7 +73,7 @@ public sealed class DueWorkerTests(TahsilServerFixture server)
     public async Task AFailingItem_BacksOff_IsReportedAfterTenFailures_AndDoesNotBlockOthers(bool leased)
     {
         var time = new FakeTimeProvider(FakeBillingClock.Start);
-        await using var host = WorkerHosts.Create(server, server.NewDatabase("failures"), time);
+        await using var host = IsolatedHosts.Create(server, server.NewDatabase("failures"), time);
         await host.ExecuteRawAsync(TestItemsWorker.CreateTable);
         var ids = await AddItemsAsync(host, time, 3);
         var broken = ids[0];
