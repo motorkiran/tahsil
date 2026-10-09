@@ -1,0 +1,23 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Tahsil API",
+    "description": "The Tahsil API manages the catalog, customers, checkout sessions, subscriptions, invoices, payments and refunds of a Tahsil installation. Calls take an API key as a bearer token, carrying the permission each operation names; `ths_test_` keys reach a Test mode installation and `ths_live_` keys a Live one. Errors are RFC 9457 problem details with a stable, machine-readable `code` and a `traceId`.",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost/"
+    }
+  ],
+  "paths": { },
+  "components": {
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "http",
+        "description": "An API key created in the admin panel or through the API, such as `ths_test_…`.",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
