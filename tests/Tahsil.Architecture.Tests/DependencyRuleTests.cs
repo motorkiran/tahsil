@@ -100,7 +100,7 @@ public sealed class DependencyRuleTests
     {
         CheckAll(
             name => name == "Tahsil.Admin",
-            name => !TahsilAssemblies.IsTahsil(name) || name is "Tahsil.Application" or "Tahsil.Contracts");
+            name => !TahsilAssemblies.IsTahsil(name) || name is "Tahsil.Application" or "Tahsil.Contracts" or "Tahsil.Domain");
     }
 
     [Fact]

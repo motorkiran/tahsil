@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Tahsil.Admin;
 using Tahsil.Application;
 using Tahsil.Application.Common;
 using Tahsil.Infrastructure;
@@ -17,7 +18,10 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
 builder.Services.AddErrorHandling();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IRequestContext, HttpRequestContext>();
+builder.Services.AddScoped<HttpRequestContext>();
+builder.Services.AddScoped<IRequestContext>(services =>
+    services.GetRequiredService<RequestContextOverride>().Context ?? services.GetRequiredService<HttpRequestContext>());
+builder.Services.AddTahsilAdmin(builder.Configuration);
 builder.Services.AddTahsilApi();
 builder.Services.AddHostedPages();
 builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));
@@ -49,6 +53,14 @@ if (app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.MigrateOn
 app.UseErrorResponses();
 app.UseHealthProbes();
 app.UseSecurityHeaders();
+
+// Each instance can leave the admin panel out, so that only an internal one serves it.
+var adminPanel = app.Configuration.IsAdminPanelEnabled();
+if (adminPanel)
+{
+    app.UseAdminContentSecurityPolicy();
+}
+
 app.UseModeHeader();
 
 // Once a browser has reached Tahsil over HTTPS, it never tries plain HTTP again. Subdomains are left out: Tahsil may
@@ -58,7 +70,6 @@ if (app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.RequireHttp
     app.UseHsts();
 }
 
-app.UseStaticFiles();
 app.UseRequestLocalization();
 app.UseRequestBuffering();
 app.UseAuthentication();
@@ -66,9 +77,16 @@ app.UseAuthorization();
 app.UseRateLimiter();
 app.UseAntiforgery();
 
-app.MapRazorPages();
+app.MapStaticAssets();
+app.MapRazorPages().WithStaticAssets();
 app.MapCultureSwitch();
 app.MapBrandingStylesheet();
 app.MapTahsilApi();
+app.MapContributedEndpoints();
+
+if (adminPanel)
+{
+    app.MapTahsilAdmin();
+}
 
 await app.RunAsync();

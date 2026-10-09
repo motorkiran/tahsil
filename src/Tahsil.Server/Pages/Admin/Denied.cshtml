@@ -1,0 +1,26 @@
+@page "/admin/denied"
+@model DeniedModel
+@{
+    ViewData["Title"] = L["No access to the admin panel"];
+}
+
+<h1 id="page-title">@L["No access to the admin panel"]</h1>
+@switch (Model.Reason)
+{
+    case "mfa":
+        <p class="lead">@L["The admin panel requires two-factor authentication. Turn it on for your account, then sign in again."]</p>
+        @if (Model.AccountUrl is { } accountUrl)
+        {
+            <div class="actions"><a class="button" href="@accountUrl">@L["Set up two-factor authentication"]</a></div>
+        }
+        break;
+    case "token":
+        <p class="lead">@L["Your sign-in could not be verified. Sign in again; if it keeps failing, ask your administrator."]</p>
+        break;
+    default:
+        <p class="lead">@L["Your account has no role in the admin panel. Ask your administrator for one."]</p>
+        break;
+}
+<div class="actions">
+    <a class="button button-secondary" href="/admin/signout">@L["Sign in with another account"]</a>
+</div>

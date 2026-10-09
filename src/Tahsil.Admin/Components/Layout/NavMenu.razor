@@ -1,0 +1,23 @@
+@inject AdminSession Session
+
+<MudNavMenu>
+    <MudNavLink Href="/admin" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    @foreach (var item in Items.Where(item => item.Permission is null || Session.Has(item.Permission)))
+    {
+        <MudNavLink Href="@item.Href" Icon="@item.Icon">@item.Title</MudNavLink>
+    }
+</MudNavMenu>
+
+@code {
+    /// <summary>The panel's sections; each shows to administrators whose role grants its permission.</summary>
+    internal static readonly IReadOnlyList<NavItem> Items =
+    [
+        new("Customers", "/admin/customers", Icons.Material.Filled.People, TahsilPermissions.CustomersRead),
+        new("Products", "/admin/products", Icons.Material.Filled.Inventory2, TahsilPermissions.CatalogRead),
+        new("Tax rates", "/admin/tax-rates", Icons.Material.Filled.Percent, TahsilPermissions.CatalogRead),
+        new("API keys", "/admin/api-keys", Icons.Material.Filled.Key, TahsilPermissions.ApiKeysWrite),
+        new("Audit log", "/admin/audit-log", Icons.Material.Filled.History, TahsilPermissions.AuditRead),
+    ];
+
+    internal sealed record NavItem(string Title, string Href, string Icon, string? Permission);
+}

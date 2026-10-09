@@ -19,17 +19,41 @@
   <data name="Language" xml:space="preserve">
     <value>Dil</value>
   </data>
+  <data name="No access to the admin panel" xml:space="preserve">
+    <value>Yönetim paneline erişiminiz yok</value>
+  </data>
+  <data name="No sign-in is configured. Set Tahsil:Admin:Oidc to sign in with your identity provider, such as Kimlik." xml:space="preserve">
+    <value>Giriş yöntemi yapılandırılmamış. Kimlik gibi bir kimlik sağlayıcıyla giriş için Tahsil:Admin:Oidc ayarlarını yapın.</value>
+  </data>
   <data name="Page not found" xml:space="preserve">
     <value>Sayfa bulunamadı</value>
   </data>
   <data name="Reference" xml:space="preserve">
     <value>Referans</value>
   </data>
+  <data name="Set up two-factor authentication" xml:space="preserve">
+    <value>İki adımlı doğrulamayı aç</value>
+  </data>
+  <data name="Sign in as developer" xml:space="preserve">
+    <value>Geliştirici olarak giriş yap</value>
+  </data>
+  <data name="Sign in to the admin panel" xml:space="preserve">
+    <value>Yönetim paneline giriş</value>
+  </data>
+  <data name="Sign in with another account" xml:space="preserve">
+    <value>Başka bir hesapla giriş yap</value>
+  </data>
+  <data name="Sign in with your organization" xml:space="preserve">
+    <value>Kurumsal hesabınızla giriş yapın</value>
+  </data>
   <data name="Something went wrong" xml:space="preserve">
     <value>Bir şeyler ters gitti</value>
   </data>
   <data name="Test mode: no real payments are made." xml:space="preserve">
     <value>Test modu: gerçek ödeme alınmaz.</value>
+  </data>
+  <data name="The admin panel requires two-factor authentication. Turn it on for your account, then sign in again." xml:space="preserve">
+    <value>Yönetim paneli iki adımlı doğrulama gerektirir. Hesabınızda açın, sonra yeniden giriş yapın.</value>
   </data>
   <data name="This link does not work or has expired. Ask the sender for a new one." xml:space="preserve">
     <value>Bu bağlantı çalışmıyor ya da süresi doldu. Gönderen kişiden yenisini isteyin.</value>
@@ -48,5 +72,11 @@
   </data>
   <data name="We could not complete your request. Try again in a moment." xml:space="preserve">
     <value>İsteğinizi tamamlayamadık. Biraz sonra yeniden deneyin.</value>
+  </data>
+  <data name="Your account has no role in the admin panel. Ask your administrator for one." xml:space="preserve">
+    <value>Hesabınızın yönetim panelinde bir rolü yok. Yöneticinizden rol isteyin.</value>
+  </data>
+  <data name="Your sign-in could not be verified. Sign in again; if it keeps failing, ask your administrator." xml:space="preserve">
+    <value>Girişiniz doğrulanamadı. Yeniden giriş yapın; sorun sürerse yöneticinize başvurun.</value>
   </data>
 </root>

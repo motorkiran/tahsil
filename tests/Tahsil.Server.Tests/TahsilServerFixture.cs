@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Tahsil.Infrastructure.Persistence;
+using Tahsil.Server.Hosting;
 using Testcontainers.PostgreSql;
 
 [assembly: AssemblyFixture(typeof(Tahsil.Server.Tests.TahsilServerFixture))]
@@ -72,16 +73,24 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
     /// optional service replacements. The caller disposes it.
     /// </summary>
     public WebApplicationFactory<Program> WithSettings(
-        IReadOnlyDictionary<string, string?> settings, Action<IServiceCollection>? services = null, Action<IEndpointRouteBuilder>? endpoints = null) =>
+        IReadOnlyDictionary<string, string?> settings,
+        Action<IServiceCollection>? services = null,
+        Action<IEndpointRouteBuilder>? endpoints = null,
+        string? environment = null) =>
         WithWebHostBuilder(builder =>
         {
+            if (environment is not null)
+            {
+                builder.UseEnvironment(environment);
+            }
+
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
             builder.ConfigureTestServices(collection =>
             {
                 services?.Invoke(collection);
                 if (endpoints is not null)
                 {
-                    collection.AddSingleton<IStartupFilter>(new TestEndpoints(endpoints));
+                    collection.AddSingleton<IEndpointMapper>(new TestEndpoints(endpoints));
                 }
             });
         });

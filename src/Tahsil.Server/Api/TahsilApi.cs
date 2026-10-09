@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
 using Tahsil.Contracts.Serialization;
+using Tahsil.Domain.Common;
 
 namespace Tahsil.Server.Api;
 
@@ -64,6 +65,11 @@ internal static class TahsilApi
             .MapCustomerEndpoints()
             .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();
+
+        // Unknown API paths are not found, whatever the method; without this, the static assets' GET fallback would turn
+        // a POST to a mistyped path into 405 Method Not Allowed.
+        endpoints.Map("/api/{**path}", () => ApiResults.Problem(Error.NotFound("request.not_found", "No API endpoint has this path.")))
+            .ExcludeFromDescription();
 
         endpoints.MapOpenApi();
         endpoints.MapScalarApiReference(options => options.WithTitle("Tahsil API"));

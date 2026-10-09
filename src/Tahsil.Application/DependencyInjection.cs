@@ -40,6 +40,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IPublicUrls, PublicUrls>();
         services.AddScoped<IAuthorizer, Authorizer>();
+        services.AddScoped<RequestContextOverride>();
 
         services.AddOptions<ProvisioningOptions>()
             .BindConfiguration(ProvisioningOptions.SectionName)

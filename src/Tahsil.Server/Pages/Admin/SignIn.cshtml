@@ -1,0 +1,24 @@
+@page "/admin/signin"
+@model SignInModel
+@{
+    ViewData["Title"] = L["Sign in to the admin panel"];
+}
+
+<h1 id="page-title">@L["Sign in to the admin panel"]</h1>
+@if (!Model.HasProvider && !Model.DevelopmentSignIn)
+{
+    <p class="lead">@L["No sign-in is configured. Set Tahsil:Admin:Oidc to sign in with your identity provider, such as Kimlik."]</p>
+}
+<div class="actions">
+    @if (Model.HasProvider)
+    {
+        <a class="button" id="sign-in-provider" href="/admin/signin/oidc?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)">@L["Sign in with your organization"]</a>
+    }
+    @if (Model.DevelopmentSignIn)
+    {
+        <form method="post" action="/admin/signin/development" asp-antiforgery="true">
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <button class="button button-secondary" id="sign-in-developer" type="submit">@L["Sign in as developer"]</button>
+        </form>
+    }
+</div>

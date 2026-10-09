@@ -1,0 +1,19 @@
+@page "/admin"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@inherits AdminPageBase
+
+<PageTitle>Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Welcome</MudText>
+<MudText Class="mb-6">Signed in as @(Session.Email ?? Session.Subject), with the @Session.Role role.</MudText>
+
+<MudGrid>
+    @foreach (var item in NavMenu.Items.Where(item => item.Permission is null || Session.Has(item.Permission)))
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-4" Outlined>
+                <MudLink Href="@item.Href" Typo="Typo.h6">@item.Title</MudLink>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>

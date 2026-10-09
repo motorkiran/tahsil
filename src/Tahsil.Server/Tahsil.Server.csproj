@@ -6,11 +6,17 @@
     <ContainerFamily>noble-chiseled-extra</ContainerFamily>
   </PropertyGroup>
 
+  <PropertyGroup Label="Admin panel">
+    <!-- Serves Blazor's own script (_framework/blazor.web.js), which the admin panel's components need. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Tahsil.Server.Tests" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Tahsil.Admin\Tahsil.Admin.csproj" />
     <ProjectReference Include="..\Tahsil.Application\Tahsil.Application.csproj" />
     <ProjectReference Include="..\Tahsil.Infrastructure\Tahsil.Infrastructure.csproj" />
   </ItemGroup>

@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Tahsil.Server.Hosting;
+
 namespace Tahsil.Server.Tests;
 
 /// <summary>
@@ -34,7 +36,7 @@ internal sealed class TestHost(IReadOnlyDictionary<string, string?>? overrides =
 
         if (endpoints is not null)
         {
-            builder.ConfigureTestServices(services => services.AddSingleton<IStartupFilter>(new TestEndpoints(endpoints)));
+            builder.ConfigureTestServices(services => services.AddSingleton<IEndpointMapper>(new TestEndpoints(endpoints)));
         }
     }
 }
