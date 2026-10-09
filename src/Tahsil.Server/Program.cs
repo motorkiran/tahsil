@@ -63,6 +63,7 @@ app.UseRequestLocalization();
 app.UseRequestBuffering();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.UseAntiforgery();
 
 app.MapRazorPages();

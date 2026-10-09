@@ -8,5 +8,11 @@ public sealed class RateLimitOptions
     /// <summary>Hosted page requests per minute from one network address (IPv6 by /64).</summary>
     public int HostedPageRequestsPerMinute { get; set; } = 120;
 
-    internal bool IsValid() => HostedPageRequestsPerMinute > 0;
+    /// <summary>API requests per second of one API key, on average.</summary>
+    public int ApiRequestsPerSecond { get; set; } = 25;
+
+    /// <summary>API requests one API key may make at once after a quiet period.</summary>
+    public int ApiBurst { get; set; } = 50;
+
+    internal bool IsValid() => HostedPageRequestsPerMinute > 0 && ApiRequestsPerSecond > 0 && ApiBurst >= ApiRequestsPerSecond;
 }
