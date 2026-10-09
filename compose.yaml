@@ -1,0 +1,30 @@
+# Local development environment (works with Docker Compose and `podman compose`).
+#   docker compose up -d                  PostgreSQL and Mailpit; run Tahsil from your IDE
+name: tahsil
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18-alpine
+    environment:
+      POSTGRES_DB: tahsil
+      POSTGRES_USER: tahsil
+      POSTGRES_PASSWORD: tahsil
+    ports:
+      # 5434 avoids clashing with a locally installed PostgreSQL and with Kimlik's development database.
+      - "${TAHSIL_POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=tahsil --dbname=tahsil"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  mailpit:
+    image: docker.io/axllent/mailpit:v1.31.4
+    ports:
+      - "8026:8025" # web UI
+      - "1026:1025" # SMTP
+
+volumes:
+  postgres-data:

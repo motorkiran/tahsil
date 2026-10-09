@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Tahsil.Application/Tahsil.Application.csproj" />
+    <Project Path="src/Tahsil.Contracts/Tahsil.Contracts.csproj" />
     <Project Path="src/Tahsil.Domain/Tahsil.Domain.csproj" />
     <Project Path="src/Tahsil.Infrastructure/Tahsil.Infrastructure.csproj" />
     <Project Path="src/Tahsil.Server/Tahsil.Server.csproj" />

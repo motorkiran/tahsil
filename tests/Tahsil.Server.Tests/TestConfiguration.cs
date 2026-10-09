@@ -13,8 +13,9 @@ internal static class TestConfiguration
     /// <summary>A fresh master key per test run; nothing encrypted by the tests outlives it.</summary>
     public static readonly string MasterKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
-    public static Dictionary<string, string?> Create() => new()
+    public static Dictionary<string, string?> Create(string connectionString) => new()
     {
+        ["ConnectionStrings:Tahsil"] = connectionString,
         ["Tahsil:Server:PublicUrl"] = PublicUrl,
         ["Tahsil:Server:RequireHttps"] = "false",
         ["Tahsil:Security:MasterKey"] = MasterKey,

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The models of the Tahsil API and its webhook events, shared by the server and the .NET SDK.</Description>
+  </PropertyGroup>
+
+</Project>
