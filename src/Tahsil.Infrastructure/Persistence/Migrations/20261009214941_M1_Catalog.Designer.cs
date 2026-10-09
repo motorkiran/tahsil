@@ -13,7 +13,7 @@ using Tahsil.Infrastructure.Persistence;
 namespace Tahsil.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TahsilDbContext))]
-    [Migration("20261009213510_M1_Catalog")]
+    [Migration("20261009214941_M1_Catalog")]
     partial class M1_Catalog
     {
         /// <inheritdoc />
@@ -539,6 +539,114 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("test_clock", "tahsil", t =>
                         {
                             t.HasCheckConstraint("ck_test_clock_singleton", "id = 1");
+                        });
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Customers.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("address");
+
+                    b.Property<DateTimeOffset?>("AnonymizedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("anonymized_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<byte[]>("EncryptedTaxId")
+                        .HasColumnType("bytea")
+                        .HasColumnName("tax_id");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_id");
+
+                    b.Property<bool>("IsTaxExempt")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_tax_exempt");
+
+                    b.Property<Guid?>("KimlikSubscriberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kimlik_subscriber_id");
+
+                    b.Property<string>("KimlikSubscriberType")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kimlik_subscriber_type");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("locale");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("TaxOffice")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tax_office");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_customers");
+
+                    b.HasIndex("ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_customers_external_id")
+                        .HasFilter("external_id IS NOT NULL");
+
+                    b.HasIndex("KimlikSubscriberType", "KimlikSubscriberId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_customers_kimlik_subscriber_type_kimlik_subscriber_id")
+                        .HasFilter("kimlik_subscriber_id IS NOT NULL");
+
+                    b.ToTable("customers", "tahsil", t =>
+                        {
+                            t.HasCheckConstraint("ck_customers_kimlik_subscriber", "(kimlik_subscriber_type IS NULL) = (kimlik_subscriber_id IS NULL)");
                         });
                 });
 

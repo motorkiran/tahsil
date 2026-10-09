@@ -16,6 +16,10 @@ public static class AuditActions
     public const string PriceCreated = "price.created";
     public const string PriceUpdated = "price.updated";
 
+    public const string CustomerCreated = "customer.created";
+    public const string CustomerUpdated = "customer.updated";
+    public const string CustomerDeleted = "customer.deleted";
+
     public const string ApiKeyCreated = "api_key.created";
     public const string ApiKeyRevoked = "api_key.revoked";
 

@@ -33,6 +33,36 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "customers",
+                schema: "tahsil",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    external_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: true),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    phone = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+                    tax_id = table.Column<byte[]>(type: "bytea", nullable: true),
+                    tax_office = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    address = table.Column<string>(type: "jsonb", nullable: true),
+                    locale = table.Column<string>(type: "character varying(8)", maxLength: 8, nullable: false),
+                    is_tax_exempt = table.Column<bool>(type: "boolean", nullable: false),
+                    kimlik_subscriber_type = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: true),
+                    kimlik_subscriber_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    metadata = table.Column<string>(type: "jsonb", nullable: false, defaultValueSql: "'{}'::jsonb"),
+                    anonymized_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_customers", x => x.id);
+                    table.CheckConstraint("ck_customers_kimlik_subscriber", "(kimlik_subscriber_type IS NULL) = (kimlik_subscriber_id IS NULL)");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "idempotency_records",
                 schema: "tahsil",
                 columns: table => new
@@ -187,6 +217,22 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_customers_external_id",
+                schema: "tahsil",
+                table: "customers",
+                column: "external_id",
+                unique: true,
+                filter: "external_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_customers_kimlik_subscriber_type_kimlik_subscriber_id",
+                schema: "tahsil",
+                table: "customers",
+                columns: new[] { "kimlik_subscriber_type", "kimlik_subscriber_id" },
+                unique: true,
+                filter: "kimlik_subscriber_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_idempotency_records_api_key_id_key",
                 schema: "tahsil",
                 table: "idempotency_records",
@@ -245,6 +291,8 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                 table: "tax_rates",
                 column: "key",
                 unique: true);
+
+            migrationBuilder.Sql(Configurations.CustomerConfiguration.LowerEmailIndex);
         }
 
         /// <inheritdoc />
@@ -252,6 +300,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
         {
             migrationBuilder.DropTable(
                 name: "api_keys",
+                schema: "tahsil");
+
+            migrationBuilder.DropTable(
+                name: "customers",
                 schema: "tahsil");
 
             migrationBuilder.DropTable(

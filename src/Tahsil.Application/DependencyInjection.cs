@@ -5,6 +5,7 @@ using Tahsil.Application.Auditing;
 using Tahsil.Application.Branding;
 using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
+using Tahsil.Application.Customers;
 
 namespace Tahsil.Application;
 
@@ -62,6 +63,14 @@ public static class DependencyInjection
         services.AddScoped<UpdatePriceHandler>();
         services.AddScoped<GetPriceHandler>();
         services.AddScoped<ListPricesHandler>();
+        services.AddScoped<CustomerMapper>();
+        services.AddScoped<CreateCustomerHandler>();
+        services.AddScoped<UpsertCustomerHandler>();
+        services.AddScoped<UpdateCustomerHandler>();
+        services.AddScoped<GetCustomerHandler>();
+        services.AddScoped<ListCustomersHandler>();
+        services.AddScoped<DeleteCustomerHandler>();
+        services.AddScoped<ExportCustomerHandler>();
 
         return services;
     }

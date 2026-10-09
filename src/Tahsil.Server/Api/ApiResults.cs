@@ -56,6 +56,11 @@ internal static class ApiResults
             Detail = error.Message,
         };
         problem.Extensions[CodeExtension] = error.Code;
+        foreach (var (name, value) in error.Extensions ?? new Dictionary<string, object?>())
+        {
+            problem.Extensions[name] = value;
+        }
+
         if (error.Field is { } field)
         {
             problem.Extensions["errors"] = new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [error.Message] };

@@ -6,6 +6,7 @@ using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Clock;
+using Tahsil.Domain.Customers;
 using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence.Conventions;
@@ -28,6 +29,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<Price> Prices => Set<Price>();
 
+    public DbSet<Customer> Customers => Set<Customer>();
+
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     IQueryable<AuditEvent> ITahsilDbContext.AuditEvents => AuditEvents;
@@ -48,6 +51,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     /// </summary>
     public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken) =>
         Database.CurrentTransaction is { } current ? new JoinedTransaction(current) : await Database.BeginTransactionAsync(cancellationToken);
+
+    public void DiscardChanges() => ChangeTracker.Clear();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         PersistenceConventions.Configure(configurationBuilder);

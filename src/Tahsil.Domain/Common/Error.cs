@@ -9,6 +9,9 @@ public sealed record Error(string Code, string Message, ErrorType Type)
     /// <summary>The request field a validation error is about, reported in the problem's <c>errors</c>.</summary>
     public string? Field { get; init; }
 
+    /// <summary>Further members of the problem, such as the ID of the record a conflict is with.</summary>
+    public IReadOnlyDictionary<string, object?>? Extensions { get; init; }
+
     public static Error Validation(string code, string message, string? field = null) => new(code, message, ErrorType.Validation) { Field = field };
 
     public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound);

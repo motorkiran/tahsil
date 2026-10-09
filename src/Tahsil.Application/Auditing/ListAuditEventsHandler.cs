@@ -25,9 +25,15 @@ public sealed class ListAuditEventsHandler(ITahsilDbContext context, IAuthorizer
 {
     private static readonly Keyset<AuditEvent, Guid> Newest = new("newest", auditEvent => auditEvent.Id, auditEvent => auditEvent.Id, Descending: true);
 
-    public async Task<Result<Page<AuditEventResponse>>> HandleAsync(ListAuditEventsQuery query, CancellationToken cancellationToken)
+    /// <param name="query">The filters.</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <param name="authorize">
+    /// Whether to require <c>tahsil.audit:read</c>; a use case that already authorized its caller for the data, such as a
+    /// customer's export, passes <see langword="false"/>.
+    /// </param>
+    public async Task<Result<Page<AuditEventResponse>>> HandleAsync(ListAuditEventsQuery query, CancellationToken cancellationToken, bool authorize = true)
     {
-        if (authorizer.Require(TahsilPermissions.AuditRead) is { IsFailure: true } denied)
+        if (authorize && authorizer.Require(TahsilPermissions.AuditRead) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
