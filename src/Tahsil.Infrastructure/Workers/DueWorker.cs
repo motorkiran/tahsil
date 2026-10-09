@@ -181,7 +181,9 @@ internal abstract partial class DueWorker(
         IServiceProvider services, TahsilDbContext context, Guid id, DateTimeOffset now, Exception exception, CancellationToken cancellationToken)
     {
         LogItemFailed(logger, exception, Name, id);
-        var error = exception.Message.Length > LastErrorMaxLength ? exception.Message[..LastErrorMaxLength] : exception.Message;
+        TahsilDiagnostics.ItemFailures.Add(1, new KeyValuePair<string, object?>("worker", Name));
+        var message = Redaction.Mask(exception.Message);
+        var error = message.Length > LastErrorMaxLength ? message[..LastErrorMaxLength] : message;
 
         var failure = (await context.Database.SqlQuery<FailureState>($"""
             INSERT INTO tahsil.worker_failures (worker, item_id, failure_count, first_failed_at, last_failed_at, last_error)
@@ -205,6 +207,7 @@ internal abstract partial class DueWorker(
                 AuditSubject.Of(Name, id),
                 new Dictionary<string, object?> { ["failures"] = failure.Count, ["error"] = error });
             await context.SaveChangesAsync(cancellationToken);
+            TahsilDiagnostics.AttentionRaised.Add(1, new KeyValuePair<string, object?>("worker", Name));
             LogAttentionRaised(logger, Name, id, failure.Count);
         }
     }

@@ -5,12 +5,14 @@ using Tahsil.Infrastructure;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Security;
 using Tahsil.Server.Api;
+using Tahsil.Server.Diagnostics;
 using Tahsil.Server.ErrorHandling;
 using Tahsil.Server.Hosting;
 using Tahsil.Server.Ui;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddTelemetry();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
 builder.Services.AddErrorHandling();
@@ -19,6 +21,7 @@ builder.Services.AddScoped<IRequestContext, HttpRequestContext>();
 builder.Services.AddTahsilApi();
 builder.Services.AddHostedPages();
 builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));
+builder.Services.AddHealthProbes();
 
 var app = builder.Build();
 
@@ -44,6 +47,7 @@ if (app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.MigrateOn
 }
 
 app.UseErrorResponses();
+app.UseHealthProbes();
 app.UseSecurityHeaders();
 app.UseModeHeader();
 
