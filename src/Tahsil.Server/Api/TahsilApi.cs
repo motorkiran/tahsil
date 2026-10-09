@@ -22,6 +22,7 @@ internal static class TahsilApi
 
         services.AddScoped<IdempotencyFilter>();
         services.AddApiRateLimiting();
+        services.AddCatalogResourceReaders();
 
         services.ConfigureHttpJsonOptions(options => TahsilJson.Configure(options.SerializerOptions));
         services.AddValidation();
@@ -58,6 +59,7 @@ internal static class TahsilApi
             .AddEndpointFilter<IdempotencyFilter>()
             .RequireRateLimiting(ApiRateLimiting.PolicyName)
             .MapApiKeyEndpoints()
+            .MapCatalogEndpoints()
             .MapAuditEventEndpoints();
 
         endpoints.MapOpenApi();

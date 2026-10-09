@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Tahsil.Application.Common;
 using Tahsil.Domain.Common;
 using Tahsil.Server.ErrorHandling;
 
@@ -15,6 +16,29 @@ internal static class ApiResults
 
     public static Results<Created<T>, ProblemHttpResult> ToCreated<T>(this Result<T> result, Func<T, string> location) =>
         result.IsSuccess ? TypedResults.Created(location(result.Value), result.Value) : Problem(result.Error);
+
+    /// <summary>An aggregate, with its version as the <c>ETag</c> (API-5).</summary>
+    public static Results<Ok<T>, ProblemHttpResult> ToOk<T>(this Result<Versioned<T>> result, HttpResponse response)
+    {
+        if (result.IsFailure)
+        {
+            return Problem(result.Error);
+        }
+
+        response.Headers.ETag = ETags.Format(result.Value.Version);
+        return TypedResults.Ok(result.Value.Value);
+    }
+
+    public static Results<Created<T>, ProblemHttpResult> ToCreated<T>(this Result<Versioned<T>> result, HttpResponse response, Func<T, string> location)
+    {
+        if (result.IsFailure)
+        {
+            return Problem(result.Error);
+        }
+
+        response.Headers.ETag = ETags.Format(result.Value.Version);
+        return TypedResults.Created(location(result.Value.Value), result.Value.Value);
+    }
 
     public static Results<NoContent, ProblemHttpResult> ToNoContent(this Result result) =>
         result.IsSuccess ? TypedResults.NoContent() : Problem(result.Error);

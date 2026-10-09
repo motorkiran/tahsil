@@ -6,6 +6,16 @@ public static class AuditActions
     /// <summary>Data was deleted or anonymized under a retention rule; the data says which category and how much (SEC-16).</summary>
     public const string DataDestroyed = "data.destroyed";
 
+    public const string TaxRateCreated = "tax_rate.created";
+    public const string TaxRateUpdated = "tax_rate.updated";
+    public const string MeterCreated = "meter.created";
+    public const string MeterUpdated = "meter.updated";
+    public const string ProductCreated = "product.created";
+    public const string ProductUpdated = "product.updated";
+    public const string ProductDeleted = "product.deleted";
+    public const string PriceCreated = "price.created";
+    public const string PriceUpdated = "price.updated";
+
     public const string ApiKeyCreated = "api_key.created";
     public const string ApiKeyRevoked = "api_key.revoked";
 

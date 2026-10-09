@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Tahsil.Application.ApiKeys;
 using Tahsil.Application.Auditing;
 using Tahsil.Application.Branding;
+using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
 
 namespace Tahsil.Application;
@@ -44,6 +45,23 @@ public static class DependencyInjection
         services.AddScoped<GetApiKeyHandler>();
         services.AddScoped<RevokeApiKeyHandler>();
         services.AddScoped<ListAuditEventsHandler>();
+        services.AddScoped<CreateTaxRateHandler>();
+        services.AddScoped<UpdateTaxRateHandler>();
+        services.AddScoped<GetTaxRateHandler>();
+        services.AddScoped<ListTaxRatesHandler>();
+        services.AddScoped<CreateMeterHandler>();
+        services.AddScoped<UpdateMeterHandler>();
+        services.AddScoped<GetMeterHandler>();
+        services.AddScoped<ListMetersHandler>();
+        services.AddScoped<CreateProductHandler>();
+        services.AddScoped<UpdateProductHandler>();
+        services.AddScoped<DeleteProductHandler>();
+        services.AddScoped<GetProductHandler>();
+        services.AddScoped<ListProductsHandler>();
+        services.AddScoped<CreatePriceHandler>();
+        services.AddScoped<UpdatePriceHandler>();
+        services.AddScoped<GetPriceHandler>();
+        services.AddScoped<ListPricesHandler>();
 
         return services;
     }

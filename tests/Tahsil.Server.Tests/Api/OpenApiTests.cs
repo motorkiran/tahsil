@@ -43,7 +43,8 @@ public sealed class OpenApiTests
 
         var enumValues = document["components"]!["schemas"]!.AsObject()
             .SelectMany(schema => schema.Value!["enum"]?.AsArray() ?? [])
-            .Select(value => value!.GetValue<string>());
+            .OfType<JsonNode>()
+            .Select(value => value.GetValue<string>());
         enumValues.ShouldNotBeEmpty();
         enumValues.ShouldAllBe(value => System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-z][a-z0-9_]*$"));
 
