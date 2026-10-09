@@ -1,0 +1,5 @@
+[*.cs]
+# Test names separate the scenario and the expectation with underscores.
+dotnet_diagnostic.CA1707.severity = none
+# Relative string URLs read better than Uri instances in HTTP tests.
+dotnet_diagnostic.CA2234.severity = none

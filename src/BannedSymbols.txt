@@ -1,0 +1,7 @@
+P:System.DateTime.Now;Use the injected TimeProvider.
+P:System.DateTime.UtcNow;Use the injected TimeProvider.
+P:System.DateTime.Today;Use the injected TimeProvider.
+P:System.DateTimeOffset.Now;Use the injected TimeProvider.
+P:System.DateTimeOffset.UtcNow;Use the injected TimeProvider.
+M:System.Guid.NewGuid;Use Guid.CreateVersion7(timeProvider.GetUtcNow()).
+T:System.Random;Use System.Security.Cryptography.RandomNumberGenerator.

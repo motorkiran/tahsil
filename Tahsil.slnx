@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tahsil.Application/Tahsil.Application.csproj" />
+    <Project Path="src/Tahsil.Domain/Tahsil.Domain.csproj" />
+    <Project Path="src/Tahsil.Infrastructure/Tahsil.Infrastructure.csproj" />
+    <Project Path="src/Tahsil.Server/Tahsil.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tahsil.Architecture.Tests/Tahsil.Architecture.Tests.csproj" />
+    <Project Path="tests/Tahsil.Domain.Tests/Tahsil.Domain.Tests.csproj" />
+    <Project Path="tests/Tahsil.Server.Tests/Tahsil.Server.Tests.csproj" />
+  </Folder>
+</Solution>

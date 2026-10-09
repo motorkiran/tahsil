@@ -1,0 +1,40 @@
+<Project>
+
+  <PropertyGroup Label="Language and build">
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Code analysis">
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- IDE0005 (unnecessary usings) only runs on build when documentation files are generated.
+         Missing XML comments (CS1591) are not enforced. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package metadata">
+    <Authors>Tahsil contributors</Authors>
+    <Product>Tahsil</Product>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/motorkiran/tahsil</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/motorkiran/tahsil</RepositoryUrl>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <!-- Fixed: Data Protection stores assembly-qualified type names in the key ring (its decryptor), and those
+         must keep resolving across releases. Package and file versions carry the real version. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <!-- Only the SDK and the contracts it shares are NuGet packages; they opt in. -->
+    <IsPackable>false</IsPackable>
+    <!-- Symbols go to NuGet's symbol server, and Source Link points debuggers at the exact commit on GitHub. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+</Project>
