@@ -117,6 +117,8 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, TimeProvider
 internal sealed class IdempotencyScope
 {
     public Guid? RecordId { get; set; }
+
+    public bool Suppressed { get; set; }
 }
 
 /// <summary>Records the created resource on the request's idempotency record, in the handler's own save.</summary>
@@ -124,7 +126,7 @@ internal sealed class IdempotencyRecorder(TahsilDbContext context, IdempotencySc
 {
     public void RecordCreated(string resourceType, Guid id)
     {
-        if (scope.RecordId is not { } recordId)
+        if (scope.Suppressed || scope.RecordId is not { } recordId)
         {
             return;
         }
@@ -135,5 +137,10 @@ internal sealed class IdempotencyRecorder(TahsilDbContext context, IdempotencySc
         record.ResourceId = id;
         entry.Property(candidate => candidate.ResourceType).IsModified = true;
         entry.Property(candidate => candidate.ResourceId).IsModified = true;
+
+        // One request records one resource.
+        scope.Suppressed = true;
     }
+
+    public void Suppress() => scope.Suppressed = true;
 }

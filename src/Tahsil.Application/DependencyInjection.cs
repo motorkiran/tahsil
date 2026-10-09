@@ -6,6 +6,7 @@ using Tahsil.Application.Branding;
 using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
 using Tahsil.Application.Customers;
+using Tahsil.Application.Provisioning;
 
 namespace Tahsil.Application;
 
@@ -39,6 +40,14 @@ public static class DependencyInjection
 
         services.AddSingleton<IPublicUrls, PublicUrls>();
         services.AddScoped<IAuthorizer, Authorizer>();
+
+        services.AddOptions<ProvisioningOptions>()
+            .BindConfiguration(ProvisioningOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{ProvisioningOptions.SectionName}:FilePath does not exist.")
+            .ValidateOnStart();
+        services.AddScoped<ApplyProvisioningHandler>();
+        services.AddScoped<ExportProvisioningHandler>();
+        services.AddScoped<StartupProvisioning>();
 
         services.AddScoped<ApiKeyAuthenticator>();
         services.AddScoped<CreateApiKeyHandler>();

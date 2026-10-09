@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/motorkiran/tahsil/main/docs/schemas/provisioning.schema.json",
+  "title": "Tahsil provisioning document",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "taxRates": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "percentage": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$"
+          },
+          "inclusive": {
+            "type": "boolean"
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isArchived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "percentage",
+          "inclusive"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "meters": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "aggregation": {
+            "enum": [
+              "sum",
+              "count",
+              "max",
+              "unique_count"
+            ]
+          },
+          "uniqueProperty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isArchived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "aggregation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "products": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kimlikPlan": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "prices": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "one_time",
+                    "recurring"
+                  ]
+                },
+                "interval": {
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "year",
+                    null
+                  ]
+                },
+                "intervalCount": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)$"
+                },
+                "usageType": {
+                  "enum": [
+                    "licensed",
+                    "metered",
+                    null
+                  ]
+                },
+                "billingScheme": {
+                  "enum": [
+                    "per_unit",
+                    "tiered",
+                    "package"
+                  ]
+                },
+                "unitAmount": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)$"
+                },
+                "unitAmountDecimal": {
+                  "type": [
+                    "string",
+                    "number",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$"
+                },
+                "packageSize": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)$"
+                },
+                "packageRounding": {
+                  "enum": [
+                    "up",
+                    "down",
+                    null
+                  ]
+                },
+                "tiersMode": {
+                  "enum": [
+                    "graduated",
+                    "volume",
+                    null
+                  ]
+                },
+                "tiers": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "upTo": {
+                        "type": [
+                          "string",
+                          "integer",
+                          "null"
+                        ],
+                        "pattern": "^-?(?:0|[1-9]\\d*)$"
+                      },
+                      "unitAmount": {
+                        "type": [
+                          "string",
+                          "integer",
+                          "null"
+                        ],
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "default": null
+                      },
+                      "unitAmountDecimal": {
+                        "type": [
+                          "string",
+                          "number",
+                          "null"
+                        ],
+                        "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+                        "default": null
+                      },
+                      "flatAmount": {
+                        "type": [
+                          "string",
+                          "integer",
+                          "null"
+                        ],
+                        "pattern": "^-?(?:0|[1-9]\\d*)$",
+                        "default": null
+                      }
+                    },
+                    "required": [
+                      "upTo"
+                    ]
+                  }
+                },
+                "meter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "taxRate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "trialDays": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)$"
+                },
+                "isArchived": {
+                  "type": "boolean"
+                },
+                "metadata": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "key",
+                "currency",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "key",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -11,6 +11,12 @@ namespace Tahsil.Application.Common;
 public interface IIdempotency
 {
     void RecordCreated(string resourceType, Guid id);
+
+    /// <summary>
+    /// Records nothing for the rest of the request, for use cases that create several resources and are safe to run
+    /// again, such as applying a provisioning document.
+    /// </summary>
+    void Suppress();
 }
 
 public static class IdempotencyErrors

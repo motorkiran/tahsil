@@ -62,6 +62,7 @@ internal static class TahsilApi
             .MapApiKeyEndpoints()
             .MapCatalogEndpoints()
             .MapCustomerEndpoints()
+            .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();
 
         endpoints.MapOpenApi();

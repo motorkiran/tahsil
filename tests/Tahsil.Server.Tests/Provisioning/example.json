@@ -1,0 +1,20 @@
+{
+  // The catalog of the provisioning specification's example.
+  "$schema": "https://raw.githubusercontent.com/motorkiran/tahsil/main/docs/schemas/provisioning.schema.json",
+  "taxRates": [{ "key": "kdv-20", "name": "KDV", "percentage": 20, "inclusive": true, "country": "TR" }],
+  "meters": [{ "key": "api_calls", "name": "API calls", "aggregation": "sum" }],
+  "products": [
+    {
+      "key": "pro", "name": "Pro", "description": "For growing teams", "kimlikPlan": "pro",
+      "prices": [
+        { "key": "pro-monthly-try", "name": "Monthly", "currency": "TRY", "type": "recurring", "interval": "month", "billingScheme": "per_unit", "unitAmount": 29900, "taxRate": "kdv-20", "trialDays": 14 },
+        { "key": "pro-yearly-try", "name": "Yearly", "currency": "TRY", "type": "recurring", "interval": "year", "billingScheme": "per_unit", "unitAmount": 299000, "taxRate": "kdv-20" },
+        { "key": "api-calls-try", "currency": "TRY", "type": "recurring", "interval": "month", "usageType": "metered", "meter": "api_calls", "billingScheme": "tiered", "tiersMode": "graduated", "tiers": [{ "upTo": 10000, "unitAmount": 0 }, { "upTo": null, "unitAmountDecimal": 0.5 }] },
+      ],
+    },
+    {
+      "key": "legacy", "name": "Legacy", "isArchived": true,
+      "prices": [{ "key": "legacy-monthly-try", "currency": "TRY", "type": "recurring", "interval": "month", "unitAmount": 9900, "isArchived": true }],
+    },
+  ],
+}

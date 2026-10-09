@@ -2007,6 +2007,115 @@
         ]
       }
     },
+    "/api/v1/provisioning": {
+      "get": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "Export the provisioning document",
+        "description": "The current catalog, ordered by key, in the format that POST applies.\n\nRequires the `tahsil.provisioning:read` permission.",
+        "operationId": "ExportProvisioning",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.provisioning:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "Apply a provisioning document",
+        "description": "Creates what is missing and updates what differs, in one transaction, and never deletes. Each item goes through the same rules as the API, with the caller's permissions; an error names the item and nothing is applied.\n\nRequires the `tahsil.provisioning:write` permission.",
+        "operationId": "ApplyProvisioning",
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "description": "Validates the document and reports what would change, without changing anything.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisioningDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.provisioning:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/audit-events": {
       "get": {
         "tags": [
@@ -3569,6 +3678,391 @@
           }
         }
       },
+      "ProvisionedItem": {
+        "required": [
+          "path",
+          "key",
+          "result"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ProvisioningItemResult"
+          }
+        }
+      },
+      "ProvisionedMeter": {
+        "required": [
+          "key",
+          "name",
+          "aggregation"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "aggregation": {
+            "description": "Fixed once created.",
+            "$ref": "#/components/schemas/MeterAggregation"
+          },
+          "uniqueProperty": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Fixed once created."
+          },
+          "isArchived": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProvisionedPrice": {
+        "required": [
+          "key",
+          "currency",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PriceType"
+          },
+          "interval": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PriceInterval"
+              }
+            ]
+          },
+          "intervalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "usageType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UsageType"
+              }
+            ]
+          },
+          "billingScheme": {
+            "$ref": "#/components/schemas/BillingScheme"
+          },
+          "unitAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unitAmountDecimal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "packageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "packageRounding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PackageRounding"
+              }
+            ]
+          },
+          "tiersMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TiersMode"
+              }
+            ]
+          },
+          "tiers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PriceTier"
+            }
+          },
+          "meter": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The meter's key, for metered prices."
+          },
+          "taxRate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The tax rate's key."
+          },
+          "trialDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "A price of the product. Only the name, trial, archive flag and metadata may change; a new amount is a new price with a\nnew key."
+      },
+      "ProvisionedProduct": {
+        "required": [
+          "key",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "kimlikPlan": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "prices": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedPrice"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProvisionedTaxRate": {
+        "required": [
+          "key",
+          "name",
+          "percentage",
+          "inclusive"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "percentage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Fixed once created.",
+            "format": "double"
+          },
+          "inclusive": {
+            "type": "boolean",
+            "description": "Fixed once created."
+          },
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isArchived": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProvisioningDocument": {
+        "type": "object",
+        "properties": {
+          "$schema": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The JSON Schema editors use for completion and validation."
+          },
+          "taxRates": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedTaxRate"
+            }
+          },
+          "meters": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedMeter"
+            }
+          },
+          "products": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedProduct"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "What an installation sells, declared so it can live in version control and be applied the same way to every\nenvironment. Items are matched by key; applying creates what is missing and updates what differs, and never deletes:\nretire an item with `isArchived`."
+      },
+      "ProvisioningItemResult": {
+        "enum": [
+          "created",
+          "updated",
+          "unchanged"
+        ]
+      },
+      "ProvisioningResult": {
+        "required": [
+          "created",
+          "updated",
+          "unchanged",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "created": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "updated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "unchanged": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedItem"
+            }
+          }
+        },
+        "description": "What applying a document did, or would do in a dry run."
+      },
       "TaxRateResponse": {
         "required": [
           "id",
@@ -3919,6 +4413,9 @@
     },
     {
       "name": "Customers"
+    },
+    {
+      "name": "Provisioning"
     },
     {
       "name": "Audit events"

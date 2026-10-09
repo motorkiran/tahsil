@@ -1,13 +1,20 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Tahsil.Application.Provisioning;
 
 namespace Tahsil.Infrastructure.Persistence;
 
 /// <summary>
-/// Brings the database up to date. EF Core holds a database lock while migrating, and an advisory lock covers the
-/// steps that follow, so instances that start at the same time take turns. Any failure stops startup: it means the
-/// configuration is wrong.
+/// Brings the database up to date: migrations, then the provisioning file. EF Core holds a database lock while
+/// migrating, and an advisory lock covers the rest, so instances that start at the same time take turns. Any failure
+/// stops startup: it means the configuration is wrong.
 /// </summary>
-internal sealed class DatabasePreparation(TahsilDbContext context)
+internal sealed partial class DatabasePreparation(
+    TahsilDbContext context,
+    StartupProvisioning provisioning,
+    IOptions<ProvisioningOptions> provisioningOptions,
+    ILogger<DatabasePreparation> logger)
 {
     public async Task RunAsync(CancellationToken cancellationToken)
     {
@@ -16,8 +23,17 @@ internal sealed class DatabasePreparation(TahsilDbContext context)
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({AdvisoryLockKeys.DatabasePreparation})", cancellationToken);
 
-        // Later milestones add the provisioning file and the Test mode bootstrap here.
+        if (provisioningOptions.Value.FilePath is { Length: > 0 } path)
+        {
+            await ApplyProvisioningFileAsync(path, cancellationToken);
+        }
 
         await transaction.CommitAsync(cancellationToken);
     }
+
+    private async Task ApplyProvisioningFileAsync(string path, CancellationToken cancellationToken) =>
+        LogProvisioningApplied(logger, path, await provisioning.ApplyAsync(path, cancellationToken));
+
+    [LoggerMessage(LogLevel.Information, "Applied the provisioning file {Path}: {Summary}")]
+    private static partial void LogProvisioningApplied(ILogger logger, string path, string summary);
 }

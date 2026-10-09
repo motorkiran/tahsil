@@ -20,6 +20,8 @@ public static class AuditActions
     public const string CustomerUpdated = "customer.updated";
     public const string CustomerDeleted = "customer.deleted";
 
+    public const string ProvisioningApplied = "provisioning.applied";
+
     public const string ApiKeyCreated = "api_key.created";
     public const string ApiKeyRevoked = "api_key.revoked";
 
