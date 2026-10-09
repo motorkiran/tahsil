@@ -1,7 +1,10 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Security;
@@ -50,12 +53,29 @@ public static class DependencyInjection
             .Validate(
                 options => SecurityOptions.IsValidMasterKey(options.MasterKey),
                 $"{SecurityOptions.SectionName}:MasterKey must be a base64-encoded 256-bit key. Generate one with 'openssl rand -base64 32'.")
+            .Validate(
+                options => SecurityOptions.IsValidKeyId(options.MasterKeyId),
+                $"{SecurityOptions.SectionName}:MasterKeyId must be between 1 and 255.")
+            .Validate(
+                options => options.HasValidPreviousKeys(),
+                $"{SecurityOptions.SectionName}:PreviousMasterKeys must map IDs between 1 and 255, other than MasterKeyId, to base64-encoded 256-bit keys.")
             // Reads the mode from configuration: resolving the server options here would report their own
             // validation failures a second time.
             .Validate<IConfiguration>(
                 (options, configuration) => ReadMode(configuration) != TahsilMode.Live || !options.IsDevelopmentMasterKey(),
                 $"{SecurityOptions.SectionName}:MasterKey is the public development key, which Live mode refuses. Generate one with 'openssl rand -base64 32'.")
             .ValidateOnStart();
+
+        services.AddSingleton<ISecretProtector, SecretProtector>();
+        services.AddSingleton<ISecretEncryption, SecretEncryption>();
+        services.AddSingleton<IEncryptedStore, DataProtectionKeyRingStore>();
+        services.AddScoped<SecretReencryption>();
+
+        // Every instance shares one key ring, stored in PostgreSQL and encrypted with the master key.
+        services.AddDataProtection()
+            .SetApplicationName("Tahsil")
+            .PersistKeysToDbContext<TahsilDbContext>();
+        services.AddSingleton<IConfigureOptions<KeyManagementOptions>, ConfigureKeyRingEncryption>();
     }
 
     private static TahsilMode ReadMode(IConfiguration configuration) =>

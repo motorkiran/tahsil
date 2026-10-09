@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -40,6 +41,20 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
         await using var scope = Services.CreateAsyncScope();
         return await action(scope.ServiceProvider.GetRequiredService<TahsilDbContext>());
     }
+
+    /// <summary>
+    /// A host on the same PostgreSQL server with settings of its own (such as another database or master key) and
+    /// optional service replacements. The caller disposes it.
+    /// </summary>
+    public WebApplicationFactory<Program> WithSettings(IReadOnlyDictionary<string, string?> settings, Action<IServiceCollection>? services = null) =>
+        WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
+            if (services is not null)
+            {
+                builder.ConfigureTestServices(services);
+            }
+        });
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder
         .UseEnvironment(TestConfiguration.Environment)

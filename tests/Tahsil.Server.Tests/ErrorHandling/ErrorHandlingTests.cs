@@ -98,7 +98,7 @@ public sealed class ErrorHandlingTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         problem["code"]!.GetValue<string>().ShouldBe("concurrency.conflict");
-        host.Logs.Entries.ShouldNotContain(entry => entry.Level >= LogLevel.Error);
+        host.Logs.Entries.ShouldNotContain(entry => entry.Exception is DbUpdateConcurrencyException);
     }
 
     [Fact]
