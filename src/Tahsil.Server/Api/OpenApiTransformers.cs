@@ -53,3 +53,31 @@ internal sealed class PermissionOperationTransformer : IOpenApiOperationTransfor
         return Task.CompletedTask;
     }
 }
+
+/// <summary>Documents the <c>Idempotency-Key</c> header that every <c>POST</c> accepts.</summary>
+internal sealed class IdempotencyOperationTransformer : IOpenApiOperationTransformer
+{
+    public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(context.Description.HttpMethod, HttpMethods.Post, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.CompletedTask;
+        }
+
+        operation.Parameters ??= [];
+        operation.Parameters.Add(new OpenApiParameter
+        {
+            Name = IdempotencyFilter.HeaderName,
+            In = ParameterLocation.Header,
+            Description = "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, "
+                + "marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 255 },
+        });
+
+        operation.Responses ??= [];
+        operation.Responses.TryAdd("409", new OpenApiResponse { Description = "A request with the same idempotency key is still running (`idempotency.in_progress`)." });
+        operation.Responses.TryAdd("422", new OpenApiResponse { Description = "The idempotency key was used for a different request (`idempotency.key_reused`)." });
+
+        return Task.CompletedTask;
+    }
+}

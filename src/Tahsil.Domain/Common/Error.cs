@@ -16,6 +16,8 @@ public sealed record Error(string Code, string Message, ErrorType Type)
 
     public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
 
+    public static Error Unprocessable(string code, string message) => new(code, message, ErrorType.Unprocessable);
+
     public static Error PreconditionFailed(string code, string message) => new(code, message, ErrorType.PreconditionFailed);
 
     public static Error RateLimited(string code, string message) => new(code, message, ErrorType.RateLimited);
@@ -38,6 +40,9 @@ public enum ErrorType
     Unauthorized,
 
     Forbidden,
+
+    /// <summary>The request is well-formed but contradicts an earlier one, such as an idempotency key reused for another request.</summary>
+    Unprocessable,
 
     /// <summary>The caller's precondition (<c>If-Match</c>) does not hold.</summary>
     PreconditionFailed,

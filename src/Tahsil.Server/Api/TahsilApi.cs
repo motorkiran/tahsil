@@ -20,6 +20,8 @@ internal static class TahsilApi
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationResultHandler>();
 
+        services.AddScoped<IdempotencyFilter>();
+
         services.ConfigureHttpJsonOptions(options => TahsilJson.Configure(options.SerializerOptions));
         services.AddValidation();
 
@@ -28,15 +30,31 @@ internal static class TahsilApi
             options.ShouldInclude = description => description.RelativePath?.StartsWith(BasePath[1..], StringComparison.Ordinal) == true;
             options.AddDocumentTransformer<TahsilApiDocumentTransformer>();
             options.AddOperationTransformer<PermissionOperationTransformer>();
+            options.AddOperationTransformer<IdempotencyOperationTransformer>();
         });
 
         return services;
     }
 
+    /// <summary>
+    /// Keeps the body of API writes readable after binding, for the idempotency fingerprint. Must run before
+    /// endpoints.
+    /// </summary>
+    public static IApplicationBuilder UseRequestBuffering(this IApplicationBuilder app) => app.Use((context, next) =>
+    {
+        if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.StartsWithSegments(BasePath))
+        {
+            context.Request.EnableBuffering();
+        }
+
+        return next(context);
+    });
+
     public static IEndpointRouteBuilder MapTahsilApi(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGroup(BasePath)
             .AddEndpointFilter<ParameterBindingFilter>()
+            .AddEndpointFilter<IdempotencyFilter>()
             .MapApiKeyEndpoints();
 
         endpoints.MapOpenApi();

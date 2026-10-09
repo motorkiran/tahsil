@@ -77,7 +77,7 @@ public sealed class PlatformTableTests(TahsilServerFixture server)
     [Trait("Requirement", "FND-19")]
     public void AdvisoryLockKeys_SpellTahsil_AndAreDistinct()
     {
-        long[] keys = [AdvisoryLockKeys.DatabasePreparation, AdvisoryLockKeys.OutboxCleanup, AdvisoryLockKeys.AuditRetention];
+        long[] keys = [AdvisoryLockKeys.DatabasePreparation, AdvisoryLockKeys.OutboxCleanup, AdvisoryLockKeys.AuditRetention, AdvisoryLockKeys.IdempotencyCleanup];
 
         keys.ShouldAllBe(key => key >> 16 == 0x544148_53494C);
         keys.Distinct().Count().ShouldBe(keys.Length);

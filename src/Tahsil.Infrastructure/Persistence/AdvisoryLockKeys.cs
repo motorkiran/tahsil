@@ -11,4 +11,6 @@ internal static class AdvisoryLockKeys
     public const long OutboxCleanup = 0x544148_53494C_0002;
 
     public const long AuditRetention = 0x544148_53494C_0003;
+
+    public const long IdempotencyCleanup = 0x544148_53494C_0004;
 }

@@ -5,6 +5,7 @@ using Tahsil.Application.Common;
 using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Clock;
+using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence.Conventions;
 using Tahsil.Infrastructure.Workers;
@@ -21,6 +22,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     IQueryable<AuditEvent> ITahsilDbContext.AuditEvents => AuditEvents;
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 

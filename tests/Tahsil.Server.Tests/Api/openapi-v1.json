@@ -83,6 +83,17 @@
         "summary": "Create an API key",
         "description": "Creates a key with permissions the caller holds itself. The response is the only time the key's secret is shown.\n\nRequires the `tahsil.api_keys:write` permission.",
         "operationId": "CreateApiKey",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -129,6 +140,9 @@
           },
           "403": {
             "description": "The API key does not have `tahsil.api_keys:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
           }
         },
         "security": [
@@ -209,6 +223,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -237,6 +260,12 @@
           },
           "403": {
             "description": "The API key does not have `tahsil.api_keys:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
           }
         },
         "security": [

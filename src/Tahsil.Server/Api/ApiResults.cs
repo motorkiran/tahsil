@@ -43,6 +43,7 @@ internal static class ApiResults
         ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorType.Forbidden => StatusCodes.Status403Forbidden,
         ErrorType.PreconditionFailed => StatusCodes.Status412PreconditionFailed,
+        ErrorType.Unprocessable => StatusCodes.Status422UnprocessableEntity,
         ErrorType.RateLimited => StatusCodes.Status429TooManyRequests,
         ErrorType.Unavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status500InternalServerError,

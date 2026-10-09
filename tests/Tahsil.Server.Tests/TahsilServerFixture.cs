@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,14 +71,19 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
     /// A host on the same PostgreSQL server with settings of its own (such as another database or master key) and
     /// optional service replacements. The caller disposes it.
     /// </summary>
-    public WebApplicationFactory<Program> WithSettings(IReadOnlyDictionary<string, string?> settings, Action<IServiceCollection>? services = null) =>
+    public WebApplicationFactory<Program> WithSettings(
+        IReadOnlyDictionary<string, string?> settings, Action<IServiceCollection>? services = null, Action<IEndpointRouteBuilder>? endpoints = null) =>
         WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
-            if (services is not null)
+            builder.ConfigureTestServices(collection =>
             {
-                builder.ConfigureTestServices(services);
-            }
+                services?.Invoke(collection);
+                if (endpoints is not null)
+                {
+                    collection.AddSingleton<IStartupFilter>(new TestEndpoints(endpoints));
+                }
+            });
         });
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder

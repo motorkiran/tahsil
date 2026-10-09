@@ -60,6 +60,7 @@ if (app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.RequireHttp
 
 app.UseStaticFiles();
 app.UseRequestLocalization();
+app.UseRequestBuffering();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();

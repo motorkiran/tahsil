@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Infrastructure.Auditing;
 using Tahsil.Infrastructure.Clock;
+using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Security;
@@ -30,6 +31,11 @@ public static class DependencyInjection
         AddWorkers(services);
         AddOutbox(services);
         AddAuditing(services);
+
+        services.AddScoped<IdempotencyScope>();
+        services.AddScoped<IIdempotency, IdempotencyRecorder>();
+        services.AddSingleton<IdempotencyStore>();
+        AddHostedSingleton<IdempotencyCleanup>(services);
 
         return services;
     }
