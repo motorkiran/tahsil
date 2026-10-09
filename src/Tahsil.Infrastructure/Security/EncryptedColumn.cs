@@ -30,7 +30,7 @@ internal sealed partial class EncryptedColumn : IEncryptedStore
 
         var qualified = $"{TahsilDbContext.Schema}.{table}";
         _selectSql = $"""
-            SELECT id AS "Id", {column} AS "Value" FROM {qualified}
+            SELECT id, {column} AS value FROM {qualified}
             WHERE {column} IS NOT NULL AND (length({column}) < 2 OR get_byte({column}, 0) <> 2 OR get_byte({column}, 1) <> {"{0}"})
             ORDER BY id
             LIMIT {"{1}"}

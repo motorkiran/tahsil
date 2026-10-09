@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -13,10 +12,7 @@ internal sealed class JsonValueConverter<T>() : ValueConverter<T, string>(
     value => JsonSerializer.Serialize(value, Options),
     json => JsonSerializer.Deserialize<T>(json, Options)!)
 {
-    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false) },
-    };
+    private static JsonSerializerOptions Options => StorageJson.Options;
 
     /// <summary>Compares values by their JSON, so records are change-tracked by value.</summary>
     public static ValueComparer<T> Comparer { get; } = new(

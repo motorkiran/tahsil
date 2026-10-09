@@ -13,7 +13,7 @@ using Tahsil.Infrastructure.Persistence;
 namespace Tahsil.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TahsilDbContext))]
-    [Migration("20261009201134_M0_Foundation")]
+    [Migration("20261009203050_M0_Foundation")]
     partial class M0_Foundation
     {
         /// <inheritdoc />
@@ -206,6 +206,47 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasFilter("status = 'pending'");
 
                     b.ToTable("outbox_messages", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Infrastructure.Workers.WorkerFailure", b =>
+                {
+                    b.Property<string>("Worker")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("worker");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<DateTimeOffset?>("AttentionRaisedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("attention_raised_at");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("failure_count");
+
+                    b.Property<DateTimeOffset>("FirstFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_failed_at");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset>("LastFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_failed_at");
+
+                    b.HasKey("Worker", "ItemId")
+                        .HasName("pk_worker_failures");
+
+                    b.HasIndex("AttentionRaisedAt")
+                        .HasDatabaseName("ix_worker_failures_attention_raised_at")
+                        .HasFilter("attention_raised_at IS NOT NULL");
+
+                    b.ToTable("worker_failures", "tahsil");
                 });
 #pragma warning restore 612, 618
         }

@@ -4,11 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Infrastructure.Auditing;
 using Tahsil.Infrastructure.Clock;
+using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Security;
+using Tahsil.Infrastructure.Workers;
 
 namespace Tahsil.Infrastructure;
 
@@ -23,6 +27,9 @@ public static class DependencyInjection
         AddPersistence(services);
         AddSecurity(services);
         AddBillingClock(services);
+        AddWorkers(services);
+        AddOutbox(services);
+        AddAuditing(services);
 
         return services;
     }
@@ -42,7 +49,8 @@ public static class DependencyInjection
             .UseNpgsql(
                 GetConnectionString(serviceProvider.GetRequiredService<IConfiguration>()),
                 npgsql => npgsql.MigrationsHistoryTable(MigrationsHistoryTable, TahsilDbContext.Schema))
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(serviceProvider.GetRequiredService<OutboxSignalInterceptor>()));
 
         services.AddScoped<ITahsilDbContext>(provider => provider.GetRequiredService<TahsilDbContext>());
         services.AddScoped<DatabasePreparation>();
@@ -85,6 +93,52 @@ public static class DependencyInjection
         services.AddSingleton<TestClockOffset>();
         services.AddSingleton<BillingClock, OffsetBillingClock>();
         services.AddHostedService<TestClockRefresher>();
+    }
+
+    private static void AddWorkers(IServiceCollection services)
+    {
+        services.AddOptions<WorkerOptions>()
+            .BindConfiguration(WorkerOptions.SectionName)
+            .Validate(
+                options => options.IsValid(),
+                $"{WorkerOptions.SectionName}: the polling interval must be positive, the batch size between 1 and 1000, the lease at least 30 seconds and the payment concurrency between 1 and 64.")
+            .ValidateOnStart();
+
+        services.AddSingleton<WorkerSignals>();
+        services.AddSingleton<IWorkerSignals>(provider => provider.GetRequiredService<WorkerSignals>());
+    }
+
+    private static void AddOutbox(IServiceCollection services)
+    {
+        services.AddOptions<OutboxOptions>()
+            .BindConfiguration(OutboxOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{OutboxOptions.SectionName}: intervals must be positive and the batch size between 1 and 1000.")
+            .ValidateOnStart();
+
+        services.AddSingleton(new OutboxMessageTypes([typeof(Application.DependencyInjection).Assembly]));
+        services.AddScoped<OutboxSignalInterceptor>();
+        services.AddScoped<IOutbox, Outbox.Outbox>();
+        AddHostedSingleton<OutboxDispatcher>(services);
+        AddHostedSingleton<OutboxCleanup>(services);
+    }
+
+    private static void AddAuditing(IServiceCollection services)
+    {
+        services.AddOptions<AuditOptions>()
+            .BindConfiguration(AuditOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{AuditOptions.SectionName}:RetentionPeriod must be at least a day.")
+            .ValidateOnStart();
+
+        services.AddScoped<IAuditLog, AuditLog>();
+        AddHostedSingleton<AuditRetention>(services);
+    }
+
+    /// <summary>Registers a background service that can also be resolved by its type, so tests can run it directly.</summary>
+    private static void AddHostedSingleton<TService>(IServiceCollection services)
+        where TService : class, IHostedService
+    {
+        services.AddSingleton<TService>();
+        services.AddHostedService(provider => provider.GetRequiredService<TService>());
     }
 
     private static TahsilMode ReadMode(IConfiguration configuration) =>

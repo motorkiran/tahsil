@@ -6,6 +6,7 @@ using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Clock;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence.Conventions;
+using Tahsil.Infrastructure.Workers;
 
 namespace Tahsil.Infrastructure.Persistence;
 
@@ -21,6 +22,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     public DbSet<TestClock> TestClocks => Set<TestClock>();
+
+    public DbSet<WorkerFailure> WorkerFailures => Set<WorkerFailure>();
 
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 

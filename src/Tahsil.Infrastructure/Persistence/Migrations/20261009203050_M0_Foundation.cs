@@ -90,6 +90,24 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     table.CheckConstraint("ck_test_clock_singleton", "id = 1");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "worker_failures",
+                schema: "tahsil",
+                columns: table => new
+                {
+                    worker = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    item_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    failure_count = table.Column<int>(type: "integer", nullable: false),
+                    first_failed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    last_failed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    last_error = table.Column<string>(type: "text", nullable: true),
+                    attention_raised_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_worker_failures", x => new { x.worker, x.item_id });
+                });
+
             migrationBuilder.CreateIndex(
                 name: "ix_audit_events_actor_id",
                 schema: "tahsil",
@@ -120,6 +138,13 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                 table: "outbox_messages",
                 column: "next_attempt_at",
                 filter: "status = 'pending'");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_worker_failures_attention_raised_at",
+                schema: "tahsil",
+                table: "worker_failures",
+                column: "attention_raised_at",
+                filter: "attention_raised_at IS NOT NULL");
         }
 
         /// <inheritdoc />
@@ -139,6 +164,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "test_clock",
+                schema: "tahsil");
+
+            migrationBuilder.DropTable(
+                name: "worker_failures",
                 schema: "tahsil");
         }
     }
