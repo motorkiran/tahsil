@@ -12,3 +12,7 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 - Background workers that any number of instances share, with backoff and an attention report for items that keep failing, and an outbox that delivers side effects after their transaction commits.
 - Hosted pages in Turkish and English with branding, a strict content security policy and a localized error page; API errors as RFC 9457 problem details with a `code` and a `traceId`.
 - OpenTelemetry traces and metrics, `/health/live` and `/health/ready`, a container image (`dotnet publish -t:PublishContainer`) and a Compose file for local development.
+- API keys (`ths_test_` and `ths_live_`, by the installation's mode) with permissions, an escalation guard, per-key rate limits and audit; `Idempotency-Key` on every `POST`, safe to retry even after a crash.
+- The catalog: tax rates, meters, products and prices (one-time and recurring; per-unit, package and tiered; trials; lookup keys that can move to a new price), through the API and from a provisioning document applied at startup or through the API, with export.
+- Customers with external IDs, upsert by external ID, search, TCKN and VKN validation, encrypted tax IDs, deletion or anonymization, and data export for KVKK requests.
+- The admin panel under `/admin`: sign-in through any OpenID Connect provider such as Kimlik (roles from the ID token, userinfo or access token; MFA required by default), or as the developer in Test mode during development; customers, products and prices, tax rates, API keys and the audit log.

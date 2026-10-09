@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Bunit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MudBlazor;
@@ -24,7 +25,7 @@ internal sealed class AdminComponents : BunitContext
     /// <param name="withProviders">
     /// Renders MudBlazor's providers for dialogs and notifications; tests that render the router leave them to the layout.
     /// </param>
-    public AdminComponents(TahsilServerFixture server, string role = AdminRoles.Admin, bool withProviders = true)
+    public AdminComponents(WebApplicationFactory<Program> server, string role = AdminRoles.Admin, bool withProviders = true)
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddMudServices();
