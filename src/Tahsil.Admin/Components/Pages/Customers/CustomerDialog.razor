@@ -1,0 +1,57 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_name" Label="Name" MaxLength="200" id="customer-name" />
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email" MaxLength="254" id="customer-email" />
+            <MudSelect T="CustomerType" @bind-Value="_type" Label="Type">
+                <MudSelectItem T="CustomerType" Value="CustomerType.Individual">Individual</MudSelectItem>
+                <MudSelectItem T="CustomerType" Value="CustomerType.Company">Company</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="_phone" Label="Phone" />
+            <MudTextField @bind-Value="_taxId" Label="Tax ID" HelperText="TCKN for individuals, VKN for companies in Turkey" id="customer-tax-id" />
+            <MudTextField @bind-Value="_taxOffice" Label="Tax office" />
+            <MudSelect T="string" @bind-Value="_locale" Label="Language">
+                <MudSelectItem T="string" Value="@("tr")">Türkçe</MudSelectItem>
+                <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
+            </MudSelect>
+            <MudSwitch T="bool" @bind-Value="_taxExempt" Label="Tax exempt" Color="Color.Primary" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" id="save-customer">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string? _name;
+    private string? _email;
+    private CustomerType _type;
+    private string? _phone;
+    private string? _taxId;
+    private string? _taxOffice;
+    private string _locale = "tr";
+    private bool _taxExempt;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required CustomerResponse Customer { get; set; }
+
+    protected override void OnInitialized() =>
+        (_name, _email, _type, _phone, _taxId, _taxOffice, _locale, _taxExempt) =
+        (Customer.Name, Customer.Email, Customer.Type, Customer.Phone, Customer.TaxId, Customer.TaxOffice, Customer.Locale, Customer.IsTaxExempt);
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new UpdateCustomerRequest
+    {
+        Name = _name,
+        Email = _email,
+        Type = _type,
+        Phone = _phone,
+        TaxId = _taxId,
+        TaxOffice = _taxOffice,
+        Locale = _locale,
+        IsTaxExempt = _taxExempt,
+    }));
+}

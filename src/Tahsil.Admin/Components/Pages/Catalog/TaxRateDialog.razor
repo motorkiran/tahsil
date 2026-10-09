@@ -1,0 +1,33 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_key" Label="Key" Placeholder="kdv-20" Required id="tax-rate-key" />
+        <MudTextField @bind-Value="_name" Label="Name on invoices" Placeholder="KDV" Required id="tax-rate-name" />
+        <MudNumericField T="decimal" @bind-Value="_percentage" Label="Percentage" Min="0" Max="100" id="tax-rate-percentage" />
+        <MudSwitch T="bool" @bind-Value="_inclusive" Label="Prices include the tax" Color="Color.Primary" />
+        <MudTextField @bind-Value="_country" Label="Country" Placeholder="TR" MaxLength="2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _key = string.Empty;
+    private string _name = string.Empty;
+    private decimal _percentage = 20;
+    private bool _inclusive = true;
+    private string? _country = "TR";
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new CreateTaxRateRequest
+    {
+        Key = _key,
+        Name = _name,
+        Percentage = _percentage,
+        Inclusive = _inclusive,
+        Country = _country,
+    }));
+}

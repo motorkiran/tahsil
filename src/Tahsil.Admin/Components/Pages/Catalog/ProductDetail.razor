@@ -1,0 +1,170 @@
+@page "/admin/products/{Key}"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Catalog
+@inherits AdminPageBase
+
+<PageTitle>@(_product?.Name ?? Key) · Tahsil</PageTitle>
+
+@if (_product is { } product)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@product.Name</MudText>
+        @if (product.IsArchived)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip>
+        }
+        <MudSpacer />
+        @if (CanWrite)
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="EditAsync" id="edit-product">Edit</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="ToggleArchiveAsync" id="archive-product">@(product.IsArchived ? "Restore" : "Archive")</MudButton>
+        }
+    </MudStack>
+    <MudText Typo="Typo.body2" Class="mb-4"><code>@product.Key</code> @product.Description</MudText>
+    @if (product.KimlikPlan is { } plan)
+    {
+        <MudText Typo="Typo.body2" Class="mb-4">Grants the Kimlik plan <code>@plan</code>.</MudText>
+    }
+
+    <MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+        <MudText Typo="Typo.h6" HtmlTag="h2">Prices</MudText>
+        <MudSpacer />
+        @if (CanWrite && !product.IsArchived)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreatePriceAsync" id="create-price">Add price</MudButton>
+        }
+    </MudStack>
+    <MudTable T="PriceResponse" Items="_prices" Dense id="prices">
+        <HeaderContent>
+            <MudTh>Lookup key</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Billing</MudTh>
+            <MudTh>Tax</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Lookup key"><code>@context.Key</code></MudTd>
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Amount">@Amount(context)</MudTd>
+            <MudTd DataLabel="Billing">@Billing(context)</MudTd>
+            <MudTd DataLabel="Tax">@(context.TaxRate is { } rate ? $"{rate.Name} {rate.Percentage.ToString("0.####", CultureInfo.InvariantCulture)}%" : "–")</MudTd>
+            <MudTd>
+                @if (context.IsArchived)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip>
+                }
+                @if (CanWrite)
+                {
+                    <MudButton Size="Size.Small" OnClick="() => SetKeyAsync(context)" Class="set-key">Lookup key</MudButton>
+                    <MudButton Size="Size.Small" OnClick="() => TogglePriceArchiveAsync(context)" Class="archive-price">@(context.IsArchived ? "Restore" : "Archive")</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>No prices yet.</MudText></NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    private ProductResponse? _product;
+    private List<PriceResponse> _prices = [];
+
+    [Parameter]
+    public string Key { get; set; } = string.Empty;
+
+    private bool CanWrite => Session.Has(TahsilPermissions.CatalogWrite);
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string Amount(PriceResponse price) => price.BillingScheme switch
+    {
+        BillingScheme.Tiered => $"Tiered ({price.TiersMode?.ToString().ToLowerInvariant()})",
+        BillingScheme.Package => $"{AdminFormat.Money(price.UnitAmount, price.Currency)} per {price.PackageSize}",
+        _ when price.UnitAmountDecimal is { } fractional => $"{fractional.ToString(CultureInfo.InvariantCulture)} minor units of {price.Currency}",
+        _ => AdminFormat.Money(price.UnitAmount, price.Currency),
+    };
+
+    private static string Billing(PriceResponse price) => price.Type == PriceType.OneTime
+        ? "One-time"
+        : PriceDisplay.Recurrence(price.Interval!.Value, price.IntervalCount ?? 1, "en")
+            + (price.UsageType == UsageType.Metered ? $", metered by {price.Meter?.Key}" : string.Empty)
+            + (price.TrialDays is { } days ? $", {days}-day trial" : string.Empty);
+
+    private async Task LoadAsync()
+    {
+        if (await ReadAsync<GetProductHandler, Versioned<ProductResponse>>((handler, token) => handler.HandleAsync(Key, token)) is not { } product)
+        {
+            return;
+        }
+
+        _product = product.Value;
+        var prices = new List<PriceResponse>();
+        string? cursor = null;
+        do
+        {
+            var page = await ReadAsync<ListPricesHandler, Page<PriceResponse>>((handler, token) => handler.HandleAsync(new ListPricesQuery(Product: _product.Id.ToString(), Cursor: cursor), token));
+            prices.AddRange(page?.Items ?? []);
+            cursor = page?.NextCursor;
+        }
+        while (cursor is not null);
+
+        _prices = prices;
+    }
+
+    private async Task EditAsync()
+    {
+        var parameters = new DialogParameters<ProductDialog> { { dialog => dialog.Product, _product } };
+        var dialog = await Dialogs.ShowAsync<ProductDialog>("Edit the product", parameters);
+        if (await dialog.Result is { Canceled: false, Data: UpdateProductRequest request })
+        {
+            await UpdateAsync(request, "The product was saved.");
+        }
+    }
+
+    private Task ToggleArchiveAsync() =>
+        UpdateAsync(new UpdateProductRequest { IsArchived = !_product!.IsArchived }, _product.IsArchived ? "The product was restored." : "The product was archived.");
+
+    private async Task UpdateAsync(UpdateProductRequest request, string done)
+    {
+        if (await ChangeAsync<UpdateProductHandler, Versioned<ProductResponse>>((handler, token) => handler.HandleAsync(Key, request, null, token), done) is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task CreatePriceAsync()
+    {
+        var parameters = new DialogParameters<PriceDialog> { { dialog => dialog.ProductKey, _product!.Key } };
+        var dialog = await Dialogs.ShowAsync<PriceDialog>("Add a price", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreatePriceRequest request }
+            && await ChangeAsync<CreatePriceHandler, Versioned<PriceResponse>>((handler, token) => handler.HandleAsync(request, token), "The price was added.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    /// <summary>Gives a price a lookup key, taking it from the price that holds it (CAT-10).</summary>
+    private async Task SetKeyAsync(PriceResponse price)
+    {
+        var parameters = new DialogParameters<LookupKeyDialog> { { dialog => dialog.Current, price.Key } };
+        var dialog = await Dialogs.ShowAsync<LookupKeyDialog>("Lookup key", parameters);
+        if (await dialog.Result is { Canceled: false, Data: string key })
+        {
+            var request = new UpdatePriceRequest { Key = string.IsNullOrWhiteSpace(key) ? null : key.Trim(), TransferKey = true };
+            if (await ChangeAsync<UpdatePriceHandler, Versioned<PriceResponse>>((handler, token) => handler.HandleAsync(price.Id.ToString(), request, null, token), "The lookup key was set.") is not null)
+            {
+                await LoadAsync();
+            }
+        }
+    }
+
+    private async Task TogglePriceArchiveAsync(PriceResponse price)
+    {
+        var request = new UpdatePriceRequest { IsArchived = !price.IsArchived };
+        if (await ChangeAsync<UpdatePriceHandler, Versioned<PriceResponse>>(
+            (handler, token) => handler.HandleAsync(price.Id.ToString(), request, null, token), price.IsArchived ? "The price was restored." : "The price was archived.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

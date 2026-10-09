@@ -1,0 +1,82 @@
+@page "/admin/tax-rates"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Catalog
+@inherits AdminPageBase
+
+<PageTitle>Tax rates · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Tax rates</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.CatalogWrite))
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-tax-rate">Create tax rate</MudButton>
+    }
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">A rate's percentage and whether prices include it never change: create a new rate and archive the old one.</MudText>
+
+<MudTable T="TaxRateResponse" Items="_rates" Dense id="tax-rates">
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Percentage</MudTh>
+        <MudTh>Prices</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key"><code>@context.Key</code></MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Percentage">@context.Percentage.ToString("0.####", CultureInfo.InvariantCulture)%</MudTd>
+        <MudTd DataLabel="Prices">@(context.Inclusive ? "include it" : "add it")</MudTd>
+        <MudTd>
+            @if (context.IsArchived)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip>
+            }
+            @if (Session.Has(TahsilPermissions.CatalogWrite))
+            {
+                <MudButton Size="Size.Small" OnClick="() => ToggleArchiveAsync(context)" Class="archive">@(context.IsArchived ? "Restore" : "Archive")</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No tax rates yet.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    private readonly List<TaxRateResponse> _rates = [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rates.Clear();
+        string? cursor = null;
+        do
+        {
+            var page = await ReadAsync<ListTaxRatesHandler, Page<TaxRateResponse>>((handler, token) => handler.HandleAsync(new ListCatalogQuery(Cursor: cursor), token));
+            _rates.AddRange(page?.Items ?? []);
+            cursor = page?.NextCursor;
+        }
+        while (cursor is not null);
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<TaxRateDialog>("Create a tax rate");
+        if (await dialog.Result is { Canceled: false, Data: CreateTaxRateRequest request }
+            && await ChangeAsync<CreateTaxRateHandler, Versioned<TaxRateResponse>>((handler, token) => handler.HandleAsync(request, token), "The tax rate was created.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task ToggleArchiveAsync(TaxRateResponse rate)
+    {
+        var request = new UpdateTaxRateRequest { IsArchived = !rate.IsArchived };
+        if (await ChangeAsync<UpdateTaxRateHandler, Versioned<TaxRateResponse>>(
+            (handler, token) => handler.HandleAsync(rate.Id.ToString(), request, null, token), rate.IsArchived ? "The tax rate was restored." : "The tax rate was archived.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

@@ -1,0 +1,96 @@
+@page "/admin/customers/{Id:guid}"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Customers
+@inherits AdminPageBase
+
+<PageTitle>@(_customer?.Name ?? "Customer") · Tahsil</PageTitle>
+
+@if (_customer is { } customer)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@(customer.Name ?? customer.Email ?? "Customer")</MudText>
+        @if (customer.AnonymizedAt is not null)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Anonymized</MudChip>
+        }
+        <MudSpacer />
+        @if (Session.Has(TahsilPermissions.CustomersWrite) && customer.AnonymizedAt is null)
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="EditAsync" id="edit-customer">Edit</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteAsync" id="delete-customer">Delete</MudButton>
+        }
+    </MudStack>
+
+    <MudPaper Outlined Class="pa-4">
+        <MudSimpleTable Dense Elevation="0" id="customer-details">
+            <tbody>
+                <tr><th>ID</th><td><code>@customer.Id</code></td></tr>
+                <tr><th>External ID</th><td><code>@customer.ExternalId</code></td></tr>
+                <tr><th>Email</th><td>@customer.Email</td></tr>
+                <tr><th>Type</th><td>@customer.Type.ToString().ToLowerInvariant()</td></tr>
+                <tr><th>Phone</th><td>@customer.Phone</td></tr>
+                <tr><th>Tax ID</th><td>@customer.TaxId @customer.TaxOffice</td></tr>
+                <tr><th>Address</th><td>@Address(customer.Address)</td></tr>
+                <tr><th>Language</th><td>@customer.Locale</td></tr>
+                <tr><th>Tax exempt</th><td>@(customer.IsTaxExempt ? "Yes" : "No")</td></tr>
+                <tr><th>Kimlik</th><td>@(customer.KimlikSubscriber is { } subscriber ? $"{subscriber.Type.ToString().ToLowerInvariant()} {subscriber.Id}" : "–")</td></tr>
+                <tr><th>Metadata</th><td>@string.Join(", ", customer.Metadata.Select(pair => $"{pair.Key}={pair.Value}"))</td></tr>
+                <tr><th>Created</th><td><Moment Value="customer.CreatedAt" /></td></tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    private CustomerResponse? _customer;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string Address(CustomerAddress? address) => address is null
+        ? "–"
+        : string.Join(", ", new[] { address.Line1, address.Line2, address.District, address.City, address.PostalCode, address.Country }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private async Task LoadAsync() =>
+        _customer = (await ReadAsync<GetCustomerHandler, Versioned<CustomerResponse>>((handler, token) => handler.HandleAsync(Id, token)))?.Value;
+
+    private async Task EditAsync()
+    {
+        var parameters = new DialogParameters<CustomerDialog> { { dialog => dialog.Customer, _customer! } };
+        var dialog = await Dialogs.ShowAsync<CustomerDialog>("Edit the customer", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: UpdateCustomerRequest request }
+            && await ChangeAsync<UpdateCustomerHandler, Versioned<CustomerResponse>>((handler, token) => handler.HandleAsync(Id, request, null, token), "The customer was saved.") is { } saved)
+        {
+            _customer = saved.Value;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!await ConfirmAsync(
+            "Delete this customer?",
+            "A customer without billing history is deleted. One with history is anonymized: their personal data is cleared, their invoices stay.",
+            "Delete"))
+        {
+            return;
+        }
+
+        var result = await Operations.RunAsync<DeleteCustomerHandler, Tahsil.Domain.Common.Result<CustomerResponse?>>(handler => handler.HandleAsync(Id, Aborted));
+        if (result.IsFailure)
+        {
+            Report(result.Error, string.Empty);
+        }
+        else if (result.Value is { } anonymized)
+        {
+            Report(null, "The customer was anonymized.");
+            _customer = anonymized;
+        }
+        else
+        {
+            Report(null, "The customer was deleted.");
+            Navigation.NavigateTo("/admin/customers");
+        }
+    }
+}

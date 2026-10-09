@@ -1,0 +1,71 @@
+@page "/admin/customers"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Customers
+@inherits AdminPageBase
+
+<PageTitle>Customers · Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Customers</MudText>
+
+<MudStack Row Class="mb-4" AlignItems="AlignItems.End">
+    <MudTextField @bind-Value="_search" Label="Search" Placeholder="Email, name or external ID" Clearable OnKeyUp="SearchOnEnterAsync" id="search" />
+    <MudButton Variant="Variant.Outlined" OnClick="SearchAsync" id="search-button">Search</MudButton>
+</MudStack>
+
+<MudTable T="CustomerResponse" Items="_customers" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" id="customers">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>External ID</MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh>Created</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name"><MudLink Href="@Link(context)">@(context.Name ?? "(no name)")</MudLink></MudTd>
+        <MudTd DataLabel="Email">@context.Email</MudTd>
+        <MudTd DataLabel="External ID"><code>@context.ExternalId</code></MudTd>
+        <MudTd DataLabel="Type">@context.Type.ToString().ToLowerInvariant()</MudTd>
+        <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No customers found.</MudText></NoRecordsContent>
+</MudTable>
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<CustomerResponse> _customers = [];
+    private string? _nextCursor;
+    private string? _search;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private static string Link(CustomerResponse customer) => $"/admin/customers/{customer.Id}";
+
+    private async Task SearchOnEnterAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        _customers.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListCustomersQuery(Search: _search, Cursor: _nextCursor);
+        if (await ReadAsync<ListCustomersHandler, Page<CustomerResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _customers.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+}

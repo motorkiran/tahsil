@@ -1,0 +1,41 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Name" Required MaxLength="100" id="api-key-name" />
+        <MudText Typo="Typo.subtitle2" Class="mt-4">Permissions</MudText>
+        <MudGrid Spacing="0">
+            @foreach (var permission in TahsilPermissions.All)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox T="bool" Value="_permissions.Contains(permission)" ValueChanged="selected => Toggle(permission, selected)" Label="@permission" Dense
+                                 UserAttributes="@(new Dictionary<string, object?> { ["data-permission"] = permission })" />
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(string.IsNullOrWhiteSpace(_name) || _permissions.Count == 0)" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly HashSet<string> _permissions = new(StringComparer.Ordinal);
+    private string _name = string.Empty;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    private void Toggle(string permission, bool selected)
+    {
+        if (selected)
+        {
+            _permissions.Add(permission);
+        }
+        else
+        {
+            _permissions.Remove(permission);
+        }
+    }
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new CreateApiKeyRequest { Name = _name, Permissions = [.. _permissions] }));
+}

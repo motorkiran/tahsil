@@ -1,0 +1,17 @@
+@* A point in time, in UTC so that every administrator reads the same. *@
+@if (Value is { } value)
+{
+    <time datetime="@value.ToString("O", CultureInfo.InvariantCulture)" title="@value.UtcDateTime.ToString("u", CultureInfo.InvariantCulture)">@value.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>
+}
+else
+{
+    <span>@Empty</span>
+}
+
+@code {
+    [Parameter]
+    public DateTimeOffset? Value { get; set; }
+
+    [Parameter]
+    public string Empty { get; set; } = "Never";
+}

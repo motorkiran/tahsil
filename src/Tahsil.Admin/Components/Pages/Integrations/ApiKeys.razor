@@ -1,0 +1,94 @@
+@page "/admin/api-keys"
+@attribute [Authorize(Policy = AdminAuthentication.AdminOnlyPolicy)]
+@using Tahsil.Application.ApiKeys
+@inherits AdminPageBase
+
+<PageTitle>API keys · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">API keys</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-api-key">Create key</MudButton>
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">Applications call the API with these keys. A key's secret is shown once, when it is created.</MudText>
+
+<MudTable T="ApiKeyResponse" Items="_keys" Dense id="api-keys">
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Permissions</MudTh>
+        <MudTh>Created by</MudTh>
+        <MudTh>Last used</MudTh>
+        <MudTh>Expires</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key">@context.Name <div class="mud-typography-caption"><code>@context.DisplayPrefix…</code></div></MudTd>
+        <MudTd DataLabel="Permissions">@string.Join(", ", context.Permissions)</MudTd>
+        <MudTd DataLabel="Created by">@context.CreatedBy.Type @context.CreatedBy.Id</MudTd>
+        <MudTd DataLabel="Last used"><Moment Value="context.LastUsedAt" /></MudTd>
+        <MudTd DataLabel="Expires"><Moment Value="context.ExpiresAt" Empty="Never" /></MudTd>
+        <MudTd>
+            @if (context.RevokedAt is not null)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Revoked</MudChip>
+            }
+            else
+            {
+                <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => RevokeAsync(context)" Class="revoke">Revoke</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No API keys yet.</MudText></NoRecordsContent>
+</MudTable>
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<ApiKeyResponse> _keys = [];
+    private string? _nextCursor;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private async Task LoadMoreAsync()
+    {
+        if (await ReadAsync<ListApiKeysHandler, Page<ApiKeyResponse>>((handler, token) => handler.HandleAsync(new ListApiKeysQuery(_nextCursor, null), token)) is { } page)
+        {
+            _keys.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _keys.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<CreateApiKeyDialog>("Create an API key");
+        if (await dialog.Result is not { Canceled: false, Data: CreateApiKeyRequest request })
+        {
+            return;
+        }
+
+        if (await ChangeAsync<CreateApiKeyHandler, CreatedApiKeyResponse>((handler, token) => handler.HandleAsync(request, token), "The key was created.") is { } created)
+        {
+            await SecretDialog.ShowAsync(Dialogs, $"{created.ApiKey.Name}", "API key", created.Key);
+            await ReloadAsync();
+        }
+    }
+
+    private async Task RevokeAsync(ApiKeyResponse key)
+    {
+        if (await ConfirmAsync($"Revoke {key.Name}?", "The key stops working at once.", "Revoke")
+            && await ChangeAsync<RevokeApiKeyHandler, ApiKeyResponse>((handler, token) => handler.HandleAsync(key.Id, token), "The key was revoked.") is not null)
+        {
+            await ReloadAsync();
+        }
+    }
+}

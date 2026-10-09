@@ -1,0 +1,90 @@
+@page "/admin/products"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Catalog
+@inherits AdminPageBase
+
+<PageTitle>Products · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Products</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.CatalogWrite))
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-product">Create product</MudButton>
+    }
+</MudStack>
+
+<MudStack Row Class="mb-4" AlignItems="AlignItems.End">
+    <MudTextField @bind-Value="_search" Label="Search" Placeholder="Key or name" Clearable OnKeyUp="SearchOnEnterAsync" id="search" />
+    <MudSwitch T="bool" @bind-Value="_showArchived" Label="Archived too" Color="Color.Primary" />
+    <MudButton Variant="Variant.Outlined" OnClick="SearchAsync">Search</MudButton>
+</MudStack>
+
+<MudTable T="ProductResponse" Items="_products" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" id="products">
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Kimlik plan</MudTh>
+        <MudTh>Created</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key"><MudLink Href="@Link(context)"><code>@context.Key</code></MudLink></MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Kimlik plan">@context.KimlikPlan</MudTd>
+        <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+        <MudTd>@if (context.IsArchived) { <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip> }</MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No products.</MudText></NoRecordsContent>
+</MudTable>
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<ProductResponse> _products = [];
+    private string? _nextCursor;
+    private string? _search;
+    private bool _showArchived;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private static string Link(ProductResponse product) => $"/admin/products/{product.Key}";
+
+    private async Task SearchOnEnterAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        _products.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListProductsQuery(_showArchived ? null : false, _search, _nextCursor);
+        if (await ReadAsync<ListProductsHandler, Page<ProductResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _products.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<ProductDialog>("Create a product");
+        if (await dialog.Result is { Canceled: false, Data: CreateProductRequest request }
+            && await ChangeAsync<CreateProductHandler, Versioned<ProductResponse>>((handler, token) => handler.HandleAsync(request, token), "The product was created.") is { } created)
+        {
+            Navigation.NavigateTo(Link(created.Value));
+        }
+    }
+}

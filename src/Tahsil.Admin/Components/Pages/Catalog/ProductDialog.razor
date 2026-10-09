@@ -1,0 +1,41 @@
+<MudDialog>
+    <DialogContent>
+        @if (Product is null)
+        {
+            <MudTextField @bind-Value="_key" Label="Key" Placeholder="pro" Required HelperText="Lowercase letters, digits, - and _; it never changes." id="product-key" />
+        }
+        <MudTextField @bind-Value="_name" Label="Name" Required MaxLength="100" id="product-name" />
+        <MudTextField @bind-Value="_description" Label="Description" Lines="2" MaxLength="500" />
+        <MudTextField @bind-Value="_kimlikPlan" Label="Kimlik plan" HelperText="The Kimlik plan a subscription to this product grants." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">@(Product is null ? "Create" : "Save")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _key = string.Empty;
+    private string _name = string.Empty;
+    private string? _description;
+    private string? _kimlikPlan;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    /// <summary>The product to edit; a new one when absent.</summary>
+    [Parameter]
+    public ProductResponse? Product { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Product is not null)
+        {
+            (_name, _description, _kimlikPlan) = (Product.Name, Product.Description, Product.KimlikPlan);
+        }
+    }
+
+    private void Submit() => Dialog.Close(DialogResult.Ok<object>(Product is null
+        ? new CreateProductRequest { Key = _key, Name = _name, Description = _description, KimlikPlan = _kimlikPlan }
+        : new UpdateProductRequest { Name = _name, Description = _description, KimlikPlan = _kimlikPlan }));
+}

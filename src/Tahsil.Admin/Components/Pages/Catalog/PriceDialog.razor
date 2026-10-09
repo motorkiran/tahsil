@@ -1,0 +1,99 @@
+@using Tahsil.Application.Catalog
+@inject AdminOperations Operations
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_key" Label="Lookup key" Placeholder="pro-monthly-try" HelperText="Optional; applications can ask for the price by it." id="price-key" />
+            <MudTextField @bind-Value="_name" Label="Name" Placeholder="Monthly" />
+            <MudStack Row>
+                <MudTextField @bind-Value="_currency" Label="Currency" MaxLength="3" Style="max-width: 7rem" id="price-currency" />
+                <MudNumericField T="decimal?" @bind-Value="_amount" Label="Amount" HelperText="In the currency's unit, such as 299.00" id="price-amount" />
+            </MudStack>
+            <MudSelect T="PriceType" @bind-Value="_type" Label="Type">
+                <MudSelectItem T="PriceType" Value="PriceType.Recurring">Recurring</MudSelectItem>
+                <MudSelectItem T="PriceType" Value="PriceType.OneTime">One-time</MudSelectItem>
+            </MudSelect>
+            @if (_type == PriceType.Recurring)
+            {
+                <MudStack Row>
+                    <MudNumericField T="int" @bind-Value="_intervalCount" Label="Every" Min="1" Style="max-width: 7rem" />
+                    <MudSelect T="PriceInterval" @bind-Value="_interval" Label="Interval" id="price-interval">
+                        @foreach (var interval in Enum.GetValues<PriceInterval>())
+                        {
+                            <MudSelectItem T="PriceInterval" Value="interval">@interval.ToString().ToLowerInvariant()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
+                <MudNumericField T="int?" @bind-Value="_trialDays" Label="Trial days" Min="1" Max="730" Clearable />
+            }
+            <MudSelect T="string" @bind-Value="_taxRate" Label="Tax rate" Clearable>
+                @foreach (var rate in _taxRates)
+                {
+                    <MudSelectItem T="string" Value="rate.Key">@rate.Name @rate.Percentage.ToString("0.####", CultureInfo.InvariantCulture)% (@(rate.Inclusive ? "included" : "added"))</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+            <MudText Typo="Typo.caption">Tiered, package and metered prices are created through the API or the provisioning file.</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" id="save-price">Add</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<TaxRateResponse> _taxRates = [];
+    private string? _key;
+    private string? _name;
+    private string _currency = "TRY";
+    private decimal? _amount;
+    private PriceType _type = PriceType.Recurring;
+    private PriceInterval _interval = PriceInterval.Month;
+    private int _intervalCount = 1;
+    private int? _trialDays;
+    private string? _taxRate;
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required string ProductKey { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var rates = await Operations.RunAsync<ListTaxRatesHandler, Tahsil.Domain.Common.Result<Page<TaxRateResponse>>>(
+            handler => handler.HandleAsync(new ListCatalogQuery(Archived: false, Limit: Paging.MaxLimit), CancellationToken.None));
+        _taxRates = rates.IsSuccess ? [.. rates.Value.Items] : [];
+    }
+
+    private void Submit()
+    {
+        var currency = _currency.Trim().ToUpperInvariant();
+        if (AdminFormat.ToMinorUnits(_amount, currency) is not { } minorUnits)
+        {
+            _error = "Enter the amount in the currency's unit, with no more decimals than it has.";
+            return;
+        }
+
+        var recurring = _type == PriceType.Recurring;
+        Dialog.Close(DialogResult.Ok(new CreatePriceRequest
+        {
+            Product = ProductKey,
+            Key = string.IsNullOrWhiteSpace(_key) ? null : _key.Trim(),
+            Name = _name,
+            Currency = currency,
+            Type = _type,
+            Interval = recurring ? _interval : null,
+            IntervalCount = recurring ? _intervalCount : null,
+            UnitAmount = minorUnits,
+            TrialDays = recurring ? _trialDays : null,
+            TaxRate = _taxRate,
+        }));
+    }
+}

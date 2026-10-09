@@ -1,0 +1,74 @@
+@page "/admin/audit-log"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Auditing
+@inherits AdminPageBase
+
+<PageTitle>Audit log · Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Audit log</MudText>
+
+<MudStack Row Wrap="Wrap.Wrap" Class="mb-4" AlignItems="AlignItems.End">
+    <MudTextField @bind-Value="_action" Label="Action" Placeholder="customer.updated" Clearable id="filter-action" />
+    <MudSelect T="ActorKind?" @bind-Value="_actorType" Label="Actor" Clearable Style="min-width: 10rem">
+        @foreach (var kind in Enum.GetValues<ActorKind>())
+        {
+            <MudSelectItem T="ActorKind?" Value="kind">@kind</MudSelectItem>
+        }
+    </MudSelect>
+    <MudTextField @bind-Value="_actorId" Label="Actor ID" Clearable />
+    <MudTextField @bind-Value="_subjectType" Label="Subject" Placeholder="customer" Clearable />
+    <MudTextField @bind-Value="_subjectId" Label="Subject ID" Clearable />
+    <MudButton Variant="Variant.Filled" OnClick="SearchAsync" id="search">Search</MudButton>
+</MudStack>
+
+<MudTable T="AuditEventResponse" Items="_events" Dense id="audit-events">
+    <HeaderContent>
+        <MudTh>When</MudTh>
+        <MudTh>Action</MudTh>
+        <MudTh>Actor</MudTh>
+        <MudTh>Subject</MudTh>
+        <MudTh>Details</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="When"><Moment Value="context.OccurredAt" /></MudTd>
+        <MudTd DataLabel="Action"><code>@context.Action</code></MudTd>
+        <MudTd DataLabel="Actor">@context.Actor.Type @context.Actor.Id</MudTd>
+        <MudTd DataLabel="Subject">@context.SubjectType @context.SubjectId</MudTd>
+        <MudTd DataLabel="Details"><code>@context.Data?.GetRawText()</code></MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>Nothing was recorded that matches.</MudText></NoRecordsContent>
+</MudTable>
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<AuditEventResponse> _events = [];
+    private string? _nextCursor;
+    private string? _action;
+    private ActorKind? _actorType;
+    private string? _actorId;
+    private string? _subjectType;
+    private string? _subjectId;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private async Task SearchAsync()
+    {
+        _events.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListAuditEventsQuery(_action, _actorType, _actorId, _subjectType, _subjectId, Cursor: _nextCursor);
+        if (await ReadAsync<ListAuditEventsHandler, Page<AuditEventResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _events.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+}

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -69,15 +70,20 @@ public static class AdminAuthentication
             authentication.AddOpenIdConnect(OidcScheme, oidc => ConfigureOidc(oidc, admin.Oidc));
         }
 
-        services.AddAuthorizationBuilder()
-            .AddPolicy(Policy, policy => policy
-                .AddAuthenticationSchemes(CookieScheme)
-                .RequireAuthenticatedUser()
-                .RequireClaim(AdminClaims.Role, AdminRoles.All))
-            .AddPolicy(AdminOnlyPolicy, policy => policy
-                .AddAuthenticationSchemes(CookieScheme)
-                .RequireAuthenticatedUser()
-                .RequireClaim(AdminClaims.Role, AdminRoles.Admin));
+        services.AddAuthorization(AddPolicies);
+    }
+
+    /// <summary>The panel's policies: any panel role, and the admin role for admin-only pages.</summary>
+    public static void AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(Policy, policy => policy
+            .AddAuthenticationSchemes(CookieScheme)
+            .RequireAuthenticatedUser()
+            .RequireClaim(AdminClaims.Role, AdminRoles.All));
+        options.AddPolicy(AdminOnlyPolicy, policy => policy
+            .AddAuthenticationSchemes(CookieScheme)
+            .RequireAuthenticatedUser()
+            .RequireClaim(AdminClaims.Role, AdminRoles.Admin));
     }
 
     /// <summary>Starts a sign-in at the provider, signs the developer in, or signs out.</summary>
