@@ -1,0 +1,22 @@
+@page "/error"
+@model ErrorModel
+@{
+    var (title, explanation) = Model.Status switch
+    {
+        404 or 410 => (L["Page not found"], L["This link does not work or has expired. Ask the sender for a new one."]),
+        429 => (L["Too many attempts"], L["Wait a few minutes, then try again."]),
+        >= 500 => (L["Something went wrong"], L["We could not complete your request. Try again in a moment."]),
+        _ => (L["This request cannot be completed"], L["Go back to the page and try again."]),
+    };
+    ViewData["Title"] = title;
+}
+
+<h1 id="page-title">@title</h1>
+<p class="lead">@explanation</p>
+@if (Model.RetryUrl is not null)
+{
+    <div class="actions">
+        <a class="button button-secondary" href="@Model.RetryUrl">@L["Try again"]</a>
+    </div>
+}
+<p class="trace">@L["Reference"]: <span translate="no">@Model.TraceId</span></p>

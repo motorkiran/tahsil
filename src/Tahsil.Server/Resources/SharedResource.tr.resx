@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Turkish texts for the hosted pages. Keys are the English texts used in code and views. -->
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Go back to the page and try again." xml:space="preserve">
+    <value>Sayfaya dönüp yeniden deneyin.</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Dil</value>
+  </data>
+  <data name="Page not found" xml:space="preserve">
+    <value>Sayfa bulunamadı</value>
+  </data>
+  <data name="Reference" xml:space="preserve">
+    <value>Referans</value>
+  </data>
+  <data name="Something went wrong" xml:space="preserve">
+    <value>Bir şeyler ters gitti</value>
+  </data>
+  <data name="Test mode: no real payments are made." xml:space="preserve">
+    <value>Test modu: gerçek ödeme alınmaz.</value>
+  </data>
+  <data name="This link does not work or has expired. Ask the sender for a new one." xml:space="preserve">
+    <value>Bu bağlantı çalışmıyor ya da süresi doldu. Gönderen kişiden yenisini isteyin.</value>
+  </data>
+  <data name="This request cannot be completed" xml:space="preserve">
+    <value>Bu istek tamamlanamadı</value>
+  </data>
+  <data name="Too many attempts" xml:space="preserve">
+    <value>Çok fazla deneme</value>
+  </data>
+  <data name="Try again" xml:space="preserve">
+    <value>Yeniden dene</value>
+  </data>
+  <data name="Wait a few minutes, then try again." xml:space="preserve">
+    <value>Birkaç dakika bekleyip yeniden deneyin.</value>
+  </data>
+  <data name="We could not complete your request. Try again in a moment." xml:space="preserve">
+    <value>İsteğinizi tamamlayamadık. Biraz sonra yeniden deneyin.</value>
+  </data>
+</root>

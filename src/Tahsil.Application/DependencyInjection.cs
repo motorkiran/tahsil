@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Tahsil.Application.Branding;
 using Tahsil.Application.Common;
 
 namespace Tahsil.Application;
@@ -24,6 +25,12 @@ public static class DependencyInjection
             .Validate(
                 options => options.HasSupportedLocale(),
                 $"{ServerOptions.SectionName}:DefaultLocale must be one of: {string.Join(", ", ServerOptions.SupportedLocales)}.")
+            .ValidateOnStart();
+
+        services.AddOptions<BrandingOptions>()
+            .BindConfiguration(BrandingOptions.SectionName)
+            .ValidateDataAnnotations()
+            .Validate(options => options.HasReadableStylesheet(), $"{BrandingOptions.SectionName}:StylesheetPath does not exist.")
             .ValidateOnStart();
 
         services.AddSingleton<IPublicUrls, PublicUrls>();

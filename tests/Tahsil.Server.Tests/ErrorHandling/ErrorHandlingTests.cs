@@ -24,7 +24,7 @@ public sealed class ErrorHandlingTests
         using var host = Host();
         using var client = host.CreateClient();
 
-        using var response = await client.GetAsync(new Uri("/tests/not-found", UriKind.Relative), CancellationToken);
+        using var response = await client.GetAsync(new Uri("/api/v1/tests/not-found", UriKind.Relative), CancellationToken);
         var problem = await ReadProblemAsync(response);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -54,7 +54,7 @@ public sealed class ErrorHandlingTests
         using var host = Host();
         using var client = host.CreateClient();
 
-        using var response = await client.GetAsync(new Uri("/tests/failure", UriKind.Relative), CancellationToken);
+        using var response = await client.GetAsync(new Uri("/api/v1/tests/failure", UriKind.Relative), CancellationToken);
         var body = await response.Content.ReadAsStringAsync(CancellationToken);
         var problem = JsonNode.Parse(body)!;
 
@@ -74,7 +74,7 @@ public sealed class ErrorHandlingTests
         using var host = Host();
         using var client = host.CreateClient();
 
-        using var response = await client.GetAsync(new Uri("/tests/throw", UriKind.Relative), CancellationToken);
+        using var response = await client.GetAsync(new Uri("/api/v1/tests/throw", UriKind.Relative), CancellationToken);
         var body = await response.Content.ReadAsStringAsync(CancellationToken);
         var problem = JsonNode.Parse(body)!;
 
@@ -93,7 +93,7 @@ public sealed class ErrorHandlingTests
         using var host = Host();
         using var client = host.CreateClient();
 
-        using var response = await client.GetAsync(new Uri("/tests/concurrency", UriKind.Relative), CancellationToken);
+        using var response = await client.GetAsync(new Uri("/api/v1/tests/concurrency", UriKind.Relative), CancellationToken);
         var problem = await ReadProblemAsync(response);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
@@ -122,10 +122,10 @@ public sealed class ErrorHandlingTests
 
     private static TestHost Host() => new(endpoints: endpoints =>
     {
-        endpoints.MapGet("/tests/not-found", () => ApiResults.Problem(Error.NotFound("customer.not_found", "No such customer.")));
-        endpoints.MapGet("/tests/failure", () => ApiResults.Problem(Error.Failure("vault.unreachable", Secret)));
-        endpoints.MapGet("/tests/throw", IResult () => throw new InvalidOperationException(Secret));
-        endpoints.MapGet("/tests/concurrency", IResult () => throw new DbUpdateConcurrencyException("Lost the race."));
+        endpoints.MapGet("/api/v1/tests/not-found", () => ApiResults.Problem(Error.NotFound("customer.not_found", "No such customer.")));
+        endpoints.MapGet("/api/v1/tests/failure", () => ApiResults.Problem(Error.Failure("vault.unreachable", Secret)));
+        endpoints.MapGet("/api/v1/tests/throw", IResult () => throw new InvalidOperationException(Secret));
+        endpoints.MapGet("/api/v1/tests/concurrency", IResult () => throw new DbUpdateConcurrencyException("Lost the race."));
 
         var api = endpoints.MapGroup("/api/v1/tests").AddEndpointFilter<ParameterBindingFilter>();
         api.MapGet("/items/{id:int}", (int id) => TypedResults.Ok(id));

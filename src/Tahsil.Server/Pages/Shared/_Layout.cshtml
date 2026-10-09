@@ -1,0 +1,59 @@
+@using Microsoft.Extensions.Options
+@using Tahsil.Application.Branding
+@using Tahsil.Application.Common
+@using Tahsil.Server.Ui
+@inject IOptions<BrandingOptions> Branding
+@inject IOptions<ServerOptions> Server
+@inject BrandingStylesheet Stylesheet
+@{
+    var branding = Branding.Value;
+    var language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    var currentUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+}
+<!DOCTYPE html>
+<html lang="@language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] · @branding.ProductName</title>
+    <link rel="stylesheet" href="~/css/tahsil.css" asp-append-version="true" />
+    <style nonce="@Context.GetCspNonce()">:root { --brand: @branding.PrimaryColor; }</style>
+    @if (Stylesheet.Url is { } stylesheetUrl)
+    {
+        <link rel="stylesheet" href="@Url.Content($"~{stylesheetUrl}")" />
+    }
+</head>
+<body>
+    <main class="shell">
+        @if (Server.Value.IsTestMode)
+        {
+            <p class="test-banner" role="note">@L["Test mode: no real payments are made."]</p>
+        }
+        <section class="card" aria-labelledby="page-title">
+            <header class="brand">
+                @if (branding.LogoUrl is not null)
+                {
+                    <img src="@branding.LogoUrl" alt="@branding.ProductName" class="logo" />
+                }
+                else
+                {
+                    <span class="wordmark">@branding.ProductName</span>
+                }
+            </header>
+            @RenderBody()
+        </section>
+        <footer class="footer">
+            <nav aria-label="@L["Language"]">
+                @foreach (var culture in HostedPages.SupportedCultures)
+                {
+                    <a href="/culture/@culture.Name?returnUrl=@Uri.EscapeDataString(currentUrl)"
+                       lang="@culture.Name"
+                       aria-current="@(culture.Name == language ? "true" : null)">@culture.TextInfo.ToTitleCase(culture.NativeName)</a>
+                }
+            </nav>
+        </footer>
+    </main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

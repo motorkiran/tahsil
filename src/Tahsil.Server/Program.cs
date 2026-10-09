@@ -7,6 +7,7 @@ using Tahsil.Infrastructure.Security;
 using Tahsil.Server.Api;
 using Tahsil.Server.ErrorHandling;
 using Tahsil.Server.Hosting;
+using Tahsil.Server.Ui;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,8 @@ builder.Services.AddErrorHandling();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IRequestContext, HttpRequestContext>();
 builder.Services.AddTahsilApi();
+builder.Services.AddHostedPages();
+builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));
 
 var app = builder.Build();
 
@@ -40,10 +43,24 @@ if (app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.MigrateOn
     await app.Services.PrepareDatabaseAsync();
 }
 
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+app.UseErrorResponses();
+app.UseSecurityHeaders();
 app.UseModeHeader();
 
+// Once a browser has reached Tahsil over HTTPS, it never tries plain HTTP again. Subdomains are left out: Tahsil may
+// run on a domain whose other hosts it does not own.
+if (app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.RequireHttps)
+{
+    app.UseHsts();
+}
+
+app.UseStaticFiles();
+app.UseRequestLocalization();
+app.UseAntiforgery();
+
+app.MapRazorPages();
+app.MapCultureSwitch();
+app.MapBrandingStylesheet();
 app.MapTahsilApi();
 
 await app.RunAsync();

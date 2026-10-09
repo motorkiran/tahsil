@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Common;
 using Tahsil.Server.Api;
+using Tahsil.Server.Ui;
 
 namespace Tahsil.Server.ErrorHandling;
 
@@ -31,6 +32,9 @@ internal static partial class ErrorHandlingExtensions
         });
         services.AddExceptionHandler<UnhandledExceptionHandler>();
 
+        // The handler logs every exception itself, with the trace ID; the middleware would log it a second time.
+        services.Configure<ExceptionHandlerOptions>(options => options.SuppressDiagnosticsCallback = _ => true);
+
         return services;
     }
 
@@ -45,6 +49,15 @@ internal static partial class ErrorHandlingExtensions
     {
         public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
         {
+            var traceId = Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier;
+
+            // People get the localized error page, which shows the trace ID.
+            if (HostedPages.IsPageRequest(httpContext))
+            {
+                LogUnhandled(logger, exception, traceId);
+                return false;
+            }
+
             Microsoft.AspNetCore.Mvc.ProblemDetails problem;
             if (exception is DbUpdateConcurrencyException)
             {
@@ -57,7 +70,7 @@ internal static partial class ErrorHandlingExtensions
             }
             else
             {
-                LogUnhandled(logger, exception, Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier);
+                LogUnhandled(logger, exception, traceId);
                 problem = new ServerErrorProblemDetails();
             }
 

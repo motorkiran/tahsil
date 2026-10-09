@@ -45,8 +45,9 @@ internal sealed class TestHost(IReadOnlyDictionary<string, string?>? overrides =
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
         {
             next(app);
-            app.UseRouting();
-            app.UseEndpoints(endpoints);
+
+            // In a branch, so this routing does not replace the application's when error pages re-execute requests.
+            app.UseWhen(_ => true, branch => branch.UseRouting().UseEndpoints(endpoints));
         };
     }
 }
