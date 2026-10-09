@@ -47,6 +47,65 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("data_protection_keys", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.ApiKeys.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("actor");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayPrefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("display_prefix");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.PrimitiveCollection<string[]>("Permissions")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("permissions");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<byte[]>("SecretHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("secret_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_api_keys");
+
+                    b.HasIndex("SecretHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_api_keys_secret_hash");
+
+                    b.ToTable("api_keys", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Auditing.AuditEvent", b =>
                 {
                     b.Property<Guid>("Id")

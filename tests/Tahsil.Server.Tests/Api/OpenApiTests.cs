@@ -32,6 +32,27 @@ public sealed class OpenApiTests
     }
 
     [Fact]
+    [Trait("Requirement", "API-2")]
+    [Trait("Requirement", "API-16")]
+    public async Task Document_UsesSnakeCaseEnums_AndNamesThePermissionOfEachOperation()
+    {
+        using var host = new TestHost();
+        using var http = host.CreateClient();
+
+        var document = JsonNode.Parse(await http.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
+
+        var enumValues = document["components"]!["schemas"]!.AsObject()
+            .SelectMany(schema => schema.Value!["enum"]?.AsArray() ?? [])
+            .Select(value => value!.GetValue<string>());
+        enumValues.ShouldNotBeEmpty();
+        enumValues.ShouldAllBe(value => System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-z][a-z0-9_]*$"));
+
+        var operations = document["paths"]!.AsObject().SelectMany(path => path.Value!.AsObject().Select(operation => operation.Value!));
+        operations.ShouldAllBe(operation => operation["description"]!.GetValue<string>().Contains("Requires the `tahsil.")
+            && operation["security"]![0]!["ApiKey"] != null);
+    }
+
+    [Fact]
     public async Task ApiReference_IsServed()
     {
         using var host = new TestHost();

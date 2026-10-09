@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 
 namespace Tahsil.Application.Common;
@@ -6,6 +8,8 @@ namespace Tahsil.Application.Common;
 /// <summary>The unit of work for use cases. EF Core's <c>DbSet</c> already is the repository.</summary>
 public interface ITahsilDbContext
 {
+    DbSet<ApiKey> ApiKeys { get; }
+
     /// <summary>The audit trail, for queries. Record events through the audit log.</summary>
     IQueryable<AuditEvent> AuditEvents { get; }
 

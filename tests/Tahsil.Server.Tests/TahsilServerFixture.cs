@@ -21,7 +21,10 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
 
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(PostgreSqlImage).Build();
+    // Tests in parallel each open a few connections, many to databases of their own.
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(PostgreSqlImage)
+        .WithCommand("-c", "max_connections=1000")
+        .Build();
 
     public async ValueTask InitializeAsync()
     {

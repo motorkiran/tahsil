@@ -10,8 +10,488 @@
       "url": "http://localhost/"
     }
   ],
-  "paths": { },
+  "paths": {
+    "/api/v1/api-keys": {
+      "get": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "List API keys",
+        "description": "Lists API keys in creation order, revoked and expired ones included.\n\nRequires the `tahsil.api_keys:read` permission.",
+        "operationId": "ListApiKeys",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfApiKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.api_keys:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "Create an API key",
+        "description": "Creates a key with permissions the caller holds itself. The response is the only time the key's secret is shown.\n\nRequires the `tahsil.api_keys:write` permission.",
+        "operationId": "CreateApiKey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.api_keys:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/api-keys/{id}": {
+      "get": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "Get an API key",
+        "description": "Requires the `tahsil.api_keys:read` permission.",
+        "operationId": "GetApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.api_keys:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/api-keys/{id}/revoke": {
+      "post": {
+        "tags": [
+          "API keys"
+        ],
+        "summary": "Revoke an API key",
+        "description": "The key stops working at once, and stays listed with the time it was revoked.\n\nRequires the `tahsil.api_keys:write` permission.",
+        "operationId": "RevokeApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.api_keys:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    }
+  },
   "components": {
+    "schemas": {
+      "ActorKind": {
+        "enum": [
+          "system",
+          "api_key",
+          "admin",
+          "customer"
+        ]
+      },
+      "ActorResponse": {
+        "required": [
+          "type",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "The kind of actor.",
+            "$ref": "#/components/schemas/ActorKind"
+          },
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The API key, administrator subject or customer ID; `null` for the system."
+          }
+        },
+        "description": "Who did something: an API key, an administrator, a customer on a hosted page, or Tahsil itself."
+      },
+      "ApiKeyResponse": {
+        "required": [
+          "id",
+          "name",
+          "displayPrefix",
+          "permissions",
+          "createdBy",
+          "createdAt",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "displayPrefix": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/ActorResponse"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "An API key, without its secret. `DisplayPrefix` is the start of the secret, to recognize the key by."
+      },
+      "CreateApiKeyRequest": {
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The permissions the key may use; its creator must hold them."
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the key stops working; it does not expire when omitted.",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreatedApiKeyResponse": {
+        "required": [
+          "apiKey",
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "$ref": "#/components/schemas/ApiKeyResponse"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "description": "A new API key with its secret `Key`, which is shown only this once. Callers send it as `Authorization: Bearer ths_…`."
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "PageOfApiKeyResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKeyResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      }
+    },
     "securitySchemes": {
       "ApiKey": {
         "type": "http",
@@ -19,5 +499,10 @@
         "scheme": "bearer"
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "API keys"
+    }
+  ]
 }

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
 using Tahsil.Contracts.Serialization;
 
@@ -12,6 +14,12 @@ internal static class TahsilApi
 
     public static IServiceCollection AddTahsilApi(this IServiceCollection services)
     {
+        services.AddAuthentication()
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, configureOptions: null);
+        services.AddAuthorization();
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiAuthorizationResultHandler>();
+
         services.ConfigureHttpJsonOptions(options => TahsilJson.Configure(options.SerializerOptions));
         services.AddValidation();
 
@@ -19,6 +27,7 @@ internal static class TahsilApi
         {
             options.ShouldInclude = description => description.RelativePath?.StartsWith(BasePath[1..], StringComparison.Ordinal) == true;
             options.AddDocumentTransformer<TahsilApiDocumentTransformer>();
+            options.AddOperationTransformer<PermissionOperationTransformer>();
         });
 
         return services;
@@ -27,7 +36,8 @@ internal static class TahsilApi
     public static IEndpointRouteBuilder MapTahsilApi(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGroup(BasePath)
-            .AddEndpointFilter<ParameterBindingFilter>();
+            .AddEndpointFilter<ParameterBindingFilter>()
+            .MapApiKeyEndpoints();
 
         endpoints.MapOpenApi();
         endpoints.MapScalarApiReference(options => options.WithTitle("Tahsil API"));

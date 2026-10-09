@@ -12,6 +12,8 @@ public sealed record Error(string Code, string Message, ErrorType Type)
 
     public static Error Conflict(string code, string message) => new(code, message, ErrorType.Conflict);
 
+    public static Error Unauthorized(string code, string message) => new(code, message, ErrorType.Unauthorized);
+
     public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
 
     public static Error PreconditionFailed(string code, string message) => new(code, message, ErrorType.PreconditionFailed);
@@ -31,6 +33,10 @@ public enum ErrorType
     Validation,
     NotFound,
     Conflict,
+
+    /// <summary>The caller is not authenticated, or with credentials that do not work here.</summary>
+    Unauthorized,
+
     Forbidden,
 
     /// <summary>The caller's precondition (<c>If-Match</c>) does not hold.</summary>

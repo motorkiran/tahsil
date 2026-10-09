@@ -31,3 +31,25 @@ internal sealed class TahsilApiDocumentTransformer : IOpenApiDocumentTransformer
         return Task.CompletedTask;
     }
 }
+
+/// <summary>Documents the permission each operation requires, and the responses for callers who may not call it.</summary>
+internal sealed class PermissionOperationTransformer : IOpenApiOperationTransformer
+{
+    public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
+    {
+        if (context.Description.ActionDescriptor.EndpointMetadata.OfType<RequiredPermission>().LastOrDefault() is not { } required)
+        {
+            return Task.CompletedTask;
+        }
+
+        var requirement = $"Requires the `{required.Permission}` permission.";
+        operation.Description = operation.Description is null ? requirement : $"{operation.Description}\n\n{requirement}";
+        operation.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference(TahsilApiDocumentTransformer.SecuritySchemeName, context.Document)] = [] }];
+
+        operation.Responses ??= [];
+        operation.Responses.TryAdd("401", new OpenApiResponse { Description = "The API key is missing, unknown, revoked, expired or of the other mode." });
+        operation.Responses.TryAdd("403", new OpenApiResponse { Description = $"The API key does not have `{required.Permission}`." });
+
+        return Task.CompletedTask;
+    }
+}

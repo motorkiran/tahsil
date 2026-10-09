@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Tahsil.Application.Common;
+using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Clock;
 using Tahsil.Infrastructure.Outbox;
@@ -14,6 +15,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     : DbContext(options), ITahsilDbContext, IDataProtectionKeyContext
 {
     public const string Schema = "tahsil";
+
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 

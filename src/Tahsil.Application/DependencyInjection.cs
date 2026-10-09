@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Tahsil.Application.ApiKeys;
 using Tahsil.Application.Branding;
 using Tahsil.Application.Common;
 
@@ -35,6 +36,12 @@ public static class DependencyInjection
 
         services.AddSingleton<IPublicUrls, PublicUrls>();
         services.AddScoped<IAuthorizer, Authorizer>();
+
+        services.AddScoped<ApiKeyAuthenticator>();
+        services.AddScoped<CreateApiKeyHandler>();
+        services.AddScoped<ListApiKeysHandler>();
+        services.AddScoped<GetApiKeyHandler>();
+        services.AddScoped<RevokeApiKeyHandler>();
 
         return services;
     }

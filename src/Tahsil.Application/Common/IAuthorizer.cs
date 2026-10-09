@@ -40,7 +40,15 @@ public static class AuthErrors
 {
     public const string ForbiddenCode = "auth.forbidden";
 
+    public static readonly Error Unauthorized = Error.Unauthorized("auth.unauthorized", "The API key is missing or does not work.");
+
     public static readonly Error NotYourCustomer = Error.Forbidden(ForbiddenCode, "This session does not belong to the customer.");
+
+    public static Error WrongMode(TahsilMode mode) => Error.Unauthorized(
+        "auth.wrong_mode",
+        mode == TahsilMode.Live
+            ? "This installation is in Live mode and takes ths_live_ keys; this is a test key."
+            : "This installation is in Test mode and takes ths_test_ keys; this is a live key.");
 
     public static Error MissingPermission(string permission) =>
         Error.Forbidden(ForbiddenCode, $"The caller does not have the '{permission}' permission.");

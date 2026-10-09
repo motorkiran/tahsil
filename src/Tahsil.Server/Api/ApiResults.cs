@@ -40,6 +40,7 @@ internal static class ApiResults
         ErrorType.Validation => StatusCodes.Status400BadRequest,
         ErrorType.NotFound => StatusCodes.Status404NotFound,
         ErrorType.Conflict => StatusCodes.Status409Conflict,
+        ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorType.Forbidden => StatusCodes.Status403Forbidden,
         ErrorType.PreconditionFailed => StatusCodes.Status412PreconditionFailed,
         ErrorType.RateLimited => StatusCodes.Status429TooManyRequests,

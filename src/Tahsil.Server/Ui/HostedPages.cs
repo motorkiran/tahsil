@@ -22,7 +22,7 @@ internal static class HostedPages
     public static readonly CultureInfo[] SupportedCultures = [new("tr"), new("en")];
 
     /// <summary>Paths that machines call; everything else is a page that people see.</summary>
-    private static readonly PathString[] MachinePaths = ["/api", "/openapi", "/scalar", "/health", "/notifications"];
+    private static readonly PathString[] MachinePaths = ["/api", "/openapi", "/scalar", "/health", "/provider-notifications", "/webhooks"];
 
     /// <summary>
     /// Whether the request is for a page people see. While an exception is handled, the request's path is already the
