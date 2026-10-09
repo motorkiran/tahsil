@@ -19,6 +19,22 @@ dotnet build
 dotnet test
 ```
 
+## Running locally
+
+```sh
+docker compose up -d                        # PostgreSQL on 5434 and Mailpit on 8026
+dotnet run --project src/Tahsil.Server      # http://localhost:5090
+```
+
+The server migrates the database when it starts (`Tahsil:Database:MigrateOnStartup`); `dotnet Tahsil.Server.dll migrate` does it as a separate step. To run the container image instead:
+
+```sh
+dotnet publish src/Tahsil.Server -t:PublishContainer
+docker compose --profile app up -d          # http://localhost:8090
+```
+
+`/health/live` and `/health/ready` are the probes for orchestrators.
+
 ## License
 
 Tahsil is licensed under the [Apache License 2.0](LICENSE).

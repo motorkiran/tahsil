@@ -1,5 +1,7 @@
 # Local development environment (works with Docker Compose and `podman compose`).
 #   docker compose up -d                  PostgreSQL and Mailpit; run Tahsil from your IDE
+#   docker compose --profile app up -d    also runs the Tahsil image on http://localhost:8090 (build it first, see README)
+# The ports leave room for Kimlik's environment (5433, 8025, 1025) and a local PostgreSQL (5432).
 name: tahsil
 
 services:
@@ -10,7 +12,6 @@ services:
       POSTGRES_USER: tahsil
       POSTGRES_PASSWORD: tahsil
     ports:
-      # 5434 avoids clashing with a locally installed PostgreSQL and with Kimlik's development database.
       - "${TAHSIL_POSTGRES_PORT:-5434}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
@@ -23,8 +24,23 @@ services:
   mailpit:
     image: docker.io/axllent/mailpit:v1.31.4
     ports:
-      - "8026:8025" # web UI
-      - "1026:1025" # SMTP
+      - "${TAHSIL_MAILPIT_UI_PORT:-8026}:8025" # web UI
+      - "${TAHSIL_MAILPIT_SMTP_PORT:-1026}:1025" # SMTP
+
+  tahsil:
+    image: tahsil:latest
+    profiles: [app]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Tahsil: Host=postgres;Database=tahsil;Username=tahsil;Password=tahsil
+      Tahsil__Server__PublicUrl: http://localhost:8090/
+      Tahsil__Server__RequireHttps: "false"
+      # Development key only, which Live mode refuses. Production installations generate their own: openssl rand -base64 32
+      Tahsil__Security__MasterKey: RS4WftirAh28WH2LxhF6vetp9iHyc2xfGSQou5e16R0=
+    ports:
+      - "8090:8080"
 
 volumes:
   postgres-data:

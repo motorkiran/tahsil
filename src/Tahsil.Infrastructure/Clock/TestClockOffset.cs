@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Tahsil.Domain.Clock;
 using Tahsil.Infrastructure.Persistence;
 
 namespace Tahsil.Infrastructure.Clock;
@@ -16,5 +17,8 @@ internal sealed class TestClockOffset
     public void Set(long seconds) => Volatile.Write(ref _seconds, seconds);
 
     public async Task RefreshAsync(TahsilDbContext context, CancellationToken cancellationToken) =>
-        Set(await context.TestClocks.AsNoTracking().Select(clock => clock.OffsetSeconds).FirstOrDefaultAsync(cancellationToken));
+        Set(await context.TestClocks.AsNoTracking()
+            .Where(clock => clock.Id == TestClock.SingletonId)
+            .Select(clock => clock.OffsetSeconds)
+            .SingleOrDefaultAsync(cancellationToken));
 }
