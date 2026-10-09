@@ -17,6 +17,9 @@ public class Result
 
     public static Result Success() => new(null);
 
+    /// <summary>A success with a value; for values of an interface type, which implicit conversions do not cover.</summary>
+    public static Result<TValue> Success<TValue>(TValue value) => new(value);
+
     public static Result Failure(Error error) => new(error ?? throw new ArgumentNullException(nameof(error)));
 
     public static implicit operator Result(Error error) => Failure(error);
@@ -26,7 +29,7 @@ public sealed class Result<TValue> : Result
 {
     private readonly TValue? _value;
 
-    private Result(TValue value)
+    internal Result(TValue value)
         : base(null) => _value = value;
 
     private Result(Error error)

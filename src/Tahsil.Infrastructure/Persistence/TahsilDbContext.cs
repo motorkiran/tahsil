@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Tahsil.Application.Common;
 using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
+using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Clock;
 using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
@@ -18,6 +19,14 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     public const string Schema = "tahsil";
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
+    public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+
+    public DbSet<Meter> Meters => Set<Meter>();
+
+    public DbSet<Product> Products => Set<Product>();
+
+    public DbSet<Price> Prices => Set<Price>();
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 

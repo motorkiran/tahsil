@@ -6,7 +6,10 @@ namespace Tahsil.Domain.Common;
 [SuppressMessage("Naming", "CA1716:Identifiers should not match keywords", Justification = "The domain is not consumed from Visual Basic.")]
 public sealed record Error(string Code, string Message, ErrorType Type)
 {
-    public static Error Validation(string code, string message) => new(code, message, ErrorType.Validation);
+    /// <summary>The request field a validation error is about, reported in the problem's <c>errors</c>.</summary>
+    public string? Field { get; init; }
+
+    public static Error Validation(string code, string message, string? field = null) => new(code, message, ErrorType.Validation) { Field = field };
 
     public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound);
 

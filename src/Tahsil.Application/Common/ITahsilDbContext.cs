@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
+using Tahsil.Domain.Catalog;
 
 namespace Tahsil.Application.Common;
 
@@ -9,6 +10,14 @@ namespace Tahsil.Application.Common;
 public interface ITahsilDbContext
 {
     DbSet<ApiKey> ApiKeys { get; }
+
+    DbSet<TaxRate> TaxRates { get; }
+
+    DbSet<Meter> Meters { get; }
+
+    DbSet<Product> Products { get; }
+
+    DbSet<Price> Prices { get; }
 
     /// <summary>The audit trail, for queries. Record events through the audit log.</summary>
     IQueryable<AuditEvent> AuditEvents { get; }

@@ -32,6 +32,11 @@ internal static class ApiResults
             Detail = error.Message,
         };
         problem.Extensions[CodeExtension] = error.Code;
+        if (error.Field is { } field)
+        {
+            problem.Extensions["errors"] = new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [error.Message] };
+        }
+
         return TypedResults.Problem(problem);
     }
 
