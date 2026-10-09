@@ -274,6 +274,139 @@
           }
         ]
       }
+    },
+    "/api/v1/audit-events": {
+      "get": {
+        "tags": [
+          "Audit events"
+        ],
+        "summary": "Query the audit trail",
+        "description": "Lists audit events, newest first. Every filter is optional, and filters combine.\n\nRequires the `tahsil.audit:read` permission.",
+        "operationId": "ListAuditEvents",
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "description": "An action such as `api_key.revoked`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorType",
+            "in": "query",
+            "description": "`system`, `api_key`, `admin` or `customer`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "description": "An API key ID, administrator subject or customer ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subjectType",
+            "in": "query",
+            "description": "What was acted on, such as `customer` or `invoice`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "query",
+            "description": "The ID of what was acted on.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customerId",
+            "in": "query",
+            "description": "Events concerning this customer.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Events at or after this time (ISO 8601).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Events before this time (ISO 8601).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfAuditEventResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.audit:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -368,6 +501,86 @@
         },
         "description": "An API key, without its secret. `DisplayPrefix` is the start of the secret, to recognize the key by."
       },
+      "AuditEventResponse": {
+        "required": [
+          "id",
+          "occurredAt",
+          "action",
+          "actor",
+          "subjectType",
+          "subjectId",
+          "customerId",
+          "ipAddress",
+          "userAgent",
+          "correlationId",
+          "data"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActorResponse"
+          },
+          "subjectType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subjectId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "ipAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "userAgent": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correlationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          }
+        },
+        "description": "An action recorded in the audit trail. `action` reads `resource.past_tense_verb`, such as\n`api_key.revoked`. People are referenced by ID only, so the trail outlives their personal data."
+      },
       "CreateApiKeyRequest": {
         "required": [
           "name",
@@ -460,6 +673,7 @@
           }
         }
       },
+      "JsonElement": { },
       "PageOfApiKeyResponse": {
         "required": [
           "items",
@@ -471,6 +685,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ApiKeyResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfAuditEventResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventResponse"
             }
           },
           "nextCursor": {
@@ -532,6 +768,9 @@
   "tags": [
     {
       "name": "API keys"
+    },
+    {
+      "name": "Audit events"
     }
   ]
 }

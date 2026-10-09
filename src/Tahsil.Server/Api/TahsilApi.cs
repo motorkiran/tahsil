@@ -57,7 +57,8 @@ internal static class TahsilApi
             .AddEndpointFilter<ParameterBindingFilter>()
             .AddEndpointFilter<IdempotencyFilter>()
             .RequireRateLimiting(ApiRateLimiting.PolicyName)
-            .MapApiKeyEndpoints();
+            .MapApiKeyEndpoints()
+            .MapAuditEventEndpoints();
 
         endpoints.MapOpenApi();
         endpoints.MapScalarApiReference(options => options.WithTitle("Tahsil API"));

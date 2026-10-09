@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Tahsil.Application.ApiKeys;
+using Tahsil.Application.Auditing;
 using Tahsil.Application.Branding;
 using Tahsil.Application.Common;
 
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<ListApiKeysHandler>();
         services.AddScoped<GetApiKeyHandler>();
         services.AddScoped<RevokeApiKeyHandler>();
+        services.AddScoped<ListAuditEventsHandler>();
 
         return services;
     }
