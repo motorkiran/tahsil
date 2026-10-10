@@ -66,7 +66,9 @@ public sealed class PaymentReconciliation(
             case PaymentLookup.Found { Outcome.Status: ProviderStatus.Succeeded or ProviderStatus.Failed } found:
                 await outcomes.ApplyAsync(payment.Id, found.Outcome, CancellationToken.None);
                 return;
-            case PaymentLookup.NotFound when expiring:
+            case not null when expiring:
+                // ENG-18: without a success by the deadline the attempt ends, even if the provider's page is still open;
+                // a success after it is a late success (PAY-14).
                 await outcomes.CancelAsync(payment.Id, CancellationToken.None);
                 return;
             case PaymentLookup.NotFound when now - payment.CreatedAt >= options.Value.NotFoundAfter

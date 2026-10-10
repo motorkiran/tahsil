@@ -205,9 +205,10 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
 
     [Theory]
     [Trait("Requirement", "ENG-18")]
-    [InlineData(false, PaymentStatus.Canceled)]
-    [InlineData(true, PaymentStatus.Succeeded)]
-    public async Task ACustomersAttemptThatRunsOutOfTime_IsCanceled_UnlessTheProviderHasASuccess(bool succeeded, PaymentStatus status)
+    [InlineData("not_found", PaymentStatus.Canceled)]
+    [InlineData("pending", PaymentStatus.Canceled)]
+    [InlineData("succeeded", PaymentStatus.Succeeded)]
+    public async Task ACustomersAttemptThatRunsOutOfTime_IsCanceled_UnlessTheProviderHasASuccess(string answer, PaymentStatus status)
     {
         var provider = new ScriptedProvider();
         await using var host = Host(provider);
@@ -216,7 +217,12 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
         var customer = await CustomerAsync(client);
         var invoice = await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice);
         var payment = await StartOnPageAsync(host, invoice);
-        provider.Lookups.Enqueue(succeeded ? new PaymentLookup.Found(new PaymentOutcome { Status = Providers.Abstractions.PaymentStatus.Succeeded }) : new PaymentLookup.NotFound());
+        provider.Lookups.Enqueue(answer switch
+        {
+            "succeeded" => new PaymentLookup.Found(new PaymentOutcome { Status = Providers.Abstractions.PaymentStatus.Succeeded }),
+            "pending" => new PaymentLookup.Found(new PaymentOutcome { Status = Providers.Abstractions.PaymentStatus.Pending }),
+            _ => new PaymentLookup.NotFound(),
+        });
 
         _time.Advance(TimeSpan.FromMinutes(29));
         await host.RunWorkersUntilIdleAsync();
