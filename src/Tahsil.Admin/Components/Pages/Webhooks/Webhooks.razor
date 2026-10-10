@@ -26,7 +26,13 @@
         <MudTh>Created</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="URL"><MudLink Href="@Link(context)">@context.Url</MudLink> @context.Description</MudTd>
+        <MudTd DataLabel="URL">
+            @if (context.Key is not null)
+            {
+                <code>@context.Key</code>
+            }
+            <MudLink Href="@Link(context)">@context.Url</MudLink> @context.Description
+        </MudTd>
         <MudTd DataLabel="Events">@(context.EventTypes.Count == 0 ? "All" : string.Join(", ", context.EventTypes))</MudTd>
         <MudTd DataLabel="State"><WebhookEndpointState Endpoint="context" /></MudTd>
         <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>

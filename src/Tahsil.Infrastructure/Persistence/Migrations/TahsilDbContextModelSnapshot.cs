@@ -2071,6 +2071,11 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("failing_since");
 
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
                     b.Property<byte[]>("PreviousSecret")
                         .HasColumnType("bytea")
                         .HasColumnName("previous_secret");
@@ -2102,6 +2107,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_webhook_endpoints");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_webhook_endpoints_key");
 
                     b.ToTable("webhook_endpoints", "tahsil");
                 });

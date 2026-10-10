@@ -77,6 +77,9 @@ public enum WebhookDeliveryStatus
 
 public sealed record CreateWebhookEndpointRequest
 {
+    /// <summary>What provisioning documents know the endpoint by; optional.</summary>
+    public string? Key { get; init; }
+
     /// <summary>An HTTPS URL; plain HTTP only for this machine in Test mode.</summary>
     [Required]
     public required string Url { get; init; }
@@ -85,6 +88,9 @@ public sealed record CreateWebhookEndpointRequest
 
     /// <summary>The event types it receives; none means all.</summary>
     public IReadOnlyList<string>? EventTypes { get; init; }
+
+    /// <summary>The signing secret (<c>whsec_</c> and base64); one is generated when omitted.</summary>
+    public string? Secret { get; init; }
 
     public bool Enabled { get; init; } = true;
 }
@@ -114,6 +120,7 @@ public sealed record UpdateWebhookEndpointRequest
 
 public sealed record WebhookEndpointResponse(
     Guid Id,
+    string? Key,
     string Url,
     string? Description,
     IReadOnlyList<string> EventTypes,

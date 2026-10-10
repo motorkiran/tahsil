@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Common;
+using Tahsil.Application.Connections;
 using Tahsil.Contracts;
 using Tahsil.Domain.Common;
 using Model = Tahsil.Domain.Catalog;
@@ -7,10 +8,12 @@ using Model = Tahsil.Domain.Catalog;
 namespace Tahsil.Application.Provisioning;
 
 /// <summary>
-/// The current catalog as a provisioning document, ordered by key, so it can be committed and applied elsewhere.
-/// Prices without a lookup key cannot be provisioned and are left out.
+/// The current catalog and wiring as a provisioning document, ordered by key, so it can be committed and applied
+/// elsewhere (PRV-11). Secrets are never exported: each credential that is set, and each endpoint's secret, appears as
+/// a configuration reference to define where the document is applied, such as <c>${Connections:iyzico-main:apiKey}</c>.
+/// Prices and webhook endpoints without a key cannot be provisioned and are left out.
 /// </summary>
-public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthorizer authorizer)
+public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthorizer authorizer, ConnectionSecrets secrets, ProviderRegistry registry)
 {
     public async Task<Result<ProvisioningDocument>> HandleAsync(CancellationToken cancellationToken)
     {
@@ -23,6 +26,9 @@ public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthori
         var meters = await context.Meters.AsNoTracking().OrderBy(meter => meter.Key).ToListAsync(cancellationToken);
         var products = await context.Products.AsNoTracking().OrderBy(product => product.Key).ToListAsync(cancellationToken);
         var prices = await context.Prices.AsNoTracking().Where(price => price.Key != null).OrderBy(price => price.Key).ToListAsync(cancellationToken);
+        var connections = await context.ProviderConnections.AsNoTracking().OrderBy(connection => connection.Key).ToListAsync(cancellationToken);
+        var routing = await context.ReadRoutingAsync(cancellationToken);
+        var endpoints = await context.WebhookEndpoints.AsNoTracking().Where(endpoint => endpoint.Key != null).OrderBy(endpoint => endpoint.Key).ToListAsync(cancellationToken);
         var taxRateKeys = taxRates.ToDictionary(rate => rate.Id, rate => rate.Key);
         var meterKeys = meters.ToDictionary(meter => meter.Id, meter => meter.Key);
 
@@ -57,6 +63,38 @@ public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthori
                 Metadata = product.Metadata.Count == 0 ? null : product.Metadata,
                 Prices = [.. prices.Where(price => price.ProductId == product.Id).Select(price => ToProvisioned(price, taxRateKeys, meterKeys))],
             })],
+            ProviderConnections = [.. connections.Select(connection => ToProvisioned(connection, routing))],
+            WebhookEndpoints = [.. endpoints.Select(endpoint => new ProvisionedWebhookEndpoint
+            {
+                Key = endpoint.Key!,
+                Url = endpoint.Url,
+                Description = endpoint.Description,
+                EventTypes = endpoint.EventTypes.Count == 0 ? null : endpoint.EventTypes,
+                Secret = ProvisioningSecrets.ReferenceTo($"Webhooks:{endpoint.Key}:Secret"),
+                Enabled = endpoint.Enabled,
+            })],
+        };
+    }
+
+    private ProvisionedConnection ToProvisioned(Domain.Payments.ProviderConnection connection, IReadOnlyDictionary<string, string> routing)
+    {
+        var fields = registry.Find(connection.Provider)?.Descriptor is { } descriptor ? ConnectionFields.SettingsOf(descriptor) : [];
+        var credentials = secrets.Decrypt(connection).Keys.Order(StringComparer.Ordinal).ToList();
+        return new ProvisionedConnection
+        {
+            Key = connection.Key,
+            Provider = connection.Provider,
+            Name = connection.Name,
+            Environment = connection.Environment.Map<ConnectionEnvironment>(),
+            Currencies = [.. routing.Where(route => route.Value == connection.Key).Select(route => route.Key)],
+            Credentials = credentials.Count == 0
+                ? null
+                : credentials.ToDictionary(field => field, field => ProvisioningSecrets.ReferenceTo($"Connections:{connection.Key}:{field}"), StringComparer.Ordinal),
+            Settings = connection.Settings.Count == 0
+                ? null
+                : connection.Settings.OrderBy(setting => setting.Key, StringComparer.Ordinal).ToDictionary(
+                    setting => setting.Key, setting => ConnectionFields.ToJson(fields.FirstOrDefault(field => field.Key == setting.Key), setting.Value), StringComparer.Ordinal),
+            Enabled = connection.IsEnabled,
         };
     }
 

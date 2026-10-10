@@ -53,6 +53,7 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddScoped<ApplyProvisioningHandler>();
         services.AddScoped<ExportProvisioningHandler>();
+        services.AddScoped<IntegrationProvisioning>();
         services.AddScoped<StartupProvisioning>();
 
         services.AddScoped<ApiKeyAuthenticator>();

@@ -9,6 +9,8 @@ internal sealed class WebhookEndpointConfiguration : IEntityTypeConfiguration<We
     public void Configure(EntityTypeBuilder<WebhookEndpoint> builder)
     {
         builder.Property(endpoint => endpoint.Id).ValueGeneratedNever();
+        builder.Property(endpoint => endpoint.Key).HasMaxLength(Domain.Catalog.CatalogKey.MaxLength);
+        builder.HasIndex(endpoint => endpoint.Key).IsUnique();
         builder.Property(endpoint => endpoint.Url).HasMaxLength(WebhookEndpoint.UrlMaxLength);
         builder.Property(endpoint => endpoint.Description).HasMaxLength(WebhookEndpoint.DescriptionMaxLength);
     }

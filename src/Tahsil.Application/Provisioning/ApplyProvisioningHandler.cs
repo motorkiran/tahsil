@@ -10,8 +10,9 @@ namespace Tahsil.Application.Provisioning;
 
 /// <summary>
 /// Applies a provisioning document in one transaction, all of it or nothing, in dependency order (tax rates, meters,
-/// products and their prices). Each item goes through the regular create and update handlers, so validation,
-/// immutability, audit and the caller's permissions are those of the API. A dry run reports the changes and keeps none.
+/// products and their prices, provider connections and their currencies, webhook endpoints). Each item goes through the
+/// regular create and update handlers, so validation, immutability, audit and the caller's permissions are those of the
+/// API. A dry run reports the changes and keeps none.
 /// </summary>
 public sealed class ApplyProvisioningHandler(
     ITahsilDbContext context,
@@ -25,13 +26,20 @@ public sealed class ApplyProvisioningHandler(
     CreateProductHandler createProduct,
     UpdateProductHandler updateProduct,
     CreatePriceHandler createPrice,
-    UpdatePriceHandler updatePrice)
+    UpdatePriceHandler updatePrice,
+    IntegrationProvisioning integrations)
 {
     public async Task<Result<ProvisioningResult>> HandleAsync(ProvisioningDocument document, bool dryRun, CancellationToken cancellationToken)
     {
         if (authorizer.Require(TahsilPermissions.ProvisioningWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
+        }
+
+        // The startup file's references are resolved before it gets here (StartupProvisioning); others are not allowed.
+        if (ProvisioningSecrets.FindReference(document) is { } reference)
+        {
+            return reference;
         }
 
         // A document creates many resources; a retried request applies it again, which changes nothing.
@@ -83,6 +91,40 @@ public sealed class ApplyProvisioningHandler(
             if (archived.Value && items[productItem].Result == ProvisioningItemResult.Unchanged)
             {
                 items[productItem] = items[productItem] with { Result = ProvisioningItemResult.Updated };
+            }
+        }
+
+        var connectionItems = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (index, connection) in (document.ProviderConnections ?? []).Index())
+        {
+            if (await Record(items, $"providerConnections[{index}]", connection.Key, integrations.ApplyConnectionAsync(connection, cancellationToken)) is { } error)
+            {
+                return error;
+            }
+
+            connectionItems[connection.Key] = items.Count - 1;
+        }
+
+        var moved = await integrations.ApplyRoutingAsync(document.ProviderConnections ?? [], cancellationToken);
+        if (moved.IsFailure)
+        {
+            return ProvisioningErrors.At("providerConnections", "currencies", moved.Error);
+        }
+
+        foreach (var key in moved.Value)
+        {
+            var item = connectionItems[key];
+            if (items[item].Result == ProvisioningItemResult.Unchanged)
+            {
+                items[item] = items[item] with { Result = ProvisioningItemResult.Updated };
+            }
+        }
+
+        foreach (var (index, endpoint) in (document.WebhookEndpoints ?? []).Index())
+        {
+            if (await Record(items, $"webhookEndpoints[{index}]", endpoint.Key, integrations.ApplyEndpointAsync(endpoint, cancellationToken)) is { } error)
+            {
+                return error;
             }
         }
 

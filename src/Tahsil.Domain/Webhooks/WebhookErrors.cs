@@ -13,6 +13,14 @@ public static class WebhookErrors
 
     public static readonly Error InvalidDescription = Error.Validation("webhook_endpoint.invalid", "A description is at most 256 characters.", "description");
 
+    public static readonly Error InvalidKey = Error.Validation(
+        "webhook_endpoint.invalid_key", "A key starts with a lowercase letter and has up to 64 lowercase letters, digits, '_' or '-'.", "key");
+
+    public static readonly Error KeyTaken = Error.Conflict("webhook_endpoint.key_taken", "Another webhook endpoint has this key.");
+
+    public static readonly Error InvalidSecret = Error.Validation(
+        "webhook_endpoint.invalid_secret", "A secret is 'whsec_' and the base64 of 24 to 64 random bytes.", "secret");
+
     public static readonly Error UnknownEventType = Error.Validation(
         "webhook_endpoint.unknown_event_type", "One or more event types do not exist; GET /webhooks/event-types lists them.", "eventTypes");
 }

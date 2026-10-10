@@ -6769,6 +6769,13 @@
         ],
         "type": "object",
         "properties": {
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What provisioning documents know the endpoint by; optional."
+          },
           "url": {
             "type": "string",
             "description": "An HTTPS URL; plain HTTP only for this machine in Test mode."
@@ -6788,6 +6795,13 @@
               "type": "string"
             },
             "description": "The event types it receives; none means all."
+          },
+          "secret": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The signing secret (`whsec_` and base64); one is generated when omitted."
           },
           "enabled": {
             "type": "boolean"
@@ -9146,6 +9160,63 @@
         },
         "description": "A payment provider Tahsil has an adapter for."
       },
+      "ProvisionedConnection": {
+        "required": [
+          "key",
+          "provider",
+          "name",
+          "environment"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Fixed once created."
+          },
+          "name": {
+            "type": "string"
+          },
+          "environment": {
+            "description": "Fixed once created.",
+            "$ref": "#/components/schemas/ConnectionEnvironment"
+          },
+          "currencies": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The currencies routed to this connection; currencies not listed keep their routing."
+          },
+          "credentials": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The provider's credential fields; omitted ones keep their values."
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "The provider's setting fields, as strings, numbers or booleans; omitted ones keep their values."
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A payment provider connection and the currencies it serves. In a startup file, credentials are configuration\nreferences such as `${Iyzico:ApiKey}`, so secrets never live in version control."
+      },
       "ProvisionedItem": {
         "required": [
           "path",
@@ -9441,6 +9512,49 @@
         },
         "additionalProperties": false
       },
+      "ProvisionedWebhookEndpoint": {
+        "required": [
+          "key",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventTypes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The event types it receives; none means all."
+          },
+          "secret": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The signing secret; a new one replaces the current secret, which keeps signing for the rotation overlap."
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A webhook endpoint. In a startup file, its secret is a configuration reference such as `${Tahsil:AppWebhookSecret}`."
+      },
       "ProvisioningDocument": {
         "type": "object",
         "properties": {
@@ -9477,10 +9591,28 @@
             "items": {
               "$ref": "#/components/schemas/ProvisionedProduct"
             }
+          },
+          "providerConnections": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedConnection"
+            }
+          },
+          "webhookEndpoints": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedWebhookEndpoint"
+            }
           }
         },
         "additionalProperties": false,
-        "description": "What an installation sells, declared so it can live in version control and be applied the same way to every\nenvironment. Items are matched by key; applying creates what is missing and updates what differs, and never deletes:\nretire an item with `isArchived`."
+        "description": "What an installation sells and how it is wired, declared so it can live in version control and be applied the same\nway to every environment. Items are matched by key; applying creates what is missing and updates what differs, and\nnever deletes: retire an item with `isArchived`, or `enabled: false` for connections and endpoints."
       },
       "ProvisioningItemResult": {
         "enum": [
@@ -10322,6 +10454,7 @@
       "WebhookEndpointResponse": {
         "required": [
           "id",
+          "key",
           "url",
           "description",
           "eventTypes",
@@ -10336,6 +10469,12 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "url": {
             "type": "string"

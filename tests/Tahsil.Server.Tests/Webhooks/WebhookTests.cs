@@ -195,6 +195,30 @@ public sealed class WebhookTests(TahsilServerFixture server)
     }
 
     [Fact]
+    [Trait("Requirement", "EVT-8")]
+    [Trait("Requirement", "PRV-2")]
+    public async Task AnEndpoint_CanBeGivenAKeyAndASecret_AndKeysAreUnique()
+    {
+        await using var host = Host();
+        using var client = await host.CreateClientWithAsync(Permissions);
+        const string Secret = "whsec_MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=";
+        var url = _receiver.NewEndpoint();
+
+        using var created = await client.PostJsonAsync("/api/v1/webhooks/endpoints", new CreateWebhookEndpointRequest { Key = "app", Url = url, Secret = Secret });
+        using var taken = await client.PostJsonAsync("/api/v1/webhooks/endpoints", new CreateWebhookEndpointRequest { Key = "app", Url = url });
+        using var weak = await client.PostJsonAsync("/api/v1/webhooks/endpoints", new CreateWebhookEndpointRequest { Url = url, Secret = "whsec_c2hvcnQ=" });
+        var endpoint = await created.ReadAsync<CreatedWebhookEndpointResponse>();
+        using var test = await client.PostPathAsync($"/api/v1/webhooks/endpoints/{endpoint.Endpoint.Id}/test");
+        await host.RunWorkersUntilIdleAsync();
+
+        (endpoint.Endpoint.Key, endpoint.Secret).ShouldBe(("app", Secret));
+        (await taken.ProblemCodeAsync()).ShouldBe("webhook_endpoint.key_taken");
+        (await weak.ProblemCodeAsync()).ShouldBe("webhook_endpoint.invalid_secret");
+        var received = _receiver.ReceivedBy(url).ShouldHaveSingleItem();
+        received.Headers["webhook-signature"].ToString().ShouldBe($"v1,{Signature(Secret, received)}");
+    }
+
+    [Fact]
     [Trait("Requirement", "EVT-12")]
     public async Task LoopbackHttp_IsAcceptedInTestModeOnly_AndTheCatalogIsListed()
     {

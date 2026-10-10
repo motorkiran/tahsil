@@ -78,9 +78,19 @@ public sealed class CreateWebhookEndpointHandler(
             return WebhookErrors.UnknownEventType;
         }
 
-        var secret = WebhookSecrets.Generate();
+        if (request.Secret is not null && !WebhookSecrets.IsValid(request.Secret))
+        {
+            return WebhookErrors.InvalidSecret;
+        }
+
+        if (request.Key is { } key && await context.WebhookEndpoints.AnyAsync(endpoint => endpoint.Key == key, cancellationToken))
+        {
+            return WebhookErrors.KeyTaken;
+        }
+
+        var secret = request.Secret ?? WebhookSecrets.Generate();
         var created = WebhookEndpoint.Create(
-            request.Url, request.Description, eventTypes, request.Enabled, server.Value.IsTestMode,
+            request.Key, request.Url, request.Description, eventTypes, request.Enabled, server.Value.IsTestMode,
             id => encryption.Encrypt(secret, SecretPurposes.WebhookEndpointSecret, id), clock.GetUtcNow());
         if (created.IsFailure)
         {
@@ -90,8 +100,17 @@ public sealed class CreateWebhookEndpointHandler(
         var endpoint = created.Value;
         context.WebhookEndpoints.Add(endpoint);
         idempotency.RecordCreated(ResourceTypes.WebhookEndpoint, endpoint.Id);
-        audit.Record(AuditActions.WebhookEndpointCreated, AuditSubject.Of(AuditSubjects.WebhookEndpoint, endpoint.Id), new Dictionary<string, object?> { ["url"] = endpoint.Url });
-        await context.SaveChangesAsync(cancellationToken);
+        audit.Record(
+            AuditActions.WebhookEndpointCreated, AuditSubject.Of(AuditSubjects.WebhookEndpoint, endpoint.Id), new Dictionary<string, object?> { ["key"] = endpoint.Key, ["url"] = endpoint.Url });
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
+        {
+            return WebhookErrors.KeyTaken;
+        }
+
         return new CreatedWebhookEndpointResponse(WebhookMapper.ToResponse(endpoint), secret);
     }
 }
@@ -167,11 +186,21 @@ public sealed class DeleteWebhookEndpointHandler(ITahsilDbContext context, IAuth
 public sealed class RotateWebhookSecretHandler(
     ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, ISecretEncryption encryption, IOptions<WebhookOptions> options, BillingClock clock)
 {
-    public async Task<Result<WebhookSecretResponse>> HandleAsync(Guid id, CancellationToken cancellationToken)
+    public Task<Result<WebhookSecretResponse>> HandleAsync(Guid id, CancellationToken cancellationToken) => HandleAsync(id, null, cancellationToken);
+
+    /// <param name="id">The endpoint.</param>
+    /// <param name="secret">The new secret, such as a provisioning document's; one is generated when <see langword="null"/>.</param>
+    /// <param name="cancellationToken">Cancels the rotation.</param>
+    public async Task<Result<WebhookSecretResponse>> HandleAsync(Guid id, string? secret, CancellationToken cancellationToken)
     {
         if (authorizer.Require(TahsilPermissions.WebhooksWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
+        }
+
+        if (secret is not null && !WebhookSecrets.IsValid(secret))
+        {
+            return WebhookErrors.InvalidSecret;
         }
 
         if (await context.WebhookEndpoints.SingleOrDefaultAsync(endpoint => endpoint.Id == id, cancellationToken) is not { } endpoint)
@@ -179,7 +208,7 @@ public sealed class RotateWebhookSecretHandler(
             return WebhookErrors.EndpointNotFound;
         }
 
-        var secret = WebhookSecrets.Generate();
+        secret ??= WebhookSecrets.Generate();
         var now = clock.GetUtcNow();
         var previousUntil = now + options.Value.SecretRotationOverlap;
         endpoint.RotateSecret(endpointId => encryption.Encrypt(secret, SecretPurposes.WebhookEndpointSecret, endpointId), previousUntil, now);
@@ -300,6 +329,7 @@ internal static class WebhookMapper
 {
     public static WebhookEndpointResponse ToResponse(WebhookEndpoint endpoint) => new(
         endpoint.Id,
+        endpoint.Key,
         endpoint.Url,
         endpoint.Description,
         [.. endpoint.EventTypes],

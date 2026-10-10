@@ -24,6 +24,7 @@
     <MudPaper Outlined Class="pa-4">
         <MudSimpleTable Dense Elevation="0" id="endpoint-details">
             <tbody>
+                <tr><th>Key</th><td><code>@endpoint.Key</code></td></tr>
                 <tr><th>URL</th><td>@endpoint.Url</td></tr>
                 <tr><th>Description</th><td>@endpoint.Description</td></tr>
                 <tr><th>Events</th><td>@(endpoint.EventTypes.Count == 0 ? "All" : string.Join(", ", endpoint.EventTypes))</td></tr>

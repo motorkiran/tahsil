@@ -71,6 +71,18 @@ public static class WebhookSecrets
 
     public static string Generate() => Prefix + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
+    /// <summary>Whether a secret given by an operator is one: the prefix and the base64 of 24 to 64 bytes.</summary>
+    public static bool IsValid(string? secret)
+    {
+        if (secret is null || !secret.StartsWith(Prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var bytes = new byte[64];
+        return Convert.TryFromBase64String(secret[Prefix.Length..], bytes, out var length) && length >= 24;
+    }
+
     /// <summary>The HMAC key in a secret.</summary>
     public static byte[] KeyOf(string secret) => Convert.FromBase64String(secret.StartsWith(Prefix, StringComparison.Ordinal) ? secret[Prefix.Length..] : secret);
 }

@@ -19,6 +19,9 @@ public sealed class WebhookEndpoint : AggregateRoot
 
     public Guid Id { get; private init; }
 
+    /// <summary>What provisioning documents know the endpoint by (PRV-2); endpoints made through the API may have none.</summary>
+    public string? Key { get; private init; }
+
     public string Url { get; private set; } = string.Empty;
 
     public string? Description { get; private set; }
@@ -42,11 +45,16 @@ public sealed class WebhookEndpoint : AggregateRoot
 
     public DateTimeOffset UpdatedAt { get; private set; }
 
-    /// <summary>A new endpoint; the caller checks that the event types exist.</summary>
+    /// <summary>A new endpoint; the caller checks that the event types exist and the key is free.</summary>
     public static Result<WebhookEndpoint> Create(
-        string url, string? description, IEnumerable<string> eventTypes, bool enabled, bool allowLoopbackHttp, Func<Guid, byte[]> encryptSecret, DateTimeOffset now)
+        string? key, string url, string? description, IEnumerable<string> eventTypes, bool enabled, bool allowLoopbackHttp, Func<Guid, byte[]> encryptSecret, DateTimeOffset now)
     {
-        var endpoint = new WebhookEndpoint { Id = Guid.CreateVersion7(now), CreatedAt = now, Enabled = enabled };
+        if (key is not null && !Catalog.CatalogKey.IsValid(key))
+        {
+            return WebhookErrors.InvalidKey;
+        }
+
+        var endpoint = new WebhookEndpoint { Id = Guid.CreateVersion7(now), Key = key, CreatedAt = now, Enabled = enabled };
         var updated = endpoint.Update(url, description, eventTypes, enabled, allowLoopbackHttp, now);
         if (updated.IsFailure)
         {

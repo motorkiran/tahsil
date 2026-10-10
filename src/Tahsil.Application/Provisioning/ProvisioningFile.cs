@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Configuration;
 using Tahsil.Contracts;
 using Tahsil.Contracts.Serialization;
 
@@ -61,15 +62,18 @@ public sealed class ProvisioningOptions
     internal bool IsValid() => string.IsNullOrEmpty(FilePath) || File.Exists(FilePath);
 }
 
-/// <summary>Applies the provisioning file of <c>Tahsil:Provisioning:FilePath</c> when the database is prepared.</summary>
-public sealed class StartupProvisioning(ApplyProvisioningHandler apply)
+/// <summary>
+/// Applies the provisioning file of <c>Tahsil:Provisioning:FilePath</c> when the database is prepared, with its
+/// credentials and secrets read from the configuration it refers to (PRV-7).
+/// </summary>
+public sealed class StartupProvisioning(ApplyProvisioningHandler apply, IConfiguration configuration)
 {
     /// <summary>Returns a summary for the log; a document that cannot be applied stops startup.</summary>
     /// <exception cref="InvalidOperationException">The document cannot be applied; the message names the item.</exception>
     public async Task<string> ApplyAsync(string path, CancellationToken cancellationToken)
     {
-        var document = await ProvisioningFile.ReadAsync(path, cancellationToken);
-        var result = await apply.HandleAsync(document, dryRun: false, cancellationToken);
+        var document = ProvisioningSecrets.Resolve(await ProvisioningFile.ReadAsync(path, cancellationToken), name => configuration[name]);
+        var result = document.IsFailure ? document.Error : await apply.HandleAsync(document.Value, dryRun: false, cancellationToken);
         if (result.IsFailure)
         {
             throw new InvalidOperationException($"The provisioning file '{path}' cannot be applied. {result.Error.Code}: {result.Error.Message}");

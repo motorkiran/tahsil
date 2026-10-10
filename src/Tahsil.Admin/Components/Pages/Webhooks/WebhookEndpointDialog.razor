@@ -1,6 +1,10 @@
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="2">
+            @if (Endpoint is null)
+            {
+                <MudTextField @bind-Value="_key" Label="Key" HelperText="Optional; provisioning documents find the endpoint by it." />
+            }
             <MudTextField @bind-Value="_url" Label="URL" Placeholder="https://app.example.com/webhooks/tahsil" Required />
             <MudTextField @bind-Value="_description" Label="Description" />
             <MudSelect T="string" Label="Events" MultiSelection SelectedValues="_eventTypes" SelectedValuesChanged="values => _eventTypes = [.. values]"
@@ -19,6 +23,7 @@
 </MudDialog>
 
 @code {
+    private string? _key;
     private string _url = string.Empty;
     private string? _description;
     private List<string> _eventTypes = [];
@@ -47,7 +52,7 @@
     {
         var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
         Dialog.Close(Endpoint is null
-            ? DialogResult.Ok(new CreateWebhookEndpointRequest { Url = _url.Trim(), Description = description, EventTypes = _eventTypes })
+            ? DialogResult.Ok(new CreateWebhookEndpointRequest { Key = string.IsNullOrWhiteSpace(_key) ? null : _key.Trim(), Url = _url.Trim(), Description = description, EventTypes = _eventTypes })
             : DialogResult.Ok(new UpdateWebhookEndpointRequest { Url = _url.Trim(), Description = description, EventTypes = _eventTypes }));
     }
 }
