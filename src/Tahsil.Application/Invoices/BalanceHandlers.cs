@@ -104,12 +104,13 @@ public sealed class ListBalanceTransactionsHandler(ITahsilDbContext context, IAu
     }
 }
 
-/// <summary>Customers with invoices or balance history are anonymized instead of deleted.</summary>
+/// <summary>Customers with invoices, balance history or consent records are anonymized instead of deleted.</summary>
 public sealed class BillingHistory(ITahsilDbContext context) : Customers.ICustomerHistory
 {
     public async Task<bool> HasHistoryAsync(Guid customerId, CancellationToken cancellationToken) =>
         await context.Invoices.AnyAsync(invoice => invoice.CustomerId == customerId, cancellationToken)
-        || await context.BalanceTransactions.AnyAsync(row => row.CustomerId == customerId, cancellationToken);
+        || await context.BalanceTransactions.AnyAsync(row => row.CustomerId == customerId, cancellationToken)
+        || await context.ConsentRecords.AnyAsync(row => row.CustomerId == customerId, cancellationToken);
 }
 
 public static class BalanceTransactionErrors

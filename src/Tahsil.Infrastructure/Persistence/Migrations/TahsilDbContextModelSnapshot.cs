@@ -539,6 +539,71 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Common.AttentionItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("details")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset>("RaisedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("raised_at");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("resolution");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("subject_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_attention_items");
+
+                    b.HasIndex("RaisedAt")
+                        .HasDatabaseName("ix_attention_items_raised_at")
+                        .HasFilter("resolved_at IS NULL");
+
+                    b.HasIndex("Kind", "SubjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_attention_items_kind_subject_id")
+                        .HasFilter("resolved_at IS NULL");
+
+                    b.ToTable("attention_items", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Customers.BalanceTransaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -599,6 +664,87 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("balance_transactions", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Customers.ConsentRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<Guid?>("CheckoutSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checkout_session_id");
+
+                    b.Property<string>("Context")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("context")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<byte[]>("DocumentHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("document_hash");
+
+                    b.Property<string>("DocumentKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("document_key");
+
+                    b.Property<string>("DocumentVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("document_version");
+
+                    b.Property<IPAddress>("IpAddress")
+                        .HasColumnType("inet")
+                        .HasColumnName("ip_address");
+
+                    b.Property<Guid?>("PortalSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("portal_session_id");
+
+                    b.Property<byte[]>("RenderedDocument")
+                        .HasColumnType("bytea")
+                        .HasColumnName("rendered_document");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<string>("TextShown")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("text_shown");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("user_agent");
+
+                    b.HasKey("Id")
+                        .HasName("pk_consent_records");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_consent_records_customer_id_id");
+
+                    b.ToTable("consent_records", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Customers.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -616,6 +762,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DefaultPaymentMethodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_payment_method_id");
 
                     b.Property<string>("Email")
                         .HasMaxLength(254)
@@ -691,6 +841,9 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_customers");
 
+                    b.HasIndex("DefaultPaymentMethodId")
+                        .HasDatabaseName("ix_customers_default_payment_method_id");
+
                     b.HasIndex("ExternalId")
                         .IsUnique()
                         .HasDatabaseName("ix_customers_external_id")
@@ -730,6 +883,128 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasName("pk_customer_balances");
 
                     b.ToTable("customer_balances", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Customers.PaymentMethod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Bin")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("bin");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("brand");
+
+                    b.Property<string>("CardFamily")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("card_family");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<Guid>("ConsentRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consent_record_id");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("country");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<short?>("ExpMonth")
+                        .HasColumnType("smallint")
+                        .HasColumnName("exp_month");
+
+                    b.Property<short?>("ExpYear")
+                        .HasColumnType("smallint")
+                        .HasColumnName("exp_year");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Funding")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("funding");
+
+                    b.Property<string>("Issuer")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("issuer");
+
+                    b.Property<string>("Last4")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("last4");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<byte[]>("Token")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token");
+
+                    b.Property<byte[]>("TokenFingerprint")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_fingerprint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payment_methods");
+
+                    b.HasIndex("ConsentRecordId")
+                        .HasDatabaseName("ix_payment_methods_consent_record_id");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_payment_methods_expires_at")
+                        .HasFilter("status = 'active'");
+
+                    b.HasIndex("ConnectionId", "TokenFingerprint")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payment_methods_connection_id_token_fingerprint");
+
+                    b.HasIndex("CustomerId", "Status")
+                        .HasDatabaseName("ix_payment_methods_customer_id_status");
+
+                    b.ToTable("payment_methods", "tahsil");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Invoices.Invoice", b =>
@@ -1164,6 +1439,206 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("connection_currencies", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Payments.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("actor");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<long>("AmountRefunded")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_refunded");
+
+                    b.Property<DateTimeOffset?>("CanceledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("canceled_at");
+
+                    b.Property<Guid?>("CheckoutSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checkout_session_id");
+
+                    b.Property<Guid?>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<Guid?>("ConsentRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consent_record_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("failure_category");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<string>("Initiator")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("initiator");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("method");
+
+                    b.Property<Guid?>("PaymentMethodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_method_id");
+
+                    b.Property<string>("ProviderData")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("provider_data")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("ProviderFailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider_failure_code");
+
+                    b.Property<string>("ProviderFailureMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_failure_message");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_payment_id");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("purpose");
+
+                    b.Property<DateTimeOffset?>("ReconcileAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reconcile_at");
+
+                    b.Property<short>("ReconcileAttempts")
+                        .HasColumnType("smallint")
+                        .HasColumnName("reconcile_attempts");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("reference");
+
+                    b.Property<bool>("SaveCard")
+                        .HasColumnType("boolean")
+                        .HasColumnName("save_card");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("SucceededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("succeeded_at");
+
+                    b.Property<bool?>("ThreeDSecure")
+                        .HasColumnType("boolean")
+                        .HasColumnName("three_d_secure");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payments");
+
+                    b.HasIndex("ConsentRecordId")
+                        .HasDatabaseName("ix_payments_consent_record_id");
+
+                    b.HasIndex("InvoiceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payments_invoice_in_flight")
+                        .HasFilter("status IN ('processing', 'requires_action')");
+
+                    b.HasIndex("PaymentMethodId")
+                        .HasDatabaseName("ix_payments_payment_method_id");
+
+                    b.HasIndex("ReconcileAt")
+                        .HasDatabaseName("ix_payments_reconcile_at")
+                        .HasFilter("status IN ('processing', 'requires_action')");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payments_reference");
+
+                    b.HasIndex("ConnectionId", "ProviderPaymentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payments_connection_id_provider_payment_id")
+                        .HasFilter("provider_payment_id IS NOT NULL");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_payments_customer_id_id");
+
+                    b.ToTable("payments", "tahsil", t =>
+                        {
+                            t.HasCheckConstraint("ck_payments_amount", "amount > 0 OR (purpose = 'setup' AND amount = 0)");
+
+                            t.HasCheckConstraint("ck_payments_subject", "invoice_id IS NOT NULL OR checkout_session_id IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Payments.ProviderConnection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1578,6 +2053,25 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_balance_transactions_invoices_invoice_id");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Customers.ConsentRecord", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_consent_records_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Customers.Customer", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.PaymentMethod", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultPaymentMethodId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_customers_payment_methods_default_payment_method_id");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Customers.CustomerBalance", b =>
                 {
                     b.HasOne("Tahsil.Domain.Customers.Customer", null)
@@ -1586,6 +2080,30 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_customer_balances_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Customers.PaymentMethod", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payment_methods_provider_connections_connection_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.ConsentRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ConsentRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payment_methods_consent_records_consent_record_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_payment_methods_customers_customer_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Invoices.Invoice", b =>
@@ -1662,6 +2180,40 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_connection_currencies_provider_connections_connection_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Payments.Payment", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payments_provider_connections_connection_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.ConsentRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ConsentRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payments_consent_records_consent_record_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payments_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Invoices.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payments_invoices_invoice_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.PaymentMethod", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payments_payment_methods_payment_method_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Payments.ProviderCustomer", b =>

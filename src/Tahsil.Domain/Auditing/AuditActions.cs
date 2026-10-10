@@ -37,6 +37,12 @@ public static class AuditActions
     public const string InvoiceItemCreated = "invoice_item.created";
     public const string InvoiceItemDeleted = "invoice_item.deleted";
     public const string CustomerBalanceAdjusted = "customer.balance_adjusted";
+    public const string InvoicePaymentFailed = "invoice.payment_failed";
+    public const string PaymentSucceeded = "payment.succeeded";
+    public const string PaymentFailed = "payment.failed";
+
+    /// <summary>Something needs an operator, such as an amount mismatch (PAY-15); the data names the kind.</summary>
+    public const string AttentionRaised = "attention.raised";
 
     public const string ProvisioningApplied = "provisioning.applied";
 

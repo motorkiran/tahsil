@@ -6,6 +6,7 @@ using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Clock;
+using Tahsil.Domain.Common;
 using Tahsil.Domain.Customers;
 using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Payments;
@@ -46,6 +47,14 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     public DbSet<Invoice> Invoices => Set<Invoice>();
 
     public DbSet<PendingInvoiceItem> PendingInvoiceItems => Set<PendingInvoiceItem>();
+
+    public DbSet<Payment> Payments => Set<Payment>();
+
+    public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+
+    public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
+
+    public DbSet<AttentionItem> AttentionItems => Set<AttentionItem>();
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 

@@ -101,6 +101,9 @@ public sealed partial class Customer : AggregateRoot
 
     public IReadOnlyDictionary<string, string> Metadata { get; private set; } = Common.Metadata.Empty;
 
+    /// <summary>The card charged when nothing more specific is set; an active payment method of this customer.</summary>
+    public Guid? DefaultPaymentMethodId { get; private set; }
+
     public DateTimeOffset? AnonymizedAt { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private init; }
@@ -159,6 +162,12 @@ public sealed partial class Customer : AggregateRoot
 
     /// <summary>Gives the customer an external ID, as an upsert by external ID does for a customer it creates.</summary>
     public void SetExternalId(string externalId) => ExternalId = externalId;
+
+    public void SetDefaultPaymentMethod(Guid? paymentMethodId, DateTimeOffset now)
+    {
+        DefaultPaymentMethodId = paymentMethodId;
+        UpdatedAt = now;
+    }
 
     /// <summary>
     /// Clears the personal data of a customer with billing history (CUS-8): email, name, phone, tax ID, tax office,

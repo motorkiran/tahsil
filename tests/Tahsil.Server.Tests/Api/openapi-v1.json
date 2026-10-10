@@ -2040,6 +2040,102 @@
         ]
       }
     },
+    "/api/v1/invoices/{id}/pay": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Pay an invoice with a saved card",
+        "description": "Charges one of the customer's saved cards now, off session, whatever the invoice's schedule. The payment's status says how it ended; `processing` means the provider's answer is still being confirmed.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "PayInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/audit-events": {
       "get": {
         "tags": [
@@ -3910,6 +4006,151 @@
           },
           "403": {
             "description": "The API key does not have `tahsil.customers:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/payments": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "List payments",
+        "description": "Newest first.\n\nRequires the `tahsil.payments:read` permission.",
+        "operationId": "ListPayments",
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Only this customer's payments.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "invoice",
+            "in": "query",
+            "description": "Only payments of this invoice.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`processing`, `requires_action`, `succeeded`, `failed` or `canceled`.",
+            "schema": {
+              "$ref": "#/components/schemas/PaymentStatus"
+            }
+          },
+          {
+            "name": "connection",
+            "in": "query",
+            "description": "Only payments through this provider connection.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfPaymentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.payments:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Get a payment",
+        "description": "Requires the `tahsil.payments:read` permission.",
+        "operationId": "GetPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.payments:read`."
           }
         },
         "security": [
@@ -6247,6 +6488,28 @@
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
+      "PageOfPaymentResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
       "PageOfPriceResponse": {
         "required": [
           "items",
@@ -6334,6 +6597,231 @@
           }
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PayInvoiceRequest": {
+        "required": [
+          "paymentMethod"
+        ],
+        "type": "object",
+        "properties": {
+          "paymentMethod": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Pays an invoice now with one of the customer's saved cards, off session."
+      },
+      "PaymentInitiator": {
+        "enum": [
+          "customer",
+          "merchant",
+          "operator"
+        ]
+      },
+      "PaymentMethodKind": {
+        "enum": [
+          "card",
+          "bank_transfer",
+          "cash",
+          "other"
+        ]
+      },
+      "PaymentPurpose": {
+        "enum": [
+          "charge",
+          "setup"
+        ]
+      },
+      "PaymentResponse": {
+        "required": [
+          "id",
+          "reference",
+          "invoiceId",
+          "customerId",
+          "connectionId",
+          "paymentMethodId",
+          "amount",
+          "currency",
+          "purpose",
+          "status",
+          "initiator",
+          "method",
+          "providerPaymentId",
+          "threeDSecure",
+          "failureCode",
+          "failureCategory",
+          "failureMessage",
+          "providerFailureCode",
+          "providerFailureMessage",
+          "amountRefunded",
+          "expiresAt",
+          "succeededAt",
+          "failedAt",
+          "canceledAt",
+          "actor",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "description": "What the provider knows the payment by."
+          },
+          "invoiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "paymentMethodId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/PaymentPurpose"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          },
+          "initiator": {
+            "$ref": "#/components/schemas/PaymentInitiator"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethodKind"
+          },
+          "providerPaymentId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "threeDSecure": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A normalized code such as `insufficient_funds`."
+          },
+          "failureCategory": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`retry`, `new_payment_method`, `authenticate` or `merchant`."
+          },
+          "failureMessage": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A message safe to show the customer."
+          },
+          "providerFailureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerFailureMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "amountRefunded": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "succeededAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "canceledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActorResponse"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaymentStatus": {
+        "enum": [
+          "processing",
+          "requires_action",
+          "succeeded",
+          "failed",
+          "canceled"
+        ]
       },
       "PriceInterval": {
         "enum": [
@@ -7686,10 +8174,13 @@
       "name": "Provider connections"
     },
     {
+      "name": "Invoices"
+    },
+    {
       "name": "Audit events"
     },
     {
-      "name": "Invoices"
+      "name": "Payments"
     },
     {
       "name": "Provisioning"

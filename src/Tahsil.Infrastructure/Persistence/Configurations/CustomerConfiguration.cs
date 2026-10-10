@@ -29,6 +29,7 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasConversion(new JsonValueConverter<CustomerAddress?>(), JsonValueConverter<CustomerAddress?>.Comparer);
         builder.Property(customer => customer.Metadata).HasMetadataColumn();
         builder.Ignore(customer => customer.KimlikSubscriber);
+        builder.HasOne<PaymentMethod>().WithMany().HasForeignKey(customer => customer.DefaultPaymentMethodId).OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(customer => customer.ExternalId).IsUnique().HasFilter("external_id IS NOT NULL");
         builder.HasIndex(customer => new { customer.KimlikSubscriberType, customer.KimlikSubscriberId }).IsUnique().HasFilter("kimlik_subscriber_id IS NOT NULL");

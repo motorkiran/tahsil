@@ -346,6 +346,30 @@ public sealed class Invoice : AggregateRoot
         return AppliedBalance;
     }
 
+    /// <summary>Whether a payment of this amount is still needed, so a success can be applied to the invoice.</summary>
+    public bool NeedsPayment(long amount) => Status is InvoiceStatus.Open or InvoiceStatus.Uncollectible && amount > 0 && amount <= AmountRemaining;
+
+    /// <summary>A payment reduced what is left to pay; at zero the invoice is paid (INV-15).</summary>
+    public Result ApplyPayment(long amount, DateTimeOffset now)
+    {
+        if (!NeedsPayment(amount))
+        {
+            return InvoiceErrors.Overpayment;
+        }
+
+        AmountPaid = checked(AmountPaid + amount);
+        AmountRemaining = checked(AmountRemaining - amount);
+        if (AmountRemaining == 0)
+        {
+            Status = InvoiceStatus.Paid;
+            PaidAt = now;
+            NextPaymentAttemptAt = null;
+        }
+
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
     /// <summary>Stops collecting an open invoice; the debt stays payable (INV-17).</summary>
     public Result MarkUncollectible(DateTimeOffset now)
     {

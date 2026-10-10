@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Catalog;
+using Tahsil.Domain.Common;
 using Tahsil.Domain.Customers;
 using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Payments;
@@ -37,6 +38,14 @@ public interface ITahsilDbContext
     DbSet<Invoice> Invoices { get; }
 
     DbSet<PendingInvoiceItem> PendingInvoiceItems { get; }
+
+    DbSet<Payment> Payments { get; }
+
+    DbSet<PaymentMethod> PaymentMethods { get; }
+
+    DbSet<ConsentRecord> ConsentRecords { get; }
+
+    DbSet<AttentionItem> AttentionItems { get; }
 
     /// <summary>The audit trail, for queries. Record events through the audit log.</summary>
     IQueryable<AuditEvent> AuditEvents { get; }

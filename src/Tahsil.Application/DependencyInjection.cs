@@ -8,6 +8,7 @@ using Tahsil.Application.Common;
 using Tahsil.Application.Connections;
 using Tahsil.Application.Customers;
 using Tahsil.Application.Invoices;
+using Tahsil.Application.Payments;
 using Tahsil.Application.Provisioning;
 
 namespace Tahsil.Application;
@@ -119,6 +120,20 @@ public static class DependencyInjection
         services.AddScoped<GetBalanceTransactionHandler>();
         services.AddScoped<ListBalanceTransactionsHandler>();
         services.AddScoped<ICustomerHistory, BillingHistory>();
+        services.AddOptions<PaymentOptions>()
+            .BindConfiguration(PaymentOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{PaymentOptions.SectionName}: timeouts must be positive.")
+            .ValidateOnStart();
+        services.AddScoped<PaymentRequests>();
+        services.AddScoped<SavedCards>();
+        services.AddScoped<Attention>();
+        services.AddScoped<PaymentOutcomes>();
+        services.AddScoped<CustomerPayments>();
+        services.AddScoped<MerchantPayments>();
+        services.AddScoped<PayInvoiceHandler>();
+        services.AddScoped<GetPaymentHandler>();
+        services.AddScoped<ListPaymentsHandler>();
+        services.AddScoped<IConnectionUsage, PaymentConnectionUsage>();
         services.AddScoped<CustomerMapper>();
         services.AddScoped<CreateCustomerHandler>();
         services.AddScoped<UpsertCustomerHandler>();

@@ -12,4 +12,5 @@ public static class ResourceTypes
     public const string Invoice = "invoice";
     public const string InvoiceItem = "invoice_item";
     public const string BalanceTransaction = "balance_transaction";
+    public const string Payment = "payment";
 }
