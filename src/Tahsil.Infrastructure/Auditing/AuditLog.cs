@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Webhooks;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
 using Tahsil.Infrastructure.Persistence;
@@ -8,7 +10,8 @@ using Tahsil.Infrastructure.Persistence.Conventions;
 namespace Tahsil.Infrastructure.Auditing;
 
 /// <summary>Records audit events in the current unit of work, at the billing clock's time.</summary>
-internal sealed class AuditLog(TahsilDbContext context, IRequestContext request, BillingClock clock) : IAuditLog
+/// <remarks>Audit events whose action is an event type of the catalog are also queued as webhooks (EVT-4).</remarks>
+internal sealed class AuditLog(TahsilDbContext context, IRequestContext request, IOutbox outbox, IOptions<ServerOptions> server, BillingClock clock) : IAuditLog
 {
     public void Record(
         string action,
@@ -20,7 +23,7 @@ internal sealed class AuditLog(TahsilDbContext context, IRequestContext request,
         actor ??= request.Caller.ToActor();
         var now = clock.GetUtcNow();
 
-        context.AuditEvents.Add(new AuditEvent
+        var auditEvent = new AuditEvent
         {
             Id = Guid.CreateVersion7(now),
             OccurredAt = now,
@@ -34,7 +37,12 @@ internal sealed class AuditLog(TahsilDbContext context, IRequestContext request,
             UserAgent = Truncate(request.UserAgent, AuditEvent.UserAgentMaxLength),
             CorrelationId = Truncate(request.CorrelationId, AuditEvent.ReferenceMaxLength),
             Data = data is null ? null : JsonSerializer.Serialize(data, StorageJson.Options),
-        });
+        };
+        context.AuditEvents.Add(auditEvent);
+        if (WebhookEvents.From(auditEvent, server.Value.Mode) is { } webhookEvent)
+        {
+            outbox.Enqueue(webhookEvent);
+        }
     }
 
     private static string? Truncate(string? value, int maxLength) =>

@@ -86,7 +86,7 @@ public sealed class CreateInvoiceHandler(
         invoice.AddLines(drafts.Value, customer.IsTaxExempt, now);
         context.Invoices.Add(invoice);
         idempotency.RecordCreated(ResourceTypes.Invoice, invoice.Id);
-        audit.Record(AuditActions.InvoiceCreated, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: customer.Id);
+        audit.Record(AuditActions.InvoiceDrafted, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: customer.Id);
         try
         {
             await context.SaveChangesAsync(cancellationToken);

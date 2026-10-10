@@ -29,7 +29,7 @@ internal abstract partial class DueWorker(
     BillingClock clock,
     IOptions<WorkerOptions> options,
     WorkerSignals signals,
-    ILogger logger) : BackgroundService
+    ILogger logger) : BackgroundService, IRunnableWorker
 {
     private const string ItemSavepoint = "item";
     private const int ConflictAttempts = 3;

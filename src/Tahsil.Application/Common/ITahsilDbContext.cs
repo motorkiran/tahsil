@@ -7,6 +7,7 @@ using Tahsil.Domain.Common;
 using Tahsil.Domain.Customers;
 using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Payments;
+using Tahsil.Domain.Webhooks;
 
 namespace Tahsil.Application.Common;
 
@@ -44,6 +45,10 @@ public interface ITahsilDbContext
     DbSet<Refund> Refunds { get; }
 
     DbSet<ProviderNotification> ProviderNotifications { get; }
+
+    DbSet<WebhookEndpoint> WebhookEndpoints { get; }
+
+    DbSet<WebhookDelivery> WebhookDeliveries { get; }
 
     DbSet<PaymentMethod> PaymentMethods { get; }
 

@@ -35,7 +35,7 @@ internal static class IsolatedHosts
     /// </summary>
     public static async Task RunWorkersUntilIdleAsync(this WebApplicationFactory<Program> host)
     {
-        var workers = host.Services.GetServices<IHostedService>().OfType<DueWorker>().ToList();
+        var workers = host.Services.GetServices<IHostedService>().OfType<IRunnableWorker>().ToList();
         int processed;
         do
         {

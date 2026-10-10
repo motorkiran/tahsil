@@ -67,7 +67,7 @@ public sealed partial class InvoiceApiTests(TahsilServerFixture server)
         var stored = await host.QueryAsync<byte[]>($"SELECT customer_tax_id AS \"Value\" FROM tahsil.invoices WHERE id = {draft.Id}");
         Encoding.UTF8.GetString(stored.Single()).ShouldNotContain("10000000146");
         (await host.QueryAsync<string>($"SELECT action AS \"Value\" FROM tahsil.audit_events WHERE subject_id = {draft.Id.ToString()} ORDER BY id"))
-            .ShouldBe(["invoice.created", "invoice.updated", "invoice.updated", "invoice.finalized"]);
+            .ShouldBe(["invoice.drafted", "invoice.updated", "invoice.updated", "invoice.finalized"]);
     }
 
     [Theory]

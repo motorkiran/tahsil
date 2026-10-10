@@ -86,7 +86,9 @@ public sealed class InvoiceFinalizer(
         ["total"] = invoice.Total,
         ["amountDue"] = invoice.AmountDue,
         ["amountPaid"] = invoice.AmountPaid,
+        ["amountRemaining"] = invoice.AmountRemaining,
         ["currency"] = invoice.Currency,
+        ["dueDate"] = invoice.DueDate,
         ["subscriptionId"] = invoice.SubscriptionId,
         ["billingReason"] = System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(invoice.BillingReason.ToString()),
     };

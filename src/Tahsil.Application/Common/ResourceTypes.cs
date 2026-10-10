@@ -14,4 +14,5 @@ public static class ResourceTypes
     public const string BalanceTransaction = "balance_transaction";
     public const string Payment = "payment";
     public const string Refund = "refund";
+    public const string WebhookEndpoint = "webhook_endpoint";
 }

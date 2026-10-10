@@ -144,7 +144,10 @@ public sealed class PaymentOutcomes(
             audit.Record(AuditActions.InvoicePaymentFailed, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), new Dictionary<string, object?>
             {
                 ["number"] = invoice.Number,
+                ["amountDue"] = invoice.AmountDue,
+                ["currency"] = invoice.Currency,
                 ["failureCode"] = payment.FailureCode,
+                ["failureCategory"] = payment.FailureCategory,
                 ["attempt"] = invoice.AttemptCount,
                 ["nextAttemptAt"] = invoice.NextPaymentAttemptAt,
             }, customerId: invoice.CustomerId);
@@ -185,7 +188,10 @@ public sealed class PaymentOutcomes(
         ["currency"] = payment.Currency,
         ["invoiceId"] = payment.InvoiceId,
         ["initiator"] = payment.Initiator.ToString().ToLowerInvariant(),
+        ["method"] = System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(payment.Method.ToString()),
+        ["connectionId"] = payment.ConnectionId,
         ["failureCode"] = payment.FailureCode,
+        ["failureCategory"] = payment.FailureCategory,
         ["lateSuccess"] = late ? true : null,
     };
 

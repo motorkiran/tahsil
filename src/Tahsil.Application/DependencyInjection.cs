@@ -10,6 +10,7 @@ using Tahsil.Application.Customers;
 using Tahsil.Application.Invoices;
 using Tahsil.Application.Payments;
 using Tahsil.Application.Provisioning;
+using Tahsil.Application.Webhooks;
 
 namespace Tahsil.Application;
 
@@ -140,6 +141,22 @@ public static class DependencyInjection
         services.AddScoped<RefundReconciliation>();
         services.AddScoped<ProviderNotifications>();
         services.AddScoped<ProviderNotificationProcessing>();
+        services.AddOptions<WebhookOptions>()
+            .BindConfiguration(WebhookOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{WebhookOptions.SectionName}: intervals and delays must be positive, the batch size between 1 and 100 and the endpoint concurrency between 1 and 64.")
+            .ValidateOnStart();
+        services.AddScoped<IOutboxMessageHandler<WebhookEventPublished>, WebhookFanOut>();
+        services.AddScoped<ListEventTypesHandler>();
+        services.AddScoped<ListWebhookEndpointsHandler>();
+        services.AddScoped<GetWebhookEndpointHandler>();
+        services.AddScoped<CreateWebhookEndpointHandler>();
+        services.AddScoped<UpdateWebhookEndpointHandler>();
+        services.AddScoped<DeleteWebhookEndpointHandler>();
+        services.AddScoped<RotateWebhookSecretHandler>();
+        services.AddScoped<SendTestWebhookHandler>();
+        services.AddScoped<ListWebhookDeliveriesHandler>();
+        services.AddScoped<GetWebhookDeliveryHandler>();
+        services.AddScoped<RedeliverWebhookHandler>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();

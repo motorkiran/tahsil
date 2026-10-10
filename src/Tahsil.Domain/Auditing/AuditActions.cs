@@ -27,7 +27,11 @@ public static class AuditActions
     /// <summary>The currencies' connections changed; the data has the routing before and after (PAY-6).</summary>
     public const string ConnectionRoutingUpdated = "connection.routing_updated";
 
+    /// <summary>A draft with a draft period was created; the billing engine's cycle invoices (EVT §2).</summary>
     public const string InvoiceCreated = "invoice.created";
+
+    /// <summary>A draft was created by hand, through the API or the admin panel.</summary>
+    public const string InvoiceDrafted = "invoice.drafted";
     public const string InvoiceUpdated = "invoice.updated";
     public const string InvoiceDeleted = "invoice.deleted";
     public const string InvoiceFinalized = "invoice.finalized";
@@ -47,6 +51,11 @@ public static class AuditActions
 
     /// <summary>Something needs an operator, such as an amount mismatch (PAY-15); the data names the kind.</summary>
     public const string AttentionRaised = "attention.raised";
+
+    public const string WebhookEndpointCreated = "webhook_endpoint.created";
+    public const string WebhookEndpointUpdated = "webhook_endpoint.updated";
+    public const string WebhookEndpointDeleted = "webhook_endpoint.deleted";
+    public const string WebhookEndpointSecretRotated = "webhook_endpoint.secret_rotated";
 
     public const string ProvisioningApplied = "provisioning.applied";
 

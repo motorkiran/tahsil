@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Application.Connections;
 using Tahsil.Application.Invoices;
+using Tahsil.Application.Webhooks;
 using Tahsil.Infrastructure.Auditing;
 using Tahsil.Infrastructure.Billing;
 using Tahsil.Infrastructure.Clock;
@@ -17,6 +18,7 @@ using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence;
 using Tahsil.Infrastructure.Providers;
 using Tahsil.Infrastructure.Security;
+using Tahsil.Infrastructure.Webhooks;
 using Tahsil.Infrastructure.Workers;
 
 namespace Tahsil.Infrastructure;
@@ -34,6 +36,7 @@ public static class DependencyInjection
         AddBillingClock(services);
         AddProviders(services);
         AddBilling(services);
+        AddWebhooks(services);
         AddWorkers(services);
         AddOutbox(services);
         AddAuditing(services);
@@ -96,6 +99,8 @@ public static class DependencyInjection
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("invoices", "customer_tax_id", SecretPurposes.CustomerTaxId));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("payment_methods", "token", SecretPurposes.PaymentMethodToken));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("provider_notifications", "raw_body", SecretPurposes.ProviderNotificationRawBody));
+        services.AddSingleton<IEncryptedStore>(new EncryptedColumn("webhook_endpoints", "secret", SecretPurposes.WebhookEndpointSecret));
+        services.AddSingleton<IEncryptedStore>(new EncryptedColumn("webhook_endpoints", "previous_secret", SecretPurposes.WebhookEndpointSecret));
         services.AddScoped<SecretReencryption>();
 
         // Every instance shares one key ring, stored in PostgreSQL and encrypted with the master key.
@@ -109,6 +114,16 @@ public static class DependencyInjection
     {
         services.AddHttpClient();
         services.AddSingleton<IProviderContextFactory, ProviderContextFactory>();
+    }
+
+    private static void AddWebhooks(IServiceCollection services)
+    {
+        services.AddScoped<WebhookSender>();
+        services.AddHttpClient(WebhookSender.HttpClientName)
+            .ConfigureHttpClient((provider, client) => WebhookHttpClient.Configure(client, provider.GetRequiredService<IOptions<WebhookOptions>>().Value.Timeout))
+            .ConfigurePrimaryHttpMessageHandler(provider => WebhookHttpClient.Handler(provider.GetRequiredService<IOptions<WebhookOptions>>().Value.AllowPrivateNetworks));
+        AddHostedSingleton<WebhookDeliveryService>(services);
+        AddHostedSingleton<WebhookDeliveryCleanup>(services);
     }
 
     private static void AddBilling(IServiceCollection services)

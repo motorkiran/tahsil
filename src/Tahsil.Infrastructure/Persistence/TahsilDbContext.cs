@@ -10,6 +10,7 @@ using Tahsil.Domain.Common;
 using Tahsil.Domain.Customers;
 using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Payments;
+using Tahsil.Domain.Webhooks;
 using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence.Conventions;
@@ -53,6 +54,10 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     public DbSet<Refund> Refunds => Set<Refund>();
 
     public DbSet<ProviderNotification> ProviderNotifications => Set<ProviderNotification>();
+
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
 

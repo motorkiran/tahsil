@@ -34,7 +34,8 @@ public sealed class CreateCustomerHandler(
 
         context.Customers.Add(customer);
         idempotency.RecordCreated(ResourceTypes.Customer, customer.Id);
-        audit.Record(AuditActions.CustomerCreated, AuditSubject.Of(AuditSubjects.Customer, customer.Id), customerId: customer.Id);
+        audit.Record(
+            AuditActions.CustomerCreated, AuditSubject.Of(AuditSubjects.Customer, customer.Id), new Dictionary<string, object?> { ["externalId"] = customer.ExternalId }, customerId: customer.Id);
         try
         {
             await context.SaveChangesAsync(cancellationToken);
