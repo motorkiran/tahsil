@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace Tahsil.Providers.Abstractions;
 
 /// <summary>A provider's answer, read in full.</summary>
-public sealed record ProviderResponse(int Status, string Body, HttpResponseHeaders Headers)
+public sealed record ProviderHttpResponse(int Status, string Body, HttpResponseHeaders Headers)
 {
     public bool IsSuccess => Status is >= 200 and < 300;
 
@@ -18,7 +18,7 @@ public enum ProviderCallFailure
     ConnectionFailed,
 }
 
-public sealed record ProviderCallResult(ProviderResponse? Response, ProviderCallFailure? Failure)
+public sealed record ProviderCallResult(ProviderHttpResponse? Response, ProviderCallFailure? Failure)
 {
     public bool Answered => Response is not null;
 }
@@ -59,7 +59,7 @@ public static partial class ProviderHttp
                 LogResponse(logger, (int)response.StatusCode, Redaction.Body(text, response.Content.Headers.ContentType?.MediaType ?? "application/json", redact));
             }
 
-            return new(new ProviderResponse((int)response.StatusCode, text, response.Headers), null);
+            return new(new ProviderHttpResponse((int)response.StatusCode, text, response.Headers), null);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

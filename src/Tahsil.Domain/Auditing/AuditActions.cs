@@ -20,6 +20,13 @@ public static class AuditActions
     public const string CustomerUpdated = "customer.updated";
     public const string CustomerDeleted = "customer.deleted";
 
+    public const string ConnectionCreated = "connection.created";
+    public const string ConnectionUpdated = "connection.updated";
+    public const string ConnectionDeleted = "connection.deleted";
+
+    /// <summary>The currencies' connections changed; the data has the routing before and after (PAY-6).</summary>
+    public const string ConnectionRoutingUpdated = "connection.routing_updated";
+
     public const string ProvisioningApplied = "provisioning.applied";
 
     public const string ApiKeyCreated = "api_key.created";

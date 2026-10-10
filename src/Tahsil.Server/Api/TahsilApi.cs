@@ -25,6 +25,7 @@ internal static class TahsilApi
         services.AddApiRateLimiting();
         services.AddCatalogResourceReaders();
         services.AddCustomerResourceReaders();
+        services.AddConnectionResourceReaders();
 
         services.ConfigureHttpJsonOptions(options => TahsilJson.Configure(options.SerializerOptions));
         services.AddValidation();
@@ -63,6 +64,7 @@ internal static class TahsilApi
             .MapApiKeyEndpoints()
             .MapCatalogEndpoints()
             .MapCustomerEndpoints()
+            .MapConnectionEndpoints()
             .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();
 

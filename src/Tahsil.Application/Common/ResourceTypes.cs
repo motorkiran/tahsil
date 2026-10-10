@@ -8,4 +8,5 @@ public static class ResourceTypes
     public const string Product = "product";
     public const string Price = "price";
     public const string Customer = "customer";
+    public const string Connection = "provider_connection";
 }

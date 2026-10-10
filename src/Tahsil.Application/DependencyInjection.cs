@@ -5,6 +5,7 @@ using Tahsil.Application.Auditing;
 using Tahsil.Application.Branding;
 using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
+using Tahsil.Application.Connections;
 using Tahsil.Application.Customers;
 using Tahsil.Application.Provisioning;
 
@@ -73,6 +74,20 @@ public static class DependencyInjection
         services.AddScoped<UpdatePriceHandler>();
         services.AddScoped<GetPriceHandler>();
         services.AddScoped<ListPricesHandler>();
+        services.AddSingleton<ProviderRegistry>();
+        services.AddSingleton<ConnectionSecrets>();
+        services.AddSingleton<ConnectionMapper>();
+        services.AddSingleton<ProviderAccess>();
+        services.AddScoped<ConnectionStartup>();
+        services.AddScoped<ListProvidersHandler>();
+        services.AddScoped<CreateConnectionHandler>();
+        services.AddScoped<UpdateConnectionHandler>();
+        services.AddScoped<GetConnectionHandler>();
+        services.AddScoped<ListConnectionsHandler>();
+        services.AddScoped<DeleteConnectionHandler>();
+        services.AddScoped<TestConnectionHandler>();
+        services.AddScoped<GetRoutingHandler>();
+        services.AddScoped<UpdateRoutingHandler>();
         services.AddScoped<CustomerMapper>();
         services.AddScoped<CreateCustomerHandler>();
         services.AddScoped<UpsertCustomerHandler>();

@@ -75,6 +75,14 @@ public sealed class DataProtectionTests(TahsilServerFixture server)
         after.Services.GetRequiredService<ISecretEncryption>().DecryptString(stored, TestPurpose, owner).ShouldBe("credential");
     }
 
+    [Fact]
+    [Trait("Requirement", "FND-30")]
+    public void EverySecretColumn_IsRegisteredForReencryption()
+    {
+        server.Services.GetServices<IEncryptedStore>().Select(store => store.Name)
+            .ShouldBe(["data_protection_keys.xml", "customers.tax_id", "provider_connections.credentials"], ignoreOrder: true);
+    }
+
     private WebApplicationFactory<Program> Host(string database, string masterKey, int keyId = 1, string? previousKey1 = null)
     {
         var settings = new Dictionary<string, string?>

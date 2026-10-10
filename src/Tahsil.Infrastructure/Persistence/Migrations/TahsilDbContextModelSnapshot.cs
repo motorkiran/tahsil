@@ -647,6 +647,155 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Payments.ConnectionCurrency", b =>
+                {
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("Currency")
+                        .HasName("pk_connection_currencies");
+
+                    b.HasIndex("ConnectionId")
+                        .HasDatabaseName("ix_connection_currencies_connection_id");
+
+                    b.ToTable("connection_currencies", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Payments.ProviderConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<byte[]>("Credentials")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("credentials");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("environment");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("LastTestMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("last_test_message");
+
+                    b.Property<string>("LastTestStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("last_test_status");
+
+                    b.Property<DateTimeOffset?>("LastTestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_tested_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("Settings")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("settings")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_provider_connections");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_provider_connections_key");
+
+                    b.ToTable("provider_connections", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Payments.ProviderCustomer", b =>
+                {
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("data")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reference");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CustomerId", "ConnectionId")
+                        .HasName("pk_provider_customers");
+
+                    b.HasIndex("ConnectionId", "Reference")
+                        .IsUnique()
+                        .HasDatabaseName("ix_provider_customers_connection_id_reference");
+
+                    b.ToTable("provider_customers", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Infrastructure.Idempotency.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -846,6 +995,33 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TaxRateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_prices_tax_rates_tax_rate_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Payments.ConnectionCurrency", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_connection_currencies_provider_connections_connection_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Payments.ProviderCustomer", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_provider_customers_provider_connections_connection_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_provider_customers_customers_customer_id");
                 });
 #pragma warning restore 612, 618
         }

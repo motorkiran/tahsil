@@ -7,11 +7,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Connections;
 using Tahsil.Infrastructure.Auditing;
 using Tahsil.Infrastructure.Clock;
 using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
 using Tahsil.Infrastructure.Persistence;
+using Tahsil.Infrastructure.Providers;
 using Tahsil.Infrastructure.Security;
 using Tahsil.Infrastructure.Workers;
 
@@ -28,6 +30,7 @@ public static class DependencyInjection
         AddPersistence(services);
         AddSecurity(services);
         AddBillingClock(services);
+        AddProviders(services);
         AddWorkers(services);
         AddOutbox(services);
         AddAuditing(services);
@@ -86,6 +89,7 @@ public static class DependencyInjection
         services.AddSingleton<ISecretEncryption, SecretEncryption>();
         services.AddSingleton<IEncryptedStore, DataProtectionKeyRingStore>();
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("customers", "tax_id", SecretPurposes.CustomerTaxId));
+        services.AddSingleton<IEncryptedStore>(new EncryptedColumn("provider_connections", "credentials", SecretPurposes.ConnectionCredentials));
         services.AddScoped<SecretReencryption>();
 
         // Every instance shares one key ring, stored in PostgreSQL and encrypted with the master key.
@@ -93,6 +97,12 @@ public static class DependencyInjection
             .SetApplicationName("Tahsil")
             .PersistKeysToDbContext<TahsilDbContext>();
         services.AddSingleton<IConfigureOptions<KeyManagementOptions>, ConfigureKeyRingEncryption>();
+    }
+
+    private static void AddProviders(IServiceCollection services)
+    {
+        services.AddHttpClient();
+        services.AddSingleton<IProviderContextFactory, ProviderContextFactory>();
     }
 
     private static void AddBillingClock(IServiceCollection services)

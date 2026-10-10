@@ -4,6 +4,7 @@ using Tahsil.Domain.ApiKeys;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Customers;
+using Tahsil.Domain.Payments;
 
 namespace Tahsil.Application.Common;
 
@@ -21,6 +22,12 @@ public interface ITahsilDbContext
     DbSet<Price> Prices { get; }
 
     DbSet<Customer> Customers { get; }
+
+    DbSet<ProviderConnection> ProviderConnections { get; }
+
+    DbSet<ConnectionCurrency> ConnectionCurrencies { get; }
+
+    DbSet<ProviderCustomer> ProviderCustomers { get; }
 
     /// <summary>The audit trail, for queries. Record events through the audit log.</summary>
     IQueryable<AuditEvent> AuditEvents { get; }

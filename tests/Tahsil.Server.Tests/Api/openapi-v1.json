@@ -2007,21 +2007,21 @@
         ]
       }
     },
-    "/api/v1/provisioning": {
+    "/api/v1/providers": {
       "get": {
         "tags": [
-          "Provisioning"
+          "Provider connections"
         ],
-        "summary": "Export the provisioning document",
-        "description": "The current catalog, ordered by key, in the format that POST applies.\n\nRequires the `tahsil.provisioning:read` permission.",
-        "operationId": "ExportProvisioning",
+        "summary": "List payment providers",
+        "description": "The providers this installation has adapters for, with the credentials and settings their connections take and what they can do.\n\nRequires the `tahsil.connections:read` permission.",
+        "operationId": "ListProviders",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProvisioningDocument"
+                  "$ref": "#/components/schemas/PageOfProviderResponse"
                 }
               }
             }
@@ -2030,83 +2030,7 @@
             "description": "The API key is missing, unknown, revoked, expired or of the other mode."
           },
           "403": {
-            "description": "The API key does not have `tahsil.provisioning:read`."
-          }
-        },
-        "security": [
-          {
-            "ApiKey": [ ]
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Provisioning"
-        ],
-        "summary": "Apply a provisioning document",
-        "description": "Creates what is missing and updates what differs, in one transaction, and never deletes. Each item goes through the same rules as the API, with the caller's permissions; an error names the item and nothing is applied.\n\nRequires the `tahsil.provisioning:write` permission.",
-        "operationId": "ApplyProvisioning",
-        "parameters": [
-          {
-            "name": "dryRun",
-            "in": "query",
-            "description": "Validates the document and reports what would change, without changing anything.",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
-            "schema": {
-              "maxLength": 255,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProvisioningDocument"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProvisioningResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
-          },
-          "403": {
-            "description": "The API key does not have `tahsil.provisioning:write`."
-          },
-          "409": {
-            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
-          },
-          "422": {
-            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+            "description": "The API key does not have `tahsil.connections:read`."
           }
         },
         "security": [
@@ -2240,6 +2164,621 @@
           },
           "403": {
             "description": "The API key does not have `tahsil.audit:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/provider-connections/routing": {
+      "get": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Get the connection of each currency",
+        "description": "Currency codes and the keys of the connections that take customer-present payments in them.\n\nRequires the `tahsil.connections:read` permission.",
+        "operationId": "GetRouting",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Set the connection of each currency",
+        "description": "Replaces the routing, such as `{ \"TRY\": \"iyzico-main\", \"USD\": \"stripe-main\" }`. A connection serves only currencies its provider supports, and only while enabled; saved cards are always charged through the connection that saved them.\n\nRequires the `tahsil.connections:write` permission.",
+        "operationId": "UpdateRouting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/provider-connections": {
+      "get": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "List provider connections",
+        "description": "Requires the `tahsil.connections:read` permission.",
+        "operationId": "ListConnections",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "description": "Only connections to this provider.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "enabled",
+            "in": "query",
+            "description": "Only enabled (true) or disabled (false) connections.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfConnectionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Create a provider connection",
+        "description": "Credentials are validated against the provider's fields, stored encrypted and never returned. Test mode takes sandbox connections, Live mode production ones.\n\nRequires the `tahsil.connections:write` permission.",
+        "operationId": "CreateConnection",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/provider-connections/{idOrKey}": {
+      "get": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Get a provider connection",
+        "description": "Requires the `tahsil.connections:read` permission.",
+        "operationId": "GetConnection",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Update a provider connection",
+        "description": "Credentials and settings merge with the current ones. A disabled connection takes no new payments, and renewals of its cards fail until it is enabled again.\n\nRequires the `tahsil.connections:write` permission.",
+        "operationId": "UpdateConnection",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Delete a provider connection",
+        "description": "Only while the connection has no payments or payment methods; otherwise disable it.\n\nRequires the `tahsil.connections:write` permission.",
+        "operationId": "DeleteConnection",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/provider-connections/{idOrKey}/test": {
+      "post": {
+        "tags": [
+          "Provider connections"
+        ],
+        "summary": "Test a provider connection",
+        "description": "Asks the provider whether the credentials work and records the result as `lastTest`.\n\nRequires the `tahsil.connections:write` permission.",
+        "operationId": "TestConnection",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.connections:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/provisioning": {
+      "get": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "Export the provisioning document",
+        "description": "The current catalog, ordered by key, in the format that POST applies.\n\nRequires the `tahsil.provisioning:read` permission.",
+        "operationId": "ExportProvisioning",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.provisioning:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Provisioning"
+        ],
+        "summary": "Apply a provisioning document",
+        "description": "Creates what is missing and updates what differs, in one transaction, and never deletes. Each item goes through the same rules as the API, with the caller's permissions; an error names the item and nothing is applied.\n\nRequires the `tahsil.provisioning:write` permission.",
+        "operationId": "ApplyProvisioning",
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "description": "Validates the document and reports what would change, without changing anything.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisioningDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.provisioning:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
           }
         },
         "security": [
@@ -2429,6 +2968,117 @@
           "package"
         ]
       },
+      "ConnectionEnvironment": {
+        "enum": [
+          "sandbox",
+          "production"
+        ]
+      },
+      "ConnectionResponse": {
+        "required": [
+          "id",
+          "key",
+          "provider",
+          "name",
+          "environment",
+          "enabled",
+          "credentials",
+          "settings",
+          "currencies",
+          "notificationUrl",
+          "lastTest",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/ConnectionEnvironment"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "credentials": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CredentialState"
+            }
+          },
+          "settings": {
+            "type": "object"
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notificationUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "lastTest": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConnectionTestResponse"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConnectionTestResponse": {
+        "required": [
+          "status",
+          "message",
+          "testedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ConnectionTestStatus"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "testedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConnectionTestStatus": {
+        "enum": [
+          "succeeded",
+          "failed"
+        ]
+      },
       "CreateApiKeyRequest": {
         "required": [
           "name",
@@ -2455,6 +3105,50 @@
             ],
             "description": "When the key stops working; it does not expire when omitted.",
             "format": "date-time"
+          }
+        }
+      },
+      "CreateConnectionRequest": {
+        "required": [
+          "key",
+          "provider",
+          "name",
+          "environment"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "description": "A provider key from `GET /providers`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/ConnectionEnvironment"
+          },
+          "credentials": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The provider's credential fields. Stored encrypted and never returned."
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "The provider's setting fields, as strings, numbers or booleans."
+          },
+          "enabled": {
+            "type": "boolean"
           }
         }
       },
@@ -2827,6 +3521,27 @@
             "description": "ISO 3166-1 alpha-2, such as `TR`; informational."
           }
         }
+      },
+      "CredentialState": {
+        "required": [
+          "set",
+          "last4"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "boolean",
+            "description": "Whether the connection has a value."
+          },
+          "last4": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last four characters of values long enough to keep them secret."
+          }
+        },
+        "description": "Whether a credential is set; credentials are never returned (SEC-9)."
       },
       "CustomerAddress": {
         "type": "object",
@@ -3206,6 +3921,28 @@
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
+      "PageOfConnectionResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
       "PageOfCustomerResponse": {
         "required": [
           "items",
@@ -3283,6 +4020,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ProductResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfProviderResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderResponse"
             }
           },
           "nextCursor": {
@@ -3677,6 +4436,172 @@
             "type": "string"
           }
         }
+      },
+      "ProviderCapabilitiesResponse": {
+        "required": [
+          "entry",
+          "savesCards",
+          "setup",
+          "chargesSavedCards",
+          "refunds",
+          "asynchronousRefunds",
+          "voids",
+          "findByReference",
+          "notifications",
+          "idempotentCharges"
+        ],
+        "type": "object",
+        "properties": {
+          "entry": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "savesCards": {
+            "type": "string"
+          },
+          "setup": {
+            "type": "string"
+          },
+          "chargesSavedCards": {
+            "type": "boolean"
+          },
+          "refunds": {
+            "type": "string"
+          },
+          "asynchronousRefunds": {
+            "type": "boolean"
+          },
+          "voids": {
+            "type": "string"
+          },
+          "findByReference": {
+            "type": "string"
+          },
+          "notifications": {
+            "type": "string"
+          },
+          "idempotentCharges": {
+            "type": "boolean"
+          }
+        },
+        "description": "What a provider can do; values are snake_case names."
+      },
+      "ProviderFieldResponse": {
+        "required": [
+          "key",
+          "label",
+          "type",
+          "required",
+          "description",
+          "choices",
+          "default"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key in `credentials` or `settings`."
+          },
+          "label": {
+            "type": "string",
+            "description": "A label for forms."
+          },
+          "type": {
+            "type": "string",
+            "description": "`text`, `secret`, `number`, `boolean`, `choice` or `url`."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether a connection must have it."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where to find the value, or what it changes."
+          },
+          "choices": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The values of a `choice` field."
+          },
+          "default": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The value when none is given."
+          }
+        },
+        "description": "A credential or setting a provider's connections take."
+      },
+      "ProviderResponse": {
+        "required": [
+          "key",
+          "name",
+          "environments",
+          "currencies",
+          "minimumAmounts",
+          "credentials",
+          "settings",
+          "capabilities"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionEnvironment"
+            }
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "minimumAmounts": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderFieldResponse"
+            }
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderFieldResponse"
+            }
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ProviderCapabilitiesResponse"
+          }
+        },
+        "description": "A payment provider Tahsil has an adapter for."
       },
       "ProvisionedItem": {
         "required": [
@@ -4164,6 +5089,39 @@
           null
         ]
       },
+      "UpdateConnectionRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "credentials": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "description": "Changes a connection. Credentials and settings merge: the fields given replace the current values, the others stay;\nan empty credential or a `null` setting removes an optional field. The key, provider and environment never change."
+      },
       "UpdateCustomerRequest": {
         "type": "object",
         "properties": {
@@ -4415,10 +5373,13 @@
       "name": "Customers"
     },
     {
-      "name": "Provisioning"
+      "name": "Provider connections"
     },
     {
       "name": "Audit events"
+    },
+    {
+      "name": "Provisioning"
     }
   ]
 }
