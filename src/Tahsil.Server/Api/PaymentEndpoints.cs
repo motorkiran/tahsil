@@ -23,12 +23,13 @@ internal static class PaymentEndpoints
             [Description("Only payments of this invoice.")] Guid? invoice,
             [Description("`processing`, `requires_action`, `succeeded`, `failed` or `canceled`.")] string? status,
             [Description("Only payments through this provider connection.")] Guid? connection,
+            [Description("Only payments that failed with this code, such as `insufficient_funds`.")] string? failureCode,
             [Description("The `nextCursor` of the previous page.")] string? cursor,
             [Description("Page size, 50 by default and at most 200.")] int? limit,
             ListPaymentsHandler handler,
             CancellationToken cancellationToken) =>
             QueryValues.TryParseEnum<PaymentStatus>(status, out var statusFilter)
-                ? (await handler.HandleAsync(new ListPaymentsQuery(customer, invoice, statusFilter, connection, cursor, limit), cancellationToken)).ToOk()
+                ? (await handler.HandleAsync(new ListPaymentsQuery(customer, invoice, statusFilter, connection, cursor, limit, failureCode), cancellationToken)).ToOk()
                 : ApiResults.Problem(CommonErrors.InvalidParameter(nameof(status))))
             .WithName("ListPayments").WithSummary("List payments").WithDescription("Newest first.").RequirePermission(TahsilPermissions.PaymentsRead);
 

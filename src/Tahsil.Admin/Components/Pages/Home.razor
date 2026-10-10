@@ -1,14 +1,23 @@
 @page "/admin"
 @attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.AttentionItems
 @inherits AdminPageBase
+@inject Microsoft.Extensions.Options.IOptions<ServerOptions> Server
 
 <PageTitle>Tahsil</PageTitle>
 
 <MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Welcome</MudText>
 <MudText Class="mb-6">Signed in as @(Session.Email ?? Session.Subject), with the @Session.Role role.</MudText>
 
+@if (_attention > 0)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-6" id="attention-alert">
+        @(_attention == 1 ? "One item needs" : $"{_attention} items need") attention. <MudLink Href="/admin/attention">Look into them</MudLink>
+    </MudAlert>
+}
+
 <MudGrid>
-    @foreach (var item in NavMenu.Items.Where(item => item.Permission is null || Session.Has(item.Permission)))
+    @foreach (var item in NavMenu.VisibleItems(Session, Server.Value))
     {
         <MudItem xs="12" sm="6" md="4">
             <MudPaper Class="pa-4" Outlined>
@@ -17,3 +26,17 @@
         </MudItem>
     }
 </MudGrid>
+
+@code {
+    private int _attention;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.Has(TahsilPermissions.PaymentsRead))
+        {
+            var items = await ReadAsync<ListAttentionItemsHandler, Page<AttentionItemResponse>>((handler, token) => handler.HandleAsync(includeResolved: false, token));
+            var workers = await ReadAsync<ListWorkerAttentionHandler, Page<WorkerAttentionResponse>>((handler, token) => handler.HandleAsync(token));
+            _attention = (items?.Items.Count ?? 0) + (workers?.Items.Count ?? 0);
+        }
+    }
+}

@@ -1,0 +1,161 @@
+@page "/admin/payments/{Id:guid}"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.AttentionItems
+@using Tahsil.Application.Auditing
+@using Tahsil.Application.Payments
+@using Tahsil.Domain.Auditing
+@inherits AdminPageBase
+
+<PageTitle>Payment · Tahsil</PageTitle>
+
+@if (_payment is { } payment)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Payment <code>@payment.Reference</code></MudText>
+        <PaymentStatusChip Status="payment.Status" />
+        <MudSpacer />
+        @if (payment.Status == PaymentStatus.Succeeded && payment.AmountRefunded < payment.Amount && Session.Has(TahsilPermissions.RefundsWrite))
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="RefundAsync" id="refund">Refund</MudButton>
+        }
+        @if (payment.Status == PaymentStatus.Processing && Session.Has(TahsilPermissions.InvoicesWrite))
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="ResolveAsync" id="resolve-payment">Resolve with evidence</MudButton>
+        }
+    </MudStack>
+
+    @if (payment.Status == PaymentStatus.Processing)
+    {
+        <MudAlert Severity="Severity.Info" Dense Class="mb-4">
+            The outcome is not known yet; reconciliation asks the provider on a backoff schedule. After a week it needs attention:
+            check the provider's dashboard and resolve the payment with what it shows.
+        </MudAlert>
+    }
+
+    <MudPaper Outlined Class="pa-4">
+        <MudSimpleTable Dense Elevation="0" id="payment-details">
+            <tbody>
+                <tr><th>ID</th><td><code>@payment.Id</code></td></tr>
+                <tr><th>Amount</th><td>@AdminFormat.Money(payment.Amount, payment.Currency)</td></tr>
+                <tr><th>Refunded</th><td>@AdminFormat.Money(payment.AmountRefunded, payment.Currency)</td></tr>
+                <tr><th>Customer</th><td><MudLink Href="@($"/admin/customers/{payment.CustomerId}")">@payment.CustomerId</MudLink></td></tr>
+                <tr><th>Invoice</th><td>@if (payment.InvoiceId is { } invoice) { <MudLink Href="@($"/admin/invoices/{invoice}")">@invoice</MudLink> }</td></tr>
+                <tr><th>Purpose</th><td>@payment.Purpose.ToString().ToLowerInvariant()</td></tr>
+                <tr><th>Initiator</th><td>@payment.Initiator.ToString().ToLowerInvariant() (@payment.Actor.Type.ToString().ToLowerInvariant() @payment.Actor.Id)</td></tr>
+                <tr><th>Method</th><td>@payment.Method.ToString().ToLowerInvariant()</td></tr>
+                <tr><th>Provider payment ID</th><td><code>@payment.ProviderPaymentId</code></td></tr>
+                <tr><th>3-D Secure</th><td>@(payment.ThreeDSecure switch { true => "Yes", false => "No", null => "–" })</td></tr>
+                @if (payment.FailureCode is not null)
+                {
+                    <tr><th>Failure</th><td><code>@payment.FailureCode</code> (@payment.FailureCategory) @payment.FailureMessage</td></tr>
+                    <tr><th>Provider's failure</th><td><code>@payment.ProviderFailureCode</code> @payment.ProviderFailureMessage</td></tr>
+                }
+                <tr><th>Created</th><td><Moment Value="payment.CreatedAt" /></td></tr>
+                <tr><th>Succeeded</th><td><Moment Value="payment.SucceededAt" Empty="–" /></td></tr>
+                <tr><th>Failed</th><td><Moment Value="payment.FailedAt" Empty="–" /></td></tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Refunds</MudText>
+    <MudTable T="RefundResponse" Items="_refunds" Dense id="refunds">
+        <HeaderContent>
+            <MudTh>Reference</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Kind</MudTh>
+            <MudTh>Reason</MudTh>
+            <MudTh>Created</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Reference"><code>@context.Reference</code></MudTd>
+            <MudTd DataLabel="Status">@context.Status.ToString().ToLowerInvariant() @context.FailureMessage</MudTd>
+            <MudTd DataLabel="Amount">@AdminFormat.Money(context.Amount, context.Currency)</MudTd>
+            <MudTd DataLabel="Kind">@Snake(context.Kind.ToString())</MudTd>
+            <MudTd DataLabel="Reason">@Snake(context.Reason.ToString()) @context.Note</MudTd>
+            <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>No refunds.</MudText></NoRecordsContent>
+    </MudTable>
+
+    @if (_history is not null)
+    {
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">History</MudText>
+        <MudTable T="AuditEventResponse" Items="_history" Dense id="history">
+            <HeaderContent>
+                <MudTh>When</MudTh>
+                <MudTh>What</MudTh>
+                <MudTh>Who</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="When"><Moment Value="context.OccurredAt" /></MudTd>
+                <MudTd DataLabel="What"><code>@context.Action</code></MudTd>
+                <MudTd DataLabel="Who">@context.Actor.Type.ToString().ToLowerInvariant() @context.Actor.Id</MudTd>
+            </RowTemplate>
+            <NoRecordsContent><MudText>Nothing recorded yet.</MudText></NoRecordsContent>
+        </MudTable>
+    }
+}
+
+@code {
+    private PaymentResponse? _payment;
+    private IReadOnlyList<RefundResponse> _refunds = [];
+    private IReadOnlyList<AuditEventResponse>? _history;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string Snake(string value) => System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(value);
+
+    private async Task LoadAsync()
+    {
+        _payment = await ReadAsync<GetPaymentHandler, PaymentResponse>((handler, token) => handler.HandleAsync(Id, token));
+        _refunds = (await ReadAsync<ListRefundsHandler, Page<RefundResponse>>((handler, token) => handler.HandleAsync(new ListRefundsQuery(Payment: Id, Limit: Paging.MaxLimit), token)))?.Items ?? [];
+        if (Session.Has(TahsilPermissions.AuditRead))
+        {
+            var query = new ListAuditEventsQuery(SubjectType: AuditSubjects.Payment, SubjectId: Id.ToString(), Limit: Paging.MaxLimit);
+            _history = (await ReadAsync<ListAuditEventsHandler, Page<AuditEventResponse>>((handler, token) => handler.HandleAsync(query, token)))?.Items;
+        }
+    }
+
+    private async Task RefundAsync()
+    {
+        var parameters = new DialogParameters<RefundDialog> { { dialog => dialog.Payment, _payment! } };
+        var dialog = await Dialogs.ShowAsync<RefundDialog>("Refund the payment", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is not { Canceled: false, Data: CreateRefundRequest request })
+        {
+            return;
+        }
+
+        var refunded = await Operations.RunAsync<CreateRefundHandler, Tahsil.Domain.Common.Result<RefundResponse>>(handler => handler.HandleAsync(request, Aborted));
+        if (refunded.IsFailure)
+        {
+            Report(refunded.Error, string.Empty);
+        }
+        else
+        {
+            Snackbar.Add(
+                refunded.Value.Status switch
+                {
+                    RefundStatus.Succeeded => "The refund succeeded.",
+                    RefundStatus.Failed => $"The refund failed: {refunded.Value.FailureMessage}",
+                    _ => "The refund is processing; reconciliation settles it.",
+                },
+                refunded.Value.Status == RefundStatus.Succeeded ? Severity.Success : Severity.Warning);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ResolveAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<ResolvePaymentDialog>("Resolve the payment", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: ResolvePaymentRequest request }
+            && await ChangeAsync<ResolvePaymentHandler, PaymentResponse>((handler, token) => handler.HandleAsync(Id, request, token), "The payment was resolved.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

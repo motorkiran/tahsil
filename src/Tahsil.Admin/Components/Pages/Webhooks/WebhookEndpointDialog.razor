@@ -1,0 +1,53 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_url" Label="URL" Placeholder="https://app.example.com/webhooks/tahsil" Required />
+            <MudTextField @bind-Value="_description" Label="Description" />
+            <MudSelect T="string" Label="Events" MultiSelection SelectedValues="_eventTypes" SelectedValuesChanged="values => _eventTypes = [.. values]"
+                       HelperText="None selected sends every event, including those added later.">
+                @foreach (var eventType in EventTypes)
+                {
+                    <MudSelectItem T="string" Value="eventType.Type">@eventType.Type</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">@(Endpoint is null ? "Add" : "Save")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _url = string.Empty;
+    private string? _description;
+    private List<string> _eventTypes = [];
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<EventTypeResponse> EventTypes { get; set; }
+
+    /// <summary>The endpoint to edit; a new one is created when this is <see langword="null"/>.</summary>
+    [Parameter]
+    public WebhookEndpointResponse? Endpoint { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Endpoint is not null)
+        {
+            _url = Endpoint.Url;
+            _description = Endpoint.Description;
+            _eventTypes = [.. Endpoint.EventTypes];
+        }
+    }
+
+    private void Submit()
+    {
+        var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+        Dialog.Close(Endpoint is null
+            ? DialogResult.Ok(new CreateWebhookEndpointRequest { Url = _url.Trim(), Description = description, EventTypes = _eventTypes })
+            : DialogResult.Ok(new UpdateWebhookEndpointRequest { Url = _url.Trim(), Description = description, EventTypes = _eventTypes }));
+    }
+}

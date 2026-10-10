@@ -4307,6 +4307,14 @@
             }
           },
           {
+            "name": "failureCode",
+            "in": "query",
+            "description": "Only payments that failed with this code, such as `insufficient_funds`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "description": "The `nextCursor` of the previous page.",

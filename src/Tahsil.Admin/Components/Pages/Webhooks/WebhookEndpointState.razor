@@ -1,0 +1,18 @@
+@if (!Endpoint.Enabled)
+{
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Disabled</MudChip>
+}
+else if (Endpoint.FailingSince is { } failing)
+{
+    <MudChip T="string" Size="Size.Small" Color="Color.Error">Failing</MudChip>
+    <span>since <Moment Value="failing" /></span>
+}
+else
+{
+    <MudChip T="string" Size="Size.Small" Color="Color.Success">Enabled</MudChip>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required WebhookEndpointResponse Endpoint { get; set; }
+}

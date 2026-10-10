@@ -1,0 +1,51 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            @foreach (var route in _routes)
+            {
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudTextField @bind-Value="route.Currency" Label="Currency" MaxLength="3" Style="max-width: 7rem" Class="route-currency" />
+                    <MudSelect T="string" @bind-Value="route.Connection" Label="Connection" Class="route-connection">
+                        @foreach (var connection in Connections.Where(connection => connection.Enabled))
+                        {
+                            <MudSelectItem T="string" Value="connection.Key">@connection.Key</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => _routes.Remove(route)" aria-label="Remove" />
+                </MudStack>
+            }
+            <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="() => _routes.Add(new Route())" id="add-route">Add a currency</MudButton>
+            <MudText Typo="Typo.caption">A currency left out takes no payments on pages; cards saved earlier keep their connections.</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<Route> _routes = [];
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<ConnectionResponse> Connections { get; set; }
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyDictionary<string, string> Routing { get; set; }
+
+    protected override void OnInitialized() => _routes = [.. Routing.Select(pair => new Route { Currency = pair.Key, Connection = pair.Value })];
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(_routes
+        .Where(route => !string.IsNullOrWhiteSpace(route.Currency) && route.Connection is not null)
+        .ToDictionary(route => route.Currency.Trim().ToUpperInvariant(), route => route.Connection!)));
+
+    private sealed class Route
+    {
+        public string Currency { get; set; } = string.Empty;
+
+        public string? Connection { get; set; }
+    }
+}

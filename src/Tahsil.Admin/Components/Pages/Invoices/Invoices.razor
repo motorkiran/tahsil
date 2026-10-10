@@ -1,0 +1,52 @@
+@page "/admin/invoices"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Invoices
+@inherits AdminPageBase
+
+<PageTitle>Invoices · Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Invoices</MudText>
+
+<MudStack Row Class="mb-4" AlignItems="AlignItems.End">
+    <MudSelect T="InvoiceStatus?" @bind-Value="_status" Label="Status" Clearable Style="max-width: 12rem" id="status">
+        @foreach (var status in Enum.GetValues<InvoiceStatus>())
+        {
+            <MudSelectItem T="InvoiceStatus?" Value="status">@status.ToString().ToLowerInvariant()</MudSelectItem>
+        }
+    </MudSelect>
+    <MudTextField @bind-Value="_number" Label="Number" Clearable Style="max-width: 16rem" id="number" />
+    <MudButton Variant="Variant.Outlined" OnClick="SearchAsync" id="search-button">Search</MudButton>
+</MudStack>
+
+<InvoiceTable Invoices="_invoices" />
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<InvoiceResponse> _invoices = [];
+    private string? _nextCursor;
+    private InvoiceStatus? _status;
+    private string? _number;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private async Task SearchAsync()
+    {
+        _invoices.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListInvoicesQuery(Status: _status, Number: string.IsNullOrWhiteSpace(_number) ? null : _number.Trim(), Cursor: _nextCursor);
+        if (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _invoices.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+}

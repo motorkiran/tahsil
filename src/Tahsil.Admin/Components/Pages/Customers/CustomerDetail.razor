@@ -39,6 +39,8 @@
             </tbody>
         </MudSimpleTable>
     </MudPaper>
+
+    <CustomerBilling CustomerId="customer.Id" Balances="customer.Balances" BalanceChanged="LoadAsync" />
 }
 
 @code {

@@ -1,0 +1,72 @@
+@page "/admin/webhooks"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Webhooks
+@inherits AdminPageBase
+
+<PageTitle>Webhooks · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Webhooks</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.WebhooksWrite))
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-endpoint">Add an endpoint</MudButton>
+    }
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Tahsil posts events to these URLs, signed as Standard Webhooks with each endpoint's secret, and retries failures for
+    about 45 hours. Receivers deduplicate by <code>webhook-id</code>: an event may arrive twice or out of order.
+</MudText>
+
+<MudTable T="WebhookEndpointResponse" Items="_endpoints" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" id="endpoints">
+    <HeaderContent>
+        <MudTh>URL</MudTh>
+        <MudTh>Events</MudTh>
+        <MudTh>State</MudTh>
+        <MudTh>Created</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="URL"><MudLink Href="@Link(context)">@context.Url</MudLink> @context.Description</MudTd>
+        <MudTd DataLabel="Events">@(context.EventTypes.Count == 0 ? "All" : string.Join(", ", context.EventTypes))</MudTd>
+        <MudTd DataLabel="State"><WebhookEndpointState Endpoint="context" /></MudTd>
+        <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No endpoints yet.</MudText></NoRecordsContent>
+</MudTable>
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<WebhookEndpointResponse> _endpoints = [];
+    private string? _nextCursor;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private static string Link(WebhookEndpointResponse endpoint) => $"/admin/webhooks/{endpoint.Id}";
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListWebhookEndpointsQuery(Cursor: _nextCursor);
+        if (await ReadAsync<ListWebhookEndpointsHandler, Page<WebhookEndpointResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _endpoints.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        var eventTypes = await Operations.RunAsync<ListEventTypesHandler, Tahsil.Domain.Common.Result<Page<EventTypeResponse>>>(handler => Task.FromResult(handler.Handle()));
+        var parameters = new DialogParameters<WebhookEndpointDialog> { { dialog => dialog.EventTypes, eventTypes.IsSuccess ? eventTypes.Value.Items : [] } };
+        var dialog = await Dialogs.ShowAsync<WebhookEndpointDialog>("Add a webhook endpoint", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreateWebhookEndpointRequest request }
+            && await ChangeAsync<CreateWebhookEndpointHandler, CreatedWebhookEndpointResponse>((handler, token) => handler.HandleAsync(request, token), "The endpoint was added.") is { } created)
+        {
+            _endpoints.Insert(0, created.Endpoint);
+            await SecretDialog.ShowAsync(Dialogs, "The endpoint's signing secret", "Signing secret", created.Secret);
+        }
+    }
+}

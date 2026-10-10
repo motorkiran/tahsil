@@ -1,0 +1,46 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_currency" Label="Currency" MaxLength="3" Style="max-width: 7rem" />
+            <MudSelect T="CollectionMethod" @bind-Value="_collection" Label="Collection">
+                <MudSelectItem T="CollectionMethod" Value="CollectionMethod.ChargeAutomatically">Charge the saved card</MudSelectItem>
+                <MudSelectItem T="CollectionMethod" Value="CollectionMethod.SendInvoice">Send for payment on its page</MudSelectItem>
+            </MudSelect>
+            @if (_collection == CollectionMethod.SendInvoice)
+            {
+                <MudNumericField T="int?" @bind-Value="_daysUntilDue" Label="Days until due" Min="0" />
+            }
+            <MudSwitch T="bool" @bind-Value="_includePendingItems" Label="Include the customer's pending items" Color="Color.Primary" />
+            <MudTextField @bind-Value="_memo" Label="Memo" Lines="2" />
+            <MudText Typo="Typo.caption">The invoice starts as a draft: add its lines, then finalize it.</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _currency = "TRY";
+    private CollectionMethod _collection = CollectionMethod.ChargeAutomatically;
+    private int? _daysUntilDue = 7;
+    private bool _includePendingItems = true;
+    private string? _memo;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Guid Customer { get; set; }
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new CreateInvoiceRequest
+    {
+        Customer = Customer,
+        Currency = _currency.Trim().ToUpperInvariant(),
+        CollectionMethod = _collection,
+        DaysUntilDue = _collection == CollectionMethod.SendInvoice ? _daysUntilDue : null,
+        IncludePendingItems = _includePendingItems,
+        Memo = string.IsNullOrWhiteSpace(_memo) ? null : _memo.Trim(),
+    }));
+}

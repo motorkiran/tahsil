@@ -1,0 +1,110 @@
+@using System.Text.Json
+@using Tahsil.Application.Connections
+@inject AdminOperations Operations
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudSelect T="string" Value="_provider" ValueChanged="SelectProvider" Label="Provider" id="connection-provider">
+                @foreach (var provider in Providers)
+                {
+                    <MudSelectItem T="string" Value="provider.Key">@provider.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_key" Label="Key" Placeholder="iyzico-main" Required id="connection-key" />
+            <MudTextField @bind-Value="_name" Label="Name" Required id="connection-name" />
+            @if (Selected is { } provider)
+            {
+                <MudSelect T="ConnectionEnvironment" @bind-Value="_environment" Label="Environment">
+                    @foreach (var environment in provider.Environments)
+                    {
+                        <MudSelectItem T="ConnectionEnvironment" Value="environment">@environment.ToString().ToLowerInvariant()</MudSelectItem>
+                    }
+                </MudSelect>
+                @foreach (var field in provider.Credentials)
+                {
+                    <MudTextField T="string" Value="@_credentials.GetValueOrDefault(field.Key)" ValueChanged="value => _credentials[field.Key] = value"
+                                  Label="@field.Label" HelperText="@field.Description" InputType="InputType.Password" Required="field.Required" />
+                }
+                @foreach (var field in provider.Settings)
+                {
+                    @if (field.Type == "boolean")
+                    {
+                        <MudSwitch T="bool" Value="IsOn(field)" ValueChanged="value => Switch(field, value)" Label="@field.Label" Color="Color.Primary" />
+                    }
+                    else if (field.Type == "choice")
+                    {
+                        <MudSelect T="string" Value="@_settings.GetValueOrDefault(field.Key, field.Default ?? string.Empty)" ValueChanged="value => _settings[field.Key] = value"
+                                   Label="@field.Label" HelperText="@field.Description">
+                            @foreach (var choice in field.Choices ?? [])
+                            {
+                                <MudSelectItem T="string" Value="choice">@choice</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField T="string" Value="@_settings.GetValueOrDefault(field.Key)" ValueChanged="value => _settings[field.Key] = value"
+                                      Label="@field.Label" HelperText="@field.Description" />
+                    }
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="Selected is null">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly Dictionary<string, string> _credentials = [];
+    private readonly Dictionary<string, string> _settings = [];
+    private string? _provider;
+    private string _key = string.Empty;
+    private string _name = string.Empty;
+    private ConnectionEnvironment _environment = ConnectionEnvironment.Sandbox;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    private IReadOnlyList<ProviderResponse> Providers { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var providers = await Operations.RunAsync<ListProvidersHandler, Tahsil.Domain.Common.Result<Page<ProviderResponse>>>(handler => Task.FromResult(handler.Handle()));
+        Providers = providers.IsSuccess ? providers.Value.Items : [];
+    }
+
+    private ProviderResponse? Selected => Providers.FirstOrDefault(provider => provider.Key == _provider);
+
+    private bool IsOn(ProviderFieldResponse field) => _settings.GetValueOrDefault(field.Key, field.Default ?? "false") == "true";
+
+    private void Switch(ProviderFieldResponse field, bool on) => _settings[field.Key] = on ? "true" : "false";
+
+    private void SelectProvider(string provider)
+    {
+        _provider = provider;
+        _credentials.Clear();
+        _settings.Clear();
+        _environment = Selected?.Environments.FirstOrDefault() ?? ConnectionEnvironment.Sandbox;
+    }
+
+    private void Submit()
+    {
+        var provider = Selected!;
+        Dialog.Close(DialogResult.Ok(new CreateConnectionRequest
+        {
+            Key = _key.Trim(),
+            Provider = provider.Key,
+            Name = _name.Trim(),
+            Environment = _environment,
+            Credentials = _credentials.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)).ToDictionary(),
+            Settings = _settings
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
+                .ToDictionary(pair => pair.Key, pair => provider.Settings.FirstOrDefault(field => field.Key == pair.Key)?.Type == "boolean"
+                    ? JsonSerializer.SerializeToElement(pair.Value == "true")
+                    : JsonSerializer.SerializeToElement(pair.Value)),
+        }));
+    }
+}

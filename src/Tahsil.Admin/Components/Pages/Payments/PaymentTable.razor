@@ -1,0 +1,30 @@
+@inject NavigationManager Navigation
+
+<MudTable T="PaymentResponse" Items="Payments" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" Class="payments">
+    <HeaderContent>
+        <MudTh>Reference</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Amount</MudTh>
+        <MudTh>Refunded</MudTh>
+        <MudTh>Initiator</MudTh>
+        <MudTh>Failure</MudTh>
+        <MudTh>Created</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Reference"><MudLink Href="@Link(context)"><code>@context.Reference</code></MudLink></MudTd>
+        <MudTd DataLabel="Status"><PaymentStatusChip Status="context.Status" /></MudTd>
+        <MudTd DataLabel="Amount">@AdminFormat.Money(context.Amount, context.Currency)</MudTd>
+        <MudTd DataLabel="Refunded">@(context.AmountRefunded == 0 ? null : AdminFormat.Money(context.AmountRefunded, context.Currency))</MudTd>
+        <MudTd DataLabel="Initiator">@context.Initiator.ToString().ToLowerInvariant()</MudTd>
+        <MudTd DataLabel="Failure"><code>@context.FailureCode</code></MudTd>
+        <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No payments found.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<PaymentResponse> Payments { get; set; }
+
+    private static string Link(PaymentResponse payment) => $"/admin/payments/{payment.Id}";
+}

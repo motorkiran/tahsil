@@ -54,6 +54,11 @@ public static class AuditActions
     /// <summary>Something needs an operator, such as an amount mismatch (PAY-15); the data names the kind.</summary>
     public const string AttentionRaised = "attention.raised";
 
+    public const string AttentionResolved = "attention.resolved";
+
+    /// <summary>An operator settled a payment with the provider's evidence (ENG-16).</summary>
+    public const string PaymentResolved = "payment.resolved";
+
     public const string WebhookEndpointCreated = "webhook_endpoint.created";
     public const string WebhookEndpointUpdated = "webhook_endpoint.updated";
     public const string WebhookEndpointDeleted = "webhook_endpoint.deleted";

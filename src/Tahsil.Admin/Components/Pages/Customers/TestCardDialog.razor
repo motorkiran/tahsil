@@ -1,0 +1,41 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudSelect T="string" @bind-Value="_card" Label="Test card" id="test-card">
+                @foreach (var (number, behavior) in Cards)
+                {
+                    <MudSelectItem T="string" Value="number">@number · @behavior</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.caption">The card is saved with the simulator, as if the customer had paid with it on a hosted page.</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // A selection of the simulator's test cards (SIM-4), with how they answer when charged as saved cards.
+    private static readonly (string Number, string Behavior)[] Cards =
+    [
+        ("4242424242424242", "succeeds"),
+        ("4000000000000341", "declined: card_declined"),
+        ("4000002500003155", "needs authentication"),
+        ("4000000000009995", "declined: insufficient_funds"),
+        ("4000000000001000", "times out after charging"),
+        ("4000000000001026", "succeeds three times, then insufficient_funds"),
+        ("9792000000000001", "troy debit, succeeds"),
+    ];
+
+    private string _card = Cards[0].Number;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Guid Customer { get; set; }
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new CreateSimulatorPaymentMethodRequest { Customer = Customer, Card = _card }));
+}

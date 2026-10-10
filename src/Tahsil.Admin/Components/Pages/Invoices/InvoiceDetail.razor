@@ -1,0 +1,219 @@
+@page "/admin/invoices/{Id:guid}"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Invoices
+@using Tahsil.Application.Payments
+@using Tahsil.Application.PaymentMethods
+@using Tahsil.Admin.Components.Pages.Payments
+@inherits AdminPageBase
+
+<PageTitle>@(_invoice?.Number ?? "Invoice") · Tahsil</PageTitle>
+
+@if (_invoice is { } invoice)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@(invoice.Number ?? "Draft invoice")</MudText>
+        <InvoiceStatusChip Status="invoice.Status" />
+        <MudSpacer />
+        @if (Session.Has(TahsilPermissions.InvoicesWrite))
+        {
+            @if (invoice.Status == InvoiceStatus.Draft)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="AddLineAsync" id="add-line">Add a line</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FinalizeAsync" id="finalize">Finalize</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteAsync" id="delete-invoice">Delete</MudButton>
+            }
+            else if (invoice.Status is InvoiceStatus.Open or InvoiceStatus.Uncollectible)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PayAsync" id="pay">Pay by card</MudButton>
+                @if (invoice.AmountPaid == 0)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="VoidAsync" id="void">Void</MudButton>
+                }
+                @if (invoice.Status == InvoiceStatus.Open)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="MarkUncollectibleAsync" id="uncollectible">Mark uncollectible</MudButton>
+                }
+            }
+        }
+    </MudStack>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined Class="pa-4">
+                <MudSimpleTable Dense Elevation="0" id="invoice-details">
+                    <tbody>
+                        <tr><th>ID</th><td><code>@invoice.Id</code></td></tr>
+                        <tr><th>Customer</th><td><MudLink Href="@($"/admin/customers/{invoice.CustomerId}")">@(invoice.CustomerSnapshot?.Name ?? invoice.CustomerId.ToString())</MudLink></td></tr>
+                        <tr><th>Reason</th><td>@Snake(invoice.BillingReason)</td></tr>
+                        <tr><th>Collection</th><td>@Snake(invoice.CollectionMethod)</td></tr>
+                        <tr><th>Due</th><td><Moment Value="invoice.DueDate" Empty="–" /></td></tr>
+                        <tr><th>Next attempt</th><td><Moment Value="invoice.NextPaymentAttemptAt" Empty="–" /></td></tr>
+                        <tr><th>Attempts</th><td>@invoice.AttemptCount</td></tr>
+                        <tr><th>Legal invoice</th><td>@(invoice.LegalInvoice?.Number ?? "–")</td></tr>
+                        <tr><th>Memo</th><td>@invoice.Memo</td></tr>
+                        <tr><th>Created</th><td><Moment Value="invoice.CreatedAt" /></td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined Class="pa-4">
+                <MudSimpleTable Dense Elevation="0" id="invoice-totals">
+                    <tbody>
+                        <tr><th>Subtotal</th><td>@Money(invoice.Subtotal)</td></tr>
+                        <tr><th>Discount</th><td>@Money(invoice.DiscountTotal)</td></tr>
+                        <tr><th>Tax</th><td>@Money(invoice.TaxTotal)</td></tr>
+                        <tr><th>Total</th><td>@Money(invoice.Total)</td></tr>
+                        <tr><th>Applied balance</th><td>@Money(invoice.AppliedBalance)</td></tr>
+                        <tr><th>Amount due</th><td>@Money(invoice.AmountDue)</td></tr>
+                        <tr><th>Paid</th><td>@Money(invoice.AmountPaid)</td></tr>
+                        <tr><th>Remaining</th><td id="amount-remaining">@Money(invoice.AmountRemaining)</td></tr>
+                        <tr><th>Refunded</th><td>@Money(invoice.AmountRefunded)</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Lines</MudText>
+    <MudTable T="InvoiceLineResponse" Items="invoice.Lines" Dense id="lines">
+        <HeaderContent>
+            <MudTh>Description</MudTh>
+            <MudTh>Quantity</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Tax</MudTh>
+            <MudTh>Total</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Description">@context.Description</MudTd>
+            <MudTd DataLabel="Quantity">@context.Quantity.ToString("0.############", CultureInfo.InvariantCulture)</MudTd>
+            <MudTd DataLabel="Amount">@Money(context.Amount)</MudTd>
+            <MudTd DataLabel="Tax">@Money(context.TaxAmount)</MudTd>
+            <MudTd DataLabel="Total">@Money(context.Total)</MudTd>
+            <MudTd>
+                @if (invoice.Status == InvoiceStatus.Draft && Session.Has(TahsilPermissions.InvoicesWrite))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="() => RemoveLineAsync(context)" Class="remove-line" aria-label="Remove" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>No lines yet.</MudText></NoRecordsContent>
+    </MudTable>
+
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Payments</MudText>
+    <PaymentTable Payments="_payments" />
+}
+
+@code {
+    private InvoiceResponse? _invoice;
+    private IReadOnlyList<PaymentResponse> _payments = [];
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private string Money(long amount) => AdminFormat.Money(amount, _invoice!.Currency);
+
+    private static string Snake<T>(T value)
+        where T : struct, Enum => System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString());
+
+    private async Task LoadAsync()
+    {
+        _invoice = (await ReadAsync<GetInvoiceHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, token)))?.Value;
+        if (Session.Has(TahsilPermissions.PaymentsRead))
+        {
+            _payments = (await ReadAsync<ListPaymentsHandler, Page<PaymentResponse>>((handler, token) => handler.HandleAsync(new ListPaymentsQuery(Invoice: Id, Limit: Paging.MaxLimit), token)))?.Items ?? [];
+        }
+    }
+
+    private async Task Saved(Versioned<InvoiceResponse>? saved)
+    {
+        if (saved is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task AddLineAsync()
+    {
+        var parameters = new DialogParameters<InvoiceLineDialog> { { dialog => dialog.Currency, _invoice!.Currency } };
+        var dialog = await Dialogs.ShowAsync<InvoiceLineDialog>("Add a line", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: InvoiceLineRequest line })
+        {
+            var request = new AddInvoiceLinesRequest { Lines = [line] };
+            await Saved(await ChangeAsync<AddInvoiceLinesHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, request, token), "The line was added."));
+        }
+    }
+
+    private async Task RemoveLineAsync(InvoiceLineResponse line) =>
+        await Saved(await ChangeAsync<RemoveInvoiceLineHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, line.Id, token), "The line was removed."));
+
+    private async Task FinalizeAsync()
+    {
+        if (await ConfirmAsync("Finalize this invoice?", "It gets its number and can no longer change; it is then collected as its collection method says.", "Finalize"))
+        {
+            await Saved(await ChangeAsync<FinalizeInvoiceHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, token), "The invoice was finalized."));
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (await ConfirmAsync("Delete this draft?", "Its pending items go back to the customer's next invoice.", "Delete")
+            && await ChangeAsync<DeleteInvoiceHandler>((handler, token) => handler.HandleAsync(Id, token), "The draft was deleted."))
+        {
+            Navigation.NavigateTo($"/admin/customers/{_invoice!.CustomerId}");
+        }
+    }
+
+    private async Task PayAsync()
+    {
+        var cards = await ReadAsync<ListPaymentMethodsHandler, Page<PaymentMethodResponse>>(
+            (handler, token) => handler.HandleAsync(_invoice!.CustomerId, PaymentMethodStatus.Active, token));
+        if (cards is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<PayInvoiceDialog> { { dialog => dialog.Cards, cards.Items }, { dialog => dialog.Amount, Money(_invoice!.AmountRemaining) } };
+        var dialog = await Dialogs.ShowAsync<PayInvoiceDialog>("Pay by card", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is not { Canceled: false, Data: Guid card })
+        {
+            return;
+        }
+
+        var paid = await Operations.RunAsync<PayInvoiceHandler, Tahsil.Domain.Common.Result<PaymentResponse>>(
+            handler => handler.HandleAsync(Id, new PayInvoiceRequest { PaymentMethod = card }, Aborted));
+        if (paid.IsFailure)
+        {
+            Report(paid.Error, string.Empty);
+        }
+        else if (paid.Value.Status == PaymentStatus.Succeeded)
+        {
+            Snackbar.Add("The payment succeeded.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(paid.Value.Status == PaymentStatus.Failed ? $"The payment failed: {paid.Value.FailureMessage}" : "The payment is processing; reconciliation settles it.", Severity.Warning);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task VoidAsync()
+    {
+        if (await ConfirmAsync("Void this invoice?", "It stays numbered but is no longer owed, and balance it used goes back to the customer. An invoice with payments cannot be voided.", "Void"))
+        {
+            await Saved(await ChangeAsync<VoidInvoiceHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, token), "The invoice was voided."));
+        }
+    }
+
+    private async Task MarkUncollectibleAsync()
+    {
+        if (await ConfirmAsync("Mark this invoice uncollectible?", "Tahsil stops collecting it; it can still be paid.", "Mark uncollectible"))
+        {
+            await Saved(await ChangeAsync<MarkInvoiceUncollectibleHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, token), "The invoice was marked uncollectible."));
+        }
+    }
+}

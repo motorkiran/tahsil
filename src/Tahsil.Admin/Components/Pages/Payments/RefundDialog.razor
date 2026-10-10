@@ -1,0 +1,64 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText>Up to @AdminFormat.Money(Refundable, Payment.Currency) can be refunded.</MudText>
+            <MudNumericField T="decimal?" @bind-Value="_amount" Label="Amount" HelperText="Empty refunds all that is left." Clearable />
+            <MudSelect T="RefundReason" @bind-Value="_reason" Label="Reason">
+                @foreach (var reason in Reasons)
+                {
+                    <MudSelectItem T="RefundReason" Value="reason">@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(reason.ToString())</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_note" Label="Note" Lines="2" />
+            <MudText Typo="Typo.caption">
+                On the day of the payment, some providers (iyzico, Craftgate) refund only all of it, as a void; part of it can be refunded from the next day.
+            </MudText>
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit">Refund</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly RefundReason[] Reasons = [RefundReason.RequestedByCustomer, RefundReason.Duplicate, RefundReason.Fraudulent, RefundReason.Other];
+    private decimal? _amount;
+    private RefundReason _reason = RefundReason.RequestedByCustomer;
+    private string? _note;
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required PaymentResponse Payment { get; set; }
+
+    private long Refundable => Payment.Amount - Payment.AmountRefunded;
+
+    private void Submit()
+    {
+        long? amount = null;
+        if (_amount is not null)
+        {
+            amount = AdminFormat.ToMinorUnits(_amount, Payment.Currency);
+            if (amount is not > 0 || amount > Refundable)
+            {
+                _error = $"Enter an amount up to {AdminFormat.Money(Refundable, Payment.Currency)}, with no more decimals than the currency has.";
+                return;
+            }
+        }
+
+        Dialog.Close(DialogResult.Ok(new CreateRefundRequest
+        {
+            Payment = Payment.Id,
+            Amount = amount,
+            Reason = _reason,
+            Note = string.IsNullOrWhiteSpace(_note) ? null : _note.Trim(),
+        }));
+    }
+}

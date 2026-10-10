@@ -66,6 +66,8 @@ public sealed class PaymentTests(TahsilServerFixture server)
         declined.FailureMessage.ShouldBe("Your card has insufficient funds or limit.");
         declined.PaymentMethodId.ShouldBeNull();
         retried.Status.ShouldBe(Domain.Payments.PaymentStatus.Succeeded);
+        var filtered = await ReadAsync<Page<PaymentResponse>>(await client.GetPathAsync("/api/v1/payments?failureCode=insufficient_funds"));
+        filtered.Items.Select(payment => payment.Id).ShouldBe([declined.Id]);
     }
 
     [Fact]

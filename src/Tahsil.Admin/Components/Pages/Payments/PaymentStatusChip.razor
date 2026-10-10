@@ -1,0 +1,14 @@
+<MudChip T="string" Size="Size.Small" Color="Tone" Class="status">@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(Status.ToString())</MudChip>
+
+@code {
+    [Parameter, EditorRequired]
+    public PaymentStatus Status { get; set; }
+
+    private Color Tone => Status switch
+    {
+        PaymentStatus.Succeeded => Color.Success,
+        PaymentStatus.Failed => Color.Error,
+        PaymentStatus.Processing or PaymentStatus.RequiresAction => Color.Warning,
+        _ => Color.Default,
+    };
+}

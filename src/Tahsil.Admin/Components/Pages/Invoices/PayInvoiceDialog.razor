@@ -1,0 +1,37 @@
+<MudDialog>
+    <DialogContent>
+        @if (Cards.Count == 0)
+        {
+            <MudText>The customer has no saved card. They can pay on the invoice's hosted page.</MudText>
+        }
+        else
+        {
+            <MudText Class="mb-2">Charge @Amount to a saved card, off session. Cards that need 3-D Secure fail with <code>authentication_required</code>.</MudText>
+            <MudSelect T="Guid?" @bind-Value="_card" Label="Card" id="pay-card">
+                @foreach (var card in Cards)
+                {
+                    <MudSelectItem T="Guid?" Value="card.Id">@card.Brand ···· @card.Last4 @(card.IsDefault ? "(default)" : null)</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Dialog.Close(DialogResult.Ok(_card!.Value))" Disabled="_card is null">Charge</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private Guid? _card;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<PaymentMethodResponse> Cards { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Amount { get; set; }
+
+    protected override void OnInitialized() => _card = Cards.FirstOrDefault(card => card.IsDefault)?.Id ?? Cards.FirstOrDefault()?.Id;
+}

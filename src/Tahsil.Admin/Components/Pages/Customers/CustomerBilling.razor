@@ -1,0 +1,202 @@
+@using Tahsil.Admin.Components.Pages.Invoices
+@using Tahsil.Admin.Components.Pages.Payments
+@using Tahsil.Application.Invoices
+@using Tahsil.Application.Payments
+@using Tahsil.Application.PaymentMethods
+@inherits AdminPageBase
+@inject Microsoft.Extensions.Options.IOptions<ServerOptions> Server
+
+@* A customer's money: balances and their history, saved cards, invoices and payments. *@
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+    <MudText Typo="Typo.h6" HtmlTag="h2">Balance</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.InvoicesWrite))
+    {
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="AdjustBalanceAsync" id="adjust-balance">Adjust</MudButton>
+    }
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-2" id="balances">
+    @if (Balances.Count == 0)
+    {
+        <span>No balance.</span>
+    }
+    else
+    {
+        @string.Join(" · ", Balances.Select(balance => $"{AdminFormat.Money(balance.Amount, balance.Currency)} {(balance.Amount >= 0 ? "credit" : "owed")}"))
+    }
+</MudText>
+@if (_balanceHistory.Count > 0)
+{
+    <MudTable T="BalanceTransactionResponse" Items="_balanceHistory" Dense id="balance-history">
+        <HeaderContent>
+            <MudTh>When</MudTh>
+            <MudTh>Change</MudTh>
+            <MudTh>Balance after</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh>Description</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="When"><Moment Value="context.CreatedAt" /></MudTd>
+            <MudTd DataLabel="Change">@AdminFormat.Money(context.Amount, context.Currency)</MudTd>
+            <MudTd DataLabel="Balance after">@AdminFormat.Money(context.BalanceAfter, context.Currency)</MudTd>
+            <MudTd DataLabel="Type">@Snake(context.Type.ToString())</MudTd>
+            <MudTd DataLabel="Description">
+                @context.Description
+                @if (context.InvoiceId is { } invoice)
+                {
+                    <MudLink Href="@($"/admin/invoices/{invoice}")">Invoice</MudLink>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+    <MudText Typo="Typo.h6" HtmlTag="h2">Payment methods</MudText>
+    <MudSpacer />
+    @if (Server.Value.IsTestMode && Session.Has(TahsilPermissions.TestWrite))
+    {
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="AddTestCardAsync" id="add-test-card">Add a test card</MudButton>
+    }
+</MudStack>
+<MudTable T="PaymentMethodResponse" Items="_cards" Dense id="payment-methods">
+    <HeaderContent>
+        <MudTh>Card</MudTh>
+        <MudTh>Expires</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Card">
+            @context.Brand ···· @context.Last4 @context.Funding @context.Issuer
+            @if (context.IsDefault)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary">Default</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Expires">@(context.ExpMonth is { } month ? $"{month:00}/{context.ExpYear}" : "–")</MudTd>
+        <MudTd DataLabel="Status">@context.Status.ToString().ToLowerInvariant()</MudTd>
+        <MudTd>
+            @if (context.Status == PaymentMethodStatus.Active && Session.Has(TahsilPermissions.CustomersWrite))
+            {
+                @if (!context.IsDefault)
+                {
+                    <MudButton Size="Size.Small" OnClick="() => SetDefaultAsync(context)" Class="set-default">Make default</MudButton>
+                }
+                <MudButton Size="Size.Small" OnClick="() => RemoveCardAsync(context)" Class="remove-card">Remove</MudButton>
+            }
+            <code class="payment-method-id">@context.Id</code>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No saved cards.</MudText></NoRecordsContent>
+</MudTable>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+    <MudText Typo="Typo.h6" HtmlTag="h2">Invoices</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.InvoicesWrite))
+    {
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="CreateInvoiceAsync" id="create-invoice">Create an invoice</MudButton>
+    }
+</MudStack>
+<InvoiceTable Invoices="_invoices" />
+
+@if (Session.Has(TahsilPermissions.PaymentsRead))
+{
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Payments</MudText>
+    <PaymentTable Payments="_payments" />
+}
+
+@code {
+    private IReadOnlyList<BalanceTransactionResponse> _balanceHistory = [];
+    private IReadOnlyList<PaymentMethodResponse> _cards = [];
+    private IReadOnlyList<InvoiceResponse> _invoices = [];
+    private IReadOnlyList<PaymentResponse> _payments = [];
+
+    [Parameter, EditorRequired]
+    public Guid CustomerId { get; set; }
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<CustomerBalanceResponse> Balances { get; set; }
+
+    /// <summary>Raised when the balance changed, so the page reads the customer again.</summary>
+    [Parameter]
+    public EventCallback BalanceChanged { get; set; }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string Snake(string value) => System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(value);
+
+    private async Task LoadAsync()
+    {
+        await LoadBalanceHistoryAsync();
+        await LoadCardsAsync();
+        if (Session.Has(TahsilPermissions.InvoicesRead))
+        {
+            _invoices = (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>((handler, token) => handler.HandleAsync(new ListInvoicesQuery(Customer: CustomerId, Limit: 50), token)))?.Items ?? [];
+        }
+
+        if (Session.Has(TahsilPermissions.PaymentsRead))
+        {
+            _payments = (await ReadAsync<ListPaymentsHandler, Page<PaymentResponse>>((handler, token) => handler.HandleAsync(new ListPaymentsQuery(Customer: CustomerId, Limit: 50), token)))?.Items ?? [];
+        }
+    }
+
+    private async Task LoadBalanceHistoryAsync() =>
+        _balanceHistory = (await ReadAsync<ListBalanceTransactionsHandler, Page<BalanceTransactionResponse>>(
+            (handler, token) => handler.HandleAsync(CustomerId, new ListBalanceTransactionsQuery(Limit: 20), token)))?.Items ?? [];
+
+    private async Task LoadCardsAsync() =>
+        _cards = (await ReadAsync<ListPaymentMethodsHandler, Page<PaymentMethodResponse>>((handler, token) => handler.HandleAsync(CustomerId, null, token)))?.Items ?? [];
+
+    private async Task AdjustBalanceAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<BalanceDialog>("Adjust the balance", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreateBalanceTransactionRequest request }
+            && await ChangeAsync<AdjustBalanceHandler, BalanceTransactionResponse>((handler, token) => handler.HandleAsync(CustomerId, request, token), "The balance was adjusted.") is not null)
+        {
+            await LoadBalanceHistoryAsync();
+            await BalanceChanged.InvokeAsync();
+        }
+    }
+
+    private async Task SetDefaultAsync(PaymentMethodResponse card)
+    {
+        if (await ChangeAsync<SetDefaultPaymentMethodHandler, PaymentMethodResponse>((handler, token) => handler.HandleAsync(CustomerId, card.Id, token), "The default card was changed.") is not null)
+        {
+            await LoadCardsAsync();
+        }
+    }
+
+    private async Task RemoveCardAsync(PaymentMethodResponse card)
+    {
+        if (await ConfirmAsync($"Remove {card.Brand} ···· {card.Last4}?", "It is deleted at the provider too, and can no longer be charged.", "Remove")
+            && await ChangeAsync<RemovePaymentMethodHandler>((handler, token) => handler.HandleAsync(card.Id, token), "The card was removed."))
+        {
+            await LoadCardsAsync();
+        }
+    }
+
+    private async Task AddTestCardAsync()
+    {
+        var parameters = new DialogParameters<TestCardDialog> { { dialog => dialog.Customer, CustomerId } };
+        var dialog = await Dialogs.ShowAsync<TestCardDialog>("Add a test card", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreateSimulatorPaymentMethodRequest request }
+            && await ChangeAsync<CreateTestPaymentMethodHandler, PaymentMethodResponse>((handler, token) => handler.HandleAsync(request, token), "The test card was saved.") is not null)
+        {
+            await LoadCardsAsync();
+        }
+    }
+
+    private async Task CreateInvoiceAsync()
+    {
+        var parameters = new DialogParameters<InvoiceDialog> { { dialog => dialog.Customer, CustomerId } };
+        var dialog = await Dialogs.ShowAsync<InvoiceDialog>("Create an invoice", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreateInvoiceRequest request }
+            && await ChangeAsync<CreateInvoiceHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(request, token), "The draft was created.") is { } created)
+        {
+            Navigation.NavigateTo($"/admin/invoices/{created.Value.Id}");
+        }
+    }
+}

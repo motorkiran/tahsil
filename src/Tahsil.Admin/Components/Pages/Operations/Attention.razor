@@ -1,0 +1,116 @@
+@page "/admin/attention"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.AttentionItems
+@using Tahsil.Domain.Auditing
+@inherits AdminPageBase
+
+<PageTitle>Attention · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Attention</MudText>
+    <MudSpacer />
+    <MudSwitch T="bool" Value="_includeResolved" ValueChanged="ShowResolvedAsync" Label="Show resolved" Color="Color.Primary" id="show-resolved" />
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">
+    What Tahsil could not settle on its own. Look into each item, act at the provider or in Tahsil, then resolve it with what you did.
+</MudText>
+
+<MudTable T="AttentionItemResponse" Items="_items" Dense id="attention-items">
+    <HeaderContent>
+        <MudTh>Kind</MudTh>
+        <MudTh>Subject</MudTh>
+        <MudTh>Details</MudTh>
+        <MudTh>Raised</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Kind"><code>@context.Kind</code></MudTd>
+        <MudTd DataLabel="Subject">
+            @if (SubjectLink(context) is { } link)
+            {
+                <MudLink Href="@link">@context.SubjectType @context.SubjectId</MudLink>
+            }
+            else
+            {
+                <span>@context.SubjectType @context.SubjectId</span>
+            }
+            @if (context.CustomerId is { } customer)
+            {
+                <br /><MudLink Href="@($"/admin/customers/{customer}")" Typo="Typo.caption">Customer</MudLink>
+            }
+        </MudTd>
+        <MudTd DataLabel="Details">@string.Join(", ", context.Details.Select(pair => $"{pair.Key}={pair.Value}"))</MudTd>
+        <MudTd DataLabel="Raised"><Moment Value="context.RaisedAt" /></MudTd>
+        <MudTd>
+            @if (context.ResolvedAt is { } resolved)
+            {
+                <span>Resolved <Moment Value="resolved" /> by @context.ResolvedBy?.Id: @context.Resolution</span>
+            }
+            else if (Session.Has(TahsilPermissions.InvoicesWrite))
+            {
+                <MudButton Size="Size.Small" OnClick="() => ResolveAsync(context)" Class="resolve">Resolve</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>Nothing needs attention.</MudText></NoRecordsContent>
+</MudTable>
+
+<MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Failing work</MudText>
+<MudText Typo="Typo.body2" Class="mb-2">
+    Background work that failed ten times in a row. Tahsil keeps retrying it; the item leaves this list when it succeeds.
+</MudText>
+<MudTable T="WorkerAttentionResponse" Items="_workers" Dense id="worker-attention">
+    <HeaderContent>
+        <MudTh>Worker</MudTh>
+        <MudTh>Item</MudTh>
+        <MudTh>Failures</MudTh>
+        <MudTh>Since</MudTh>
+        <MudTh>Last error</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Worker"><code>@context.Worker</code></MudTd>
+        <MudTd DataLabel="Item"><code>@context.ItemId</code></MudTd>
+        <MudTd DataLabel="Failures">@context.FailureCount</MudTd>
+        <MudTd DataLabel="Since"><Moment Value="context.FirstFailedAt" /></MudTd>
+        <MudTd DataLabel="Last error">@context.LastError</MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No failing work.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    private IReadOnlyList<AttentionItemResponse> _items = [];
+    private IReadOnlyList<WorkerAttentionResponse> _workers = [];
+    private bool _includeResolved;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string? SubjectLink(AttentionItemResponse item) => item.SubjectType switch
+    {
+        AuditSubjects.Payment => $"/admin/payments/{item.SubjectId}",
+        AuditSubjects.Invoice => $"/admin/invoices/{item.SubjectId}",
+        AuditSubjects.Refund when item.Details.TryGetValue("paymentId", out var payment) => $"/admin/payments/{payment}",
+        _ => null,
+    };
+
+    private async Task LoadAsync()
+    {
+        _items = (await ReadAsync<ListAttentionItemsHandler, Page<AttentionItemResponse>>((handler, token) => handler.HandleAsync(_includeResolved, token)))?.Items ?? [];
+        _workers = (await ReadAsync<ListWorkerAttentionHandler, Page<WorkerAttentionResponse>>((handler, token) => handler.HandleAsync(token)))?.Items ?? [];
+    }
+
+    private async Task ShowResolvedAsync(bool include)
+    {
+        _includeResolved = include;
+        await LoadAsync();
+    }
+
+    private async Task ResolveAsync(AttentionItemResponse item)
+    {
+        var dialog = await Dialogs.ShowAsync<ResolveAttentionDialog>("Resolve the item", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: string resolution }
+            && await ChangeAsync<ResolveAttentionItemHandler, AttentionItemResponse>((handler, token) => handler.HandleAsync(item.Id, resolution, token), "The item was resolved.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

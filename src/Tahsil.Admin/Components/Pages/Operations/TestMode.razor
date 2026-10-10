@@ -1,0 +1,134 @@
+@page "/admin/test-mode"
+@attribute [Authorize(Policy = AdminAuthentication.AdminOnlyPolicy)]
+@using Tahsil.Application.PaymentMethods
+@using Tahsil.Application.TestClock
+@inherits AdminPageBase
+
+<PageTitle>Test mode · Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Test mode</MudText>
+
+@if (_clock is { } clock)
+{
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-4 mb-2">Time travel</MudText>
+    <MudText Typo="Typo.body2" Class="mb-2">
+        Moves the billing clock forward and runs everything that falls due on the way, in order: renewals, payment
+        attempts, retries and expiries. The clock never goes back.
+    </MudText>
+    <MudPaper Outlined Class="pa-4">
+        <MudText id="billing-now">Billing time: <Moment Value="clock.Now" /> (@Offset(clock.OffsetSeconds) ahead of real time)</MudText>
+        <MudStack Row AlignItems="AlignItems.End" Class="mt-2">
+            <MudTextField @bind-Value="_advanceBy" Label="Advance by" HelperText="An ISO 8601 duration: P1D, P1M, PT6H" Style="max-width: 14rem" id="advance-by" />
+            @foreach (var preset in Presets)
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => _advanceBy = preset">@preset</MudButton>
+            }
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AdvanceAsync" Disabled="_traveling" id="advance">Advance</MudButton>
+        </MudStack>
+        @if (_traveling)
+        {
+            <MudProgressLinear Indeterminate Class="mt-2" />
+        }
+        @if (_summary is { } summary)
+        {
+            <MudSimpleTable Dense Elevation="0" Class="mt-4" id="time-travel-summary">
+                <tbody>
+                    <tr><th>From</th><td><Moment Value="summary.From" /></td></tr>
+                    <tr><th>To</th><td><Moment Value="summary.To" /></td></tr>
+                    <tr><th>Steps</th><td>@summary.Steps</td></tr>
+                    <tr><th>Invoices created</th><td>@summary.InvoicesCreated</td></tr>
+                    <tr><th>Payments attempted</th><td>@summary.PaymentsAttempted</td></tr>
+                    <tr><th>Payments succeeded</th><td>@summary.PaymentsSucceeded</td></tr>
+                    <tr><th>Payments failed</th><td>@summary.PaymentsFailed</td></tr>
+                    <tr><th>Subscriptions canceled</th><td>@summary.SubscriptionsCanceled</td></tr>
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Simulator cards</MudText>
+    <MudText Typo="Typo.body2" Class="mb-2">
+        Makes a card saved with the simulator answer its next charges differently, such as declining a renewal. Add test
+        cards to a customer on their page.
+    </MudText>
+    <MudPaper Outlined Class="pa-4">
+        <MudStack Row AlignItems="AlignItems.End">
+            <MudTextField @bind-Value="_paymentMethod" Label="Payment method ID" Style="max-width: 24rem" id="payment-method-id" />
+            <MudSelect T="string" @bind-Value="_behavior" Label="Behavior" Style="max-width: 16rem" id="behavior">
+                @foreach (var behavior in CardBehaviors.All)
+                {
+                    <MudSelectItem T="string" Value="behavior">@behavior</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton Variant="Variant.Outlined" OnClick="SetBehaviorAsync" id="set-behavior">Set</MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else if (_notTestMode)
+{
+    <MudAlert Severity="Severity.Info">This installation runs in Live mode: time travel and the simulator exist in Test mode only.</MudAlert>
+}
+
+@code {
+    private static readonly string[] Presets = ["P1D", "P7D", "P1M", "P1Y"];
+    private TestClockResponse? _clock;
+    private TimeTravelResponse? _summary;
+    private bool _notTestMode;
+    private bool _traveling;
+    private string _advanceBy = "P1M";
+    private string? _paymentMethod;
+    private string _behavior = CardBehaviors.All[0];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clock = await Operations.RunAsync<GetTestClockHandler, Tahsil.Domain.Common.Result<TestClockResponse>>(handler => handler.HandleAsync(Aborted));
+        if (clock.IsSuccess)
+        {
+            _clock = clock.Value;
+        }
+        else if (clock.Error == TestClockErrors.NotTestMode)
+        {
+            _notTestMode = true;
+        }
+        else
+        {
+            Report(clock.Error, string.Empty);
+        }
+    }
+
+    private static string Offset(long seconds)
+    {
+        var offset = TimeSpan.FromSeconds(seconds);
+        return offset.TotalDays >= 1 ? $"{(int)offset.TotalDays} days {offset.Hours} hours" : $"{offset.Hours} hours {offset.Minutes} minutes";
+    }
+
+    private async Task AdvanceAsync()
+    {
+        _traveling = true;
+        try
+        {
+            var request = new AdvanceClockRequest { AdvanceBy = _advanceBy.Trim() };
+            if (await ChangeAsync<AdvanceTestClockHandler, TimeTravelResponse>((handler, token) => handler.HandleAsync(request, token), "Time travel is done.") is { } summary)
+            {
+                _summary = summary;
+                _clock = await ReadAsync<GetTestClockHandler, TestClockResponse>((handler, token) => handler.HandleAsync(token));
+            }
+        }
+        finally
+        {
+            _traveling = false;
+        }
+    }
+
+    private async Task SetBehaviorAsync()
+    {
+        if (!Guid.TryParse(_paymentMethod?.Trim(), out var id))
+        {
+            Snackbar.Add("Enter the ID of a payment method.", Severity.Error);
+            return;
+        }
+
+        var request = new UpdateSimulatorPaymentMethodRequest { Behavior = _behavior };
+        await ChangeAsync<UpdateTestPaymentMethodHandler, PaymentMethodResponse>((handler, token) => handler.HandleAsync(id, request, token), $"The card now answers {_behavior}.");
+    }
+}

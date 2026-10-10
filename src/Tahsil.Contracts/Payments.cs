@@ -152,3 +152,31 @@ public sealed record RefundResponse(
     DateTimeOffset? FailedAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+/// <summary>Something an operator must look at, such as an amount mismatch or a payment reconciliation could not settle.</summary>
+public sealed record AttentionItemResponse(
+    Guid Id,
+    string Kind,
+    string SubjectType,
+    Guid SubjectId,
+    Guid? CustomerId,
+    IReadOnlyDictionary<string, string> Details,
+    DateTimeOffset RaisedAt,
+    DateTimeOffset? ResolvedAt,
+    string? Resolution,
+    ActorResponse? ResolvedBy);
+
+/// <summary>A worker item that failed ten times in a row (ENG-6).</summary>
+public sealed record WorkerAttentionResponse(string Worker, Guid ItemId, int FailureCount, DateTimeOffset FirstFailedAt, DateTimeOffset LastFailedAt, string? LastError);
+
+/// <summary>An operator's ruling on a payment with the provider's evidence (ENG-16): it succeeded or it failed.</summary>
+public sealed record ResolvePaymentRequest
+{
+    public required bool Succeeded { get; init; }
+
+    /// <summary>The provider's ID of the payment, for a success.</summary>
+    public string? ProviderPaymentId { get; init; }
+
+    /// <summary>What the evidence was, for the audit log.</summary>
+    public required string Note { get; init; }
+}

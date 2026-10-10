@@ -1,0 +1,36 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText>Rule on the payment with what the provider's dashboard shows. The ruling is applied as the provider's answer would be, and audited.</MudText>
+            <MudRadioGroup T="bool" @bind-Value="_succeeded">
+                <MudRadio T="bool" Value="true" Color="Color.Success">It succeeded</MudRadio>
+                <MudRadio T="bool" Value="false" Color="Color.Error">It failed or never happened</MudRadio>
+            </MudRadioGroup>
+            @if (_succeeded)
+            {
+                <MudTextField @bind-Value="_providerPaymentId" Label="Provider payment ID" />
+            }
+            <MudTextField @bind-Value="_note" Label="Evidence" Lines="2" Required HelperText="What you checked, for the audit log." />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="string.IsNullOrWhiteSpace(_note)">Resolve</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _succeeded = true;
+    private string? _providerPaymentId;
+    private string? _note;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new ResolvePaymentRequest
+    {
+        Succeeded = _succeeded,
+        ProviderPaymentId = _succeeded && !string.IsNullOrWhiteSpace(_providerPaymentId) ? _providerPaymentId.Trim() : null,
+        Note = _note!.Trim(),
+    }));
+}

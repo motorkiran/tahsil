@@ -1,0 +1,157 @@
+@page "/admin/connections"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Connections
+@inherits AdminPageBase
+
+<PageTitle>Provider connections · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Provider connections</MudText>
+    <MudSpacer />
+    @* Shown once loaded: the routing dialog starts from the current routing, and saving it replaces the routing. *@
+    @if (_loaded && Session.Has(TahsilPermissions.ConnectionsWrite))
+    {
+        <MudButton Variant="Variant.Outlined" OnClick="EditRoutingAsync" id="edit-routing">Route currencies</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-connection">Create connection</MudButton>
+    }
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Customers pay each currency through the connection routed for it. Saved cards stay with the connection that saved them, so a disabled
+    connection's renewals fail until it is enabled again. Credentials are stored encrypted and never shown.
+</MudText>
+
+<MudTable T="ConnectionResponse" Items="_connections" Dense id="connections">
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Provider</MudTh>
+        <MudTh>Environment</MudTh>
+        <MudTh>Currencies</MudTh>
+        <MudTh>Last test</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key"><code>@context.Key</code> @context.Name</MudTd>
+        <MudTd DataLabel="Provider">@context.Provider</MudTd>
+        <MudTd DataLabel="Environment">@context.Environment.ToString().ToLowerInvariant()</MudTd>
+        <MudTd DataLabel="Currencies">@string.Join(", ", context.Currencies)</MudTd>
+        <MudTd DataLabel="Last test">
+            @if (context.LastTest is { } test)
+            {
+                <MudChip T="string" Size="Size.Small" Color="@(test.Status == ConnectionTestStatus.Succeeded ? Color.Success : Color.Error)">@test.Status.ToString().ToLowerInvariant()</MudChip>
+                <Moment Value="test.TestedAt" />
+            }
+            else
+            {
+                <span>Never</span>
+            }
+        </MudTd>
+        <MudTd>
+            @if (!context.Enabled)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Disabled</MudChip>
+            }
+            @if (Session.Has(TahsilPermissions.ConnectionsWrite))
+            {
+                <MudButton Size="Size.Small" OnClick="() => TestAsync(context)" Class="test">Test</MudButton>
+                <MudButton Size="Size.Small" OnClick="() => ToggleAsync(context)" Class="toggle">@(context.Enabled ? "Disable" : "Enable")</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No connections yet.</MudText></NoRecordsContent>
+</MudTable>
+
+<MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Routing</MudText>
+<MudSimpleTable Dense Elevation="0" id="routing">
+    <tbody>
+        @foreach (var (currency, key) in _routing)
+        {
+            <tr><th>@currency</th><td><code>@key</code></td></tr>
+        }
+        @if (_routing.Count == 0)
+        {
+            <tr><td>No currency is routed: customers cannot pay on pages until one is.</td></tr>
+        }
+    </tbody>
+</MudSimpleTable>
+
+@code {
+    private readonly List<ConnectionResponse> _connections = [];
+    private IReadOnlyDictionary<string, string> _routing = new Dictionary<string, string>();
+    private bool _loaded;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _connections.Clear();
+        string? cursor = null;
+        do
+        {
+            var page = await ReadAsync<ListConnectionsHandler, Page<ConnectionResponse>>((handler, token) => handler.HandleAsync(new ListConnectionsQuery(Cursor: cursor), token));
+            _connections.AddRange(page?.Items ?? []);
+            cursor = page?.NextCursor;
+        }
+        while (cursor is not null);
+
+        var routing = await ReadAsync<GetRoutingHandler, IReadOnlyDictionary<string, string>>((handler, token) => handler.HandleAsync(token));
+        _routing = routing ?? new Dictionary<string, string>();
+        _loaded = routing is not null;
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<ConnectionDialog>("Create a provider connection", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreateConnectionRequest request }
+            && await ChangeAsync<CreateConnectionHandler, Versioned<ConnectionResponse>>((handler, token) => handler.HandleAsync(request, token), "The connection was created.") is { } created)
+        {
+            await LoadAsync();
+            await TestAsync(created.Value);
+        }
+    }
+
+    private async Task TestAsync(ConnectionResponse connection)
+    {
+        var tested = await Operations.RunAsync<TestConnectionHandler, Tahsil.Domain.Common.Result<Versioned<ConnectionResponse>>>(handler => handler.HandleAsync(connection.Id.ToString(), Aborted));
+        if (tested.IsFailure)
+        {
+            Report(tested.Error, string.Empty);
+        }
+        else if (tested.Value.Value.LastTest is { Status: ConnectionTestStatus.Succeeded })
+        {
+            Snackbar.Add($"{connection.Key} works.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"{connection.Key} failed its test: {tested.Value.Value.LastTest?.Message}", Severity.Warning);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ToggleAsync(ConnectionResponse connection)
+    {
+        if (connection.Enabled && !await ConfirmAsync(
+            $"Disable {connection.Key}?", "It takes no new payments, and renewals of the cards it saved fail until it is enabled again.", "Disable"))
+        {
+            return;
+        }
+
+        var request = new UpdateConnectionRequest { Enabled = !connection.Enabled };
+        if (await ChangeAsync<UpdateConnectionHandler, Versioned<ConnectionResponse>>(
+            (handler, token) => handler.HandleAsync(connection.Id.ToString(), request, null, token), connection.Enabled ? "The connection was disabled." : "The connection was enabled.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task EditRoutingAsync()
+    {
+        var parameters = new DialogParameters<RoutingDialog> { { dialog => dialog.Connections, _connections }, { dialog => dialog.Routing, _routing } };
+        var dialog = await Dialogs.ShowAsync<RoutingDialog>("Route currencies", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: Dictionary<string, string> routing }
+            && await ChangeAsync<UpdateRoutingHandler, IReadOnlyDictionary<string, string>>((handler, token) => handler.HandleAsync(routing, token), "The routing was saved.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

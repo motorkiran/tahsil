@@ -1,0 +1,70 @@
+@page "/admin/payments"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Connections
+@using Tahsil.Application.Payments
+@inherits AdminPageBase
+
+<PageTitle>Payments · Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Payments</MudText>
+
+<MudStack Row Class="mb-4" AlignItems="AlignItems.End">
+    <MudSelect T="PaymentStatus?" @bind-Value="_status" Label="Status" Clearable Style="max-width: 12rem" id="status">
+        @foreach (var status in Enum.GetValues<PaymentStatus>())
+        {
+            <MudSelectItem T="PaymentStatus?" Value="status">@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(status.ToString())</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="Guid?" @bind-Value="_connection" Label="Connection" Clearable Style="max-width: 14rem" id="connection">
+        @foreach (var connection in _connections)
+        {
+            <MudSelectItem T="Guid?" Value="connection.Id">@connection.Key</MudSelectItem>
+        }
+    </MudSelect>
+    <MudTextField @bind-Value="_failureCode" Label="Failure code" Placeholder="insufficient_funds" Clearable Style="max-width: 14rem" id="failure-code" />
+    <MudButton Variant="Variant.Outlined" OnClick="SearchAsync" id="search-button">Search</MudButton>
+</MudStack>
+
+<PaymentTable Payments="_payments" />
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<PaymentResponse> _payments = [];
+    private IReadOnlyList<ConnectionResponse> _connections = [];
+    private string? _nextCursor;
+    private PaymentStatus? _status;
+    private Guid? _connection;
+    private string? _failureCode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.Has(TahsilPermissions.ConnectionsRead))
+        {
+            _connections = (await ReadAsync<ListConnectionsHandler, Page<ConnectionResponse>>((handler, token) => handler.HandleAsync(new ListConnectionsQuery(Limit: Paging.MaxLimit), token)))?.Items ?? [];
+        }
+
+        await LoadMoreAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _payments.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListPaymentsQuery(
+            Status: _status, Connection: _connection, FailureCode: string.IsNullOrWhiteSpace(_failureCode) ? null : _failureCode.Trim(), Cursor: _nextCursor);
+        if (await ReadAsync<ListPaymentsHandler, Page<PaymentResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _payments.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+}

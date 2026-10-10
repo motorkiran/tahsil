@@ -1,0 +1,48 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudStack Row>
+                <MudTextField @bind-Value="_currency" Label="Currency" MaxLength="3" Style="max-width: 7rem" />
+                <MudNumericField T="decimal?" @bind-Value="_amount" Label="Amount" HelperText="Positive gives credit; negative adds to what they owe." />
+            </MudStack>
+            <MudTextField @bind-Value="_description" Label="Description" Placeholder="Goodwill credit" Required />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+            <MudText Typo="Typo.caption">Credit is applied to the customer's next invoices in the same currency.</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Adjust</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _currency = "TRY";
+    private decimal? _amount;
+    private string? _description;
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    private void Submit()
+    {
+        var currency = _currency.Trim().ToUpperInvariant();
+        if (AdminFormat.ToMinorUnits(_amount, currency) is not { } amount || amount == 0)
+        {
+            _error = "Enter a non-zero amount in the currency's unit, with no more decimals than it has.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_description))
+        {
+            _error = "Say why the balance changes.";
+            return;
+        }
+
+        Dialog.Close(DialogResult.Ok(new CreateBalanceTransactionRequest { Amount = amount, Currency = currency, Description = _description.Trim() }));
+    }
+}

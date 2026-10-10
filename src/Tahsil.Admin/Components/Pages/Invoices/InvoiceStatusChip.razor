@@ -1,0 +1,14 @@
+<MudChip T="string" Size="Size.Small" Color="Tone" Class="status">@Status.ToString().ToLowerInvariant()</MudChip>
+
+@code {
+    [Parameter, EditorRequired]
+    public InvoiceStatus Status { get; set; }
+
+    private Color Tone => Status switch
+    {
+        InvoiceStatus.Paid => Color.Success,
+        InvoiceStatus.Open => Color.Info,
+        InvoiceStatus.Uncollectible => Color.Error,
+        _ => Color.Default,
+    };
+}

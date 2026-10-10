@@ -36,7 +36,8 @@ public sealed class GetPaymentHandler(ITahsilDbContext context, IAuthorizer auth
     }
 }
 
-public sealed record ListPaymentsQuery(Guid? Customer = null, Guid? Invoice = null, PaymentStatus? Status = null, Guid? Connection = null, string? Cursor = null, int? Limit = null);
+public sealed record ListPaymentsQuery(
+    Guid? Customer = null, Guid? Invoice = null, PaymentStatus? Status = null, Guid? Connection = null, string? Cursor = null, int? Limit = null, string? FailureCode = null);
 
 public sealed class ListPaymentsHandler(ITahsilDbContext context, IAuthorizer authorizer)
 {
@@ -74,6 +75,11 @@ public sealed class ListPaymentsHandler(ITahsilDbContext context, IAuthorizer au
         if (query.Connection is { } connection)
         {
             payments = payments.Where(payment => payment.ConnectionId == connection);
+        }
+
+        if (query.FailureCode is { } failureCode)
+        {
+            payments = payments.Where(payment => payment.FailureCode == failureCode);
         }
 
         var page = await Newest.ReadAsync(payments, query.Cursor, query.Limit ?? Paging.DefaultLimit, cancellationToken);

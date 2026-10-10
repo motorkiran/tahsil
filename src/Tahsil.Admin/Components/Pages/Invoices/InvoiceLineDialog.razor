@@ -1,0 +1,51 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_description" Label="Description" Required />
+            <MudStack Row>
+                <MudNumericField T="decimal" @bind-Value="_quantity" Label="Quantity" Min="0" Style="max-width: 9rem" />
+                <MudNumericField T="decimal?" @bind-Value="_unitAmount" Label="Unit amount" HelperText="@($"In {Currency}, such as 299.00")" />
+            </MudStack>
+            <MudTextField @bind-Value="_taxRate" Label="Tax rate" HelperText="A tax rate key; the customer's default applies when empty." />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Add</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string? _description;
+    private decimal _quantity = 1;
+    private decimal? _unitAmount;
+    private string? _taxRate;
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required string Currency { get; set; }
+
+    private void Submit()
+    {
+        if (AdminFormat.ToMinorUnits(_unitAmount, Currency) is not { } unitAmount)
+        {
+            _error = "Enter the amount in the currency's unit, with no more decimals than it has.";
+            return;
+        }
+
+        Dialog.Close(DialogResult.Ok(new InvoiceLineRequest
+        {
+            Description = _description?.Trim(),
+            Quantity = _quantity,
+            UnitAmount = unitAmount,
+            TaxRate = string.IsNullOrWhiteSpace(_taxRate) ? null : _taxRate.Trim(),
+        }));
+    }
+}

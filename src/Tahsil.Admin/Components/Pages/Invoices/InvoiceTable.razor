@@ -1,0 +1,28 @@
+@inject NavigationManager Navigation
+
+<MudTable T="InvoiceResponse" Items="Invoices" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" Class="invoices">
+    <HeaderContent>
+        <MudTh>Number</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Total</MudTh>
+        <MudTh>Remaining</MudTh>
+        <MudTh>Due</MudTh>
+        <MudTh>Created</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Number"><MudLink Href="@Link(context)">@(context.Number ?? "Draft")</MudLink></MudTd>
+        <MudTd DataLabel="Status"><InvoiceStatusChip Status="context.Status" /></MudTd>
+        <MudTd DataLabel="Total">@AdminFormat.Money(context.Total, context.Currency)</MudTd>
+        <MudTd DataLabel="Remaining">@AdminFormat.Money(context.AmountRemaining, context.Currency)</MudTd>
+        <MudTd DataLabel="Due">@if (context.DueDate is { } due) { <Moment Value="due" /> }</MudTd>
+        <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No invoices found.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<InvoiceResponse> Invoices { get; set; }
+
+    private static string Link(InvoiceResponse invoice) => $"/admin/invoices/{invoice.Id}";
+}
