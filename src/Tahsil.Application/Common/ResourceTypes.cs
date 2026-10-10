@@ -9,4 +9,7 @@ public static class ResourceTypes
     public const string Price = "price";
     public const string Customer = "customer";
     public const string Connection = "provider_connection";
+    public const string Invoice = "invoice";
+    public const string InvoiceItem = "invoice_item";
+    public const string BalanceTransaction = "balance_transaction";
 }

@@ -2679,6 +2679,1246 @@
         ]
       }
     },
+    "/api/v1/invoices": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List invoices",
+        "description": "Newest first.\n\nRequires the `tahsil.invoices:read` permission.",
+        "operationId": "ListInvoices",
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Only this customer's invoices.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`draft`, `open`, `paid`, `void` or `uncollectible`.",
+            "schema": {
+              "$ref": "#/components/schemas/InvoiceStatus"
+            }
+          },
+          {
+            "name": "number",
+            "in": "query",
+            "description": "An invoice number, such as `INV-2026-000123`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfInvoiceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create a draft invoice",
+        "description": "Lines are one-time prices in the invoice's currency, or descriptions with unit amounts (negative for credits). The draft changes freely until it is finalized.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "CreateInvoice",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get an invoice",
+        "description": "Requires the `tahsil.invoices:read` permission.",
+        "operationId": "GetInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Update an invoice",
+        "description": "Drafts: the collection method, days until due, memo and metadata. Finalized invoices: the legal invoice the application issued, and metadata.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "UpdateInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Delete a draft invoice",
+        "description": "Its pending items wait for another invoice. Finalized invoices are voided instead.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "DeleteInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/lines": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Add lines to a draft invoice",
+        "description": "Requires the `tahsil.invoices:write` permission.",
+        "operationId": "AddInvoiceLines",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInvoiceLinesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/lines/{lineId}": {
+      "delete": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Remove a line from a draft invoice",
+        "description": "Requires the `tahsil.invoices:write` permission.",
+        "operationId": "RemoveInvoiceLine",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/finalize": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Finalize a draft invoice",
+        "description": "Assigns the number, takes the customer's billing details and applies the customer's balance. An invoice with nothing left to pay is paid at once.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "FinalizeInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/void": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Void an invoice",
+        "description": "For open and uncollectible invoices without payments. The customer's balance gets back what finalization took from it or added to it.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "VoidInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/mark-uncollectible": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Mark an invoice uncollectible",
+        "description": "Stops collection; the customer can still pay it.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "MarkInvoiceUncollectible",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoice-items": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List invoice items",
+        "description": "Requires the `tahsil.invoices:read` permission.",
+        "operationId": "ListInvoiceItems",
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Only this customer's items.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pending",
+            "in": "query",
+            "description": "Only items no invoice has taken yet (true), or only invoiced ones (false).",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfInvoiceItemResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create a pending invoice item",
+        "description": "A charge or credit that joins the customer's next manual invoice created with `includePendingItems`.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "CreateInvoiceItem",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/invoice-items/{id}": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get an invoice item",
+        "description": "Requires the `tahsil.invoices:read` permission.",
+        "operationId": "GetInvoiceItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceItemResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Delete a pending invoice item",
+        "description": "Only while no invoice includes it.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "DeleteInvoiceItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{customerId}/balance-transactions": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "List a customer's balance history",
+        "description": "Newest first.\n\nRequires the `tahsil.customers:read` permission.",
+        "operationId": "ListBalanceTransactions",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "description": "Only this currency.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfBalanceTransactionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Adjust a customer's balance",
+        "description": "Positive amounts give credit that the next invoices use; negative amounts are added to the next invoice. Balances never turn into refunds.\n\nRequires the `tahsil.invoices:write` permission.",
+        "operationId": "AdjustBalance",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBalanceTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceTransactionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{customerId}/balance-transactions/{id}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get a balance transaction",
+        "description": "Requires the `tahsil.customers:read` permission.",
+        "operationId": "GetBalanceTransaction",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceTransactionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/provisioning": {
       "get": {
         "tags": [
@@ -2819,6 +4059,20 @@
           }
         },
         "description": "Who did something: an API key, an administrator, a customer on a hosted page, or Tahsil itself."
+      },
+      "AddInvoiceLinesRequest": {
+        "required": [
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineRequest"
+            }
+          }
+        }
       },
       "ApiKeyResponse": {
         "required": [
@@ -2961,11 +4215,103 @@
         },
         "description": "An action recorded in the audit trail. `action` reads `resource.past_tense_verb`, such as\n`api_key.revoked`. People are referenced by ID only, so the trail outlives their personal data."
       },
+      "BalanceTransactionResponse": {
+        "required": [
+          "id",
+          "customerId",
+          "currency",
+          "amount",
+          "type",
+          "invoiceId",
+          "description",
+          "balanceAfter",
+          "actor",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "type": {
+            "$ref": "#/components/schemas/BalanceTransactionType"
+          },
+          "invoiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "balanceAfter": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActorResponse"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BalanceTransactionType": {
+        "enum": [
+          "adjustment",
+          "invoice_credit",
+          "applied_to_invoice",
+          "carryover",
+          "invoice_voided"
+        ]
+      },
+      "BillingReason": {
+        "enum": [
+          "subscription_create",
+          "subscription_cycle",
+          "subscription_update",
+          "subscription_cancel",
+          "checkout",
+          "manual"
+        ]
+      },
       "BillingScheme": {
         "enum": [
           "per_unit",
           "tiered",
           "package"
+        ]
+      },
+      "CollectionMethod": {
+        "enum": [
+          "charge_automatically",
+          "send_invoice"
         ]
       },
       "ConnectionEnvironment": {
@@ -3105,6 +4451,32 @@
             ],
             "description": "When the key stops working; it does not expire when omitted.",
             "format": "date-time"
+          }
+        }
+      },
+      "CreateBalanceTransactionRequest": {
+        "required": [
+          "amount",
+          "currency",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Minor units: positive gives the customer credit, negative adds to what they owe.",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "Why the balance changes, such as `Goodwill credit`."
           }
         }
       },
@@ -3254,6 +4626,123 @@
           }
         },
         "description": "A new API key with its secret `Key`, which is shown only this once. Callers send it as `Authorization: Bearer ths_…`."
+      },
+      "CreateInvoiceItemRequest": {
+        "required": [
+          "customer",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "price": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A one-time price in the currency, by ID or lookup key; or give a description and a unit amount."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "1 when omitted.",
+            "format": "double"
+          },
+          "unitAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Minor units, negative for a credit; for items without a price.",
+            "format": "int64"
+          },
+          "taxRate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For items without a price: a tax rate by ID or key."
+          },
+          "discountable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateInvoiceRequest": {
+        "required": [
+          "customer",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217, such as `TRY`."
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
+          },
+          "daysUntilDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "For `send_invoice`: days from finalization to the due date; `Tahsil:Invoices:DefaultDaysUntilDue` when omitted.",
+            "format": "int32"
+          },
+          "lines": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineRequest"
+            }
+          },
+          "includePendingItems": {
+            "type": "boolean",
+            "description": "Adds the customer's pending items in the invoice's currency that belong to no subscription."
+          },
+          "memo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
       },
       "CreateMeterRequest": {
         "required": [
@@ -3583,6 +5072,26 @@
         },
         "description": "A billing address; `country` is ISO 3166-1 alpha-2, such as `TR`."
       },
+      "CustomerBalanceResponse": {
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "CustomerExportResponse": {
         "required": [
           "customer",
@@ -3624,7 +5133,8 @@
           "metadata",
           "anonymizedAt",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "balances"
         ],
         "type": "object",
         "properties": {
@@ -3717,8 +5227,76 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "balances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerBalanceResponse"
+            }
           }
         }
+      },
+      "CustomerSnapshotResponse": {
+        "required": [
+          "name",
+          "email",
+          "type",
+          "taxId",
+          "taxOffice",
+          "address",
+          "phone",
+          "locale"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/CustomerType"
+          },
+          "taxId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxOffice": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CustomerAddress"
+              }
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locale": {
+            "type": "string"
+          }
+        },
+        "description": "The customer's billing details when the invoice was finalized."
       },
       "CustomerType": {
         "enum": [
@@ -3773,6 +5351,598 @@
           }
         }
       },
+      "InvoiceItemResponse": {
+        "required": [
+          "id",
+          "customerId",
+          "subscriptionId",
+          "currency",
+          "priceId",
+          "description",
+          "quantity",
+          "unitAmount",
+          "taxRateId",
+          "discountable",
+          "proration",
+          "periodStart",
+          "periodEnd",
+          "invoiceId",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subscriptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "priceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unitAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxRateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "discountable": {
+            "type": "boolean"
+          },
+          "proration": {
+            "type": "boolean"
+          },
+          "periodStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "invoiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InvoiceLineRequest": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A one-time price in the invoice's currency, by ID or lookup key."
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "1 when omitted.",
+            "format": "double"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unitAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Minor units, for lines without a price.",
+            "format": "int64"
+          },
+          "taxRate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For lines without a price: a tax rate by ID or key."
+          }
+        },
+        "description": "A line to add: a one-time price, or a description with a unit amount (negative for a credit)."
+      },
+      "InvoiceLineResponse": {
+        "required": [
+          "id",
+          "type",
+          "description",
+          "quantity",
+          "unitAmountDecimal",
+          "amount",
+          "discountAmount",
+          "taxAmount",
+          "total",
+          "priceId",
+          "pendingItemId",
+          "taxRateId",
+          "taxPercentage",
+          "taxInclusive",
+          "periodStart",
+          "periodEnd"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InvoiceLineType"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unitAmountDecimal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "discountAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "priceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "pendingItemId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "taxRateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "taxPercentage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "taxInclusive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "periodStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "InvoiceLineType": {
+        "enum": [
+          "subscription",
+          "usage",
+          "proration",
+          "one_time",
+          "item"
+        ]
+      },
+      "InvoiceResponse": {
+        "required": [
+          "id",
+          "number",
+          "customerId",
+          "subscriptionId",
+          "status",
+          "billingReason",
+          "collectionMethod",
+          "daysUntilDue",
+          "currency",
+          "periodStart",
+          "periodEnd",
+          "subtotal",
+          "discountTotal",
+          "taxTotal",
+          "totalExcludingTax",
+          "total",
+          "appliedBalance",
+          "amountDue",
+          "amountPaid",
+          "amountRemaining",
+          "amountRefunded",
+          "dueDate",
+          "autoAdvance",
+          "finalizeAt",
+          "nextPaymentAttemptAt",
+          "attemptCount",
+          "customerSnapshot",
+          "legalInvoice",
+          "memo",
+          "metadata",
+          "lines",
+          "finalizedAt",
+          "paidAt",
+          "voidedAt",
+          "markedUncollectibleAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Assigned at finalization, such as `INV-2026-000123`."
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subscriptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvoiceStatus"
+          },
+          "billingReason": {
+            "$ref": "#/components/schemas/BillingReason"
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
+          },
+          "daysUntilDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "periodStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "subtotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "discountTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalExcludingTax": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "appliedBalance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The customer balance applied at finalization: positive when credit was spent, negative when a debt joined.",
+            "format": "int64"
+          },
+          "amountDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "amountPaid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "amountRemaining": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "amountRefunded": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "autoAdvance": {
+            "type": "boolean"
+          },
+          "finalizeAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "nextPaymentAttemptAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "attemptCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "customerSnapshot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CustomerSnapshotResponse"
+              }
+            ]
+          },
+          "legalInvoice": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LegalInvoiceData"
+              }
+            ]
+          },
+          "memo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineResponse"
+            }
+          },
+          "finalizedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "paidAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "voidedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "markedUncollectibleAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InvoiceStatus": {
+        "enum": [
+          "draft",
+          "open",
+          "paid",
+          "void",
+          "uncollectible"
+        ]
+      },
       "JsonElement": { },
       "KimlikSubscriber": {
         "required": [
@@ -3796,6 +5966,30 @@
           "user",
           "organization"
         ]
+      },
+      "LegalInvoiceData": {
+        "required": [
+          "number"
+        ],
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "MeterAggregation": {
         "enum": [
@@ -3921,6 +6115,28 @@
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
+      "PageOfBalanceTransactionResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BalanceTransactionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
       "PageOfConnectionResponse": {
         "required": [
           "items",
@@ -3954,6 +6170,50 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CustomerResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfInvoiceItemResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceItemResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfInvoiceResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceResponse"
             }
           },
           "nextCursor": {
@@ -5209,6 +7469,56 @@
         },
         "description": "JSON Merge Patch: omitted fields stay as they are, `null` clears."
       },
+      "UpdateInvoiceRequest": {
+        "type": "object",
+        "properties": {
+          "collectionMethod": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CollectionMethod"
+              }
+            ]
+          },
+          "daysUntilDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "memo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "legalInvoice": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LegalInvoiceData"
+              }
+            ]
+          }
+        },
+        "description": "JSON Merge Patch. Drafts: the collection method, days until due, memo and metadata. Finalized invoices: only the\nlegal invoice and metadata."
+      },
       "UpdateMeterRequest": {
         "type": "object",
         "properties": {
@@ -5377,6 +7687,9 @@
     },
     {
       "name": "Audit events"
+    },
+    {
+      "name": "Invoices"
     },
     {
       "name": "Provisioning"

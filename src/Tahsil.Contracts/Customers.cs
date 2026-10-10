@@ -37,7 +37,8 @@ public sealed record CustomerResponse(
     IReadOnlyDictionary<string, string> Metadata,
     DateTimeOffset? AnonymizedAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<CustomerBalanceResponse> Balances);
 
 public sealed record CreateCustomerRequest
 {

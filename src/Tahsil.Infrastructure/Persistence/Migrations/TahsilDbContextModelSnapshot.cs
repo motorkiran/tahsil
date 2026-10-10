@@ -539,6 +539,66 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Customers.BalanceTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("actor");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<long>("BalanceAfter")
+                        .HasColumnType("bigint")
+                        .HasColumnName("balance_after");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_balance_transactions");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_balance_transactions_invoice_id");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_balance_transactions_customer_id_id");
+
+                    b.ToTable("balance_transactions", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Customers.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -645,6 +705,439 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_customers_kimlik_subscriber", "(kimlik_subscriber_type IS NULL) = (kimlik_subscriber_id IS NULL)");
                         });
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Customers.CustomerBalance", b =>
+                {
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CustomerId", "Currency")
+                        .HasName("pk_customer_balances");
+
+                    b.ToTable("customer_balances", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AmountDue")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_due");
+
+                    b.Property<long>("AmountPaid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_paid");
+
+                    b.Property<long>("AmountRefunded")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_refunded");
+
+                    b.Property<long>("AmountRemaining")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_remaining");
+
+                    b.Property<long>("AppliedBalance")
+                        .HasColumnType("bigint")
+                        .HasColumnName("applied_balance");
+
+                    b.Property<short>("AttemptCount")
+                        .HasColumnType("smallint")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<bool>("AutoAdvance")
+                        .HasColumnType("boolean")
+                        .HasColumnName("auto_advance");
+
+                    b.Property<string>("BillingReason")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("billing_reason");
+
+                    b.Property<string>("CollectionMethod")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("collection_method");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("CustomerSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("customer_snapshot");
+
+                    b.Property<byte[]>("CustomerTaxId")
+                        .HasColumnType("bytea")
+                        .HasColumnName("customer_tax_id");
+
+                    b.Property<short?>("DaysUntilDue")
+                        .HasColumnType("smallint")
+                        .HasColumnName("days_until_due");
+
+                    b.Property<long>("DiscountTotal")
+                        .HasColumnType("bigint")
+                        .HasColumnName("discount_total");
+
+                    b.Property<DateTimeOffset?>("DueDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_date");
+
+                    b.Property<DateTimeOffset?>("FinalizeAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finalize_at");
+
+                    b.Property<DateTimeOffset?>("FinalizedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finalized_at");
+
+                    b.Property<DateOnly?>("LegalInvoiceDate")
+                        .HasColumnType("date")
+                        .HasColumnName("legal_invoice_date");
+
+                    b.Property<string>("LegalInvoiceNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("legal_invoice_number");
+
+                    b.Property<string>("LegalInvoiceUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("legal_invoice_url");
+
+                    b.Property<DateTimeOffset?>("MarkedUncollectibleAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("marked_uncollectible_at");
+
+                    b.Property<string>("Memo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("memo");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<DateTimeOffset?>("NextPaymentAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_payment_attempt_at");
+
+                    b.Property<string>("Number")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("number");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<DateTimeOffset?>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateTimeOffset?>("PeriodStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_start");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<long>("Subtotal")
+                        .HasColumnType("bigint")
+                        .HasColumnName("subtotal");
+
+                    b.Property<long>("TaxTotal")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tax_total");
+
+                    b.Property<long>("Total")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total");
+
+                    b.Property<long>("TotalExcludingTax")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_excluding_tax");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invoices");
+
+                    b.HasIndex("FinalizeAt")
+                        .HasDatabaseName("ix_invoices_finalize_at")
+                        .HasFilter("status = 'draft' AND auto_advance");
+
+                    b.HasIndex("NextPaymentAttemptAt")
+                        .HasDatabaseName("ix_invoices_next_payment_attempt_at")
+                        .HasFilter("status = 'open'");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invoices_number")
+                        .HasFilter("number IS NOT NULL");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_invoices_customer_id_id");
+
+                    b.HasIndex("SubscriptionId", "BillingReason", "PeriodStart")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invoices_subscription_id_billing_reason_period_start")
+                        .HasFilter("billing_reason IN ('subscription_create', 'subscription_cycle')");
+
+                    b.ToTable("invoices", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.InvoiceLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<long>("DiscountAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("discount_amount");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<bool>("IsDiscountable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_discountable");
+
+                    b.Property<Guid?>("PendingItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pending_item_id");
+
+                    b.Property<DateTimeOffset?>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateTimeOffset?>("PeriodStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_start");
+
+                    b.Property<Guid?>("PriceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("price_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("numeric(28,8)")
+                        .HasColumnName("quantity");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<long>("TaxAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<bool?>("TaxInclusive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("tax_inclusive");
+
+                    b.Property<decimal?>("TaxPercentage")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("numeric(7,4)")
+                        .HasColumnName("tax_percentage");
+
+                    b.Property<Guid?>("TaxRateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_rate_id");
+
+                    b.Property<long>("Total")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.Property<decimal?>("UnitAmountDecimal")
+                        .HasPrecision(28, 12)
+                        .HasColumnType("numeric(28,12)")
+                        .HasColumnName("unit_amount_decimal");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invoice_lines");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_invoice_lines_invoice_id");
+
+                    b.HasIndex("PendingItemId")
+                        .HasDatabaseName("ix_invoice_lines_pending_item_id");
+
+                    b.HasIndex("PriceId")
+                        .HasDatabaseName("ix_invoice_lines_price_id");
+
+                    b.HasIndex("TaxRateId")
+                        .HasDatabaseName("ix_invoice_lines_tax_rate_id");
+
+                    b.ToTable("invoice_lines", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.PendingInvoiceItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<bool>("IsDiscountable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_discountable");
+
+                    b.Property<bool>("IsProration")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_proration");
+
+                    b.Property<DateTimeOffset?>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateTimeOffset?>("PeriodStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_start");
+
+                    b.Property<Guid?>("PriceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("price_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("numeric(28,8)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<Guid?>("TaxRateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_rate_id");
+
+                    b.Property<long?>("UnitAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_amount");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pending_invoice_items");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_pending_invoice_items_invoice_id");
+
+                    b.HasIndex("PriceId")
+                        .HasDatabaseName("ix_pending_invoice_items_price_id");
+
+                    b.HasIndex("TaxRateId")
+                        .HasDatabaseName("ix_pending_invoice_items_tax_rate_id");
+
+                    b.HasIndex("CustomerId", "Currency")
+                        .HasDatabaseName("ix_pending_invoice_items_customer_id_currency")
+                        .HasFilter("invoice_id IS NULL");
+
+                    b.ToTable("pending_invoice_items", "tahsil");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Payments.ConnectionCurrency", b =>
@@ -934,6 +1427,22 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("outbox_messages", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Infrastructure.Persistence.Configurations.InvoiceNumberSequence", b =>
+                {
+                    b.Property<short>("Year")
+                        .HasColumnType("smallint")
+                        .HasColumnName("year");
+
+                    b.Property<long>("NextValue")
+                        .HasColumnType("bigint")
+                        .HasColumnName("next_value");
+
+                    b.HasKey("Year")
+                        .HasName("pk_invoice_number_sequences");
+
+                    b.ToTable("invoice_number_sequences", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Infrastructure.Simulator.SimulatorRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1053,6 +1562,98 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_prices_tax_rates_tax_rate_id");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Customers.BalanceTransaction", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_balance_transactions_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Invoices.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_balance_transactions_invoices_invoice_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Customers.CustomerBalance", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_customer_balances_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.Invoice", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoices_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.InvoiceLine", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Invoices.Invoice", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_lines_invoices_invoice_id");
+
+                    b.HasOne("Tahsil.Domain.Invoices.PendingInvoiceItem", null)
+                        .WithMany()
+                        .HasForeignKey("PendingItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_invoice_lines_pending_invoice_items_pending_item_id");
+
+                    b.HasOne("Tahsil.Domain.Catalog.Price", null)
+                        .WithMany()
+                        .HasForeignKey("PriceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_invoice_lines_prices_price_id");
+
+                    b.HasOne("Tahsil.Domain.Catalog.TaxRate", null)
+                        .WithMany()
+                        .HasForeignKey("TaxRateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_invoice_lines_tax_rates_tax_rate_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.PendingInvoiceItem", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_invoice_items_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Invoices.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_pending_invoice_items_invoices_invoice_id");
+
+                    b.HasOne("Tahsil.Domain.Catalog.Price", null)
+                        .WithMany()
+                        .HasForeignKey("PriceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pending_invoice_items_prices_price_id");
+
+                    b.HasOne("Tahsil.Domain.Catalog.TaxRate", null)
+                        .WithMany()
+                        .HasForeignKey("TaxRateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pending_invoice_items_tax_rates_tax_rate_id");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Payments.ConnectionCurrency", b =>
                 {
                     b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
@@ -1088,6 +1689,11 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_simulator_transactions_provider_connections_connection_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Invoices.Invoice", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

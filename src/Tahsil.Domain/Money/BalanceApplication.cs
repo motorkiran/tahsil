@@ -13,6 +13,9 @@ public enum BalanceTransactionType
 
     /// <summary>A change by an operator or application.</summary>
     Adjustment,
+
+    /// <summary>A voided invoice gave back what its finalization took from or added to the balance.</summary>
+    InvoiceVoided,
 }
 
 /// <summary>A change of the customer's balance; positive is credit for the customer.</summary>

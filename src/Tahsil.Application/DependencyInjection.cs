@@ -7,6 +7,7 @@ using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
 using Tahsil.Application.Connections;
 using Tahsil.Application.Customers;
+using Tahsil.Application.Invoices;
 using Tahsil.Application.Provisioning;
 
 namespace Tahsil.Application;
@@ -88,6 +89,36 @@ public static class DependencyInjection
         services.AddScoped<TestConnectionHandler>();
         services.AddScoped<GetRoutingHandler>();
         services.AddScoped<UpdateRoutingHandler>();
+        services.AddOptions<BillingOptions>()
+            .BindConfiguration(BillingOptions.SectionName)
+            .Validate(options => options.HasKnownTimeZone(), $"{BillingOptions.SectionName}:TimeZone must be an IANA time zone such as Europe/Istanbul.")
+            .ValidateOnStart();
+        services.AddOptions<InvoiceOptions>()
+            .BindConfiguration(InvoiceOptions.SectionName)
+            .Validate(options => options.HasValidPrefix(), $"{InvoiceOptions.SectionName}:NumberPrefix must be 1 to 12 capital letters or digits.")
+            .Validate(options => options.DefaultDaysUntilDue is >= 0 and <= 365, $"{InvoiceOptions.SectionName}:DefaultDaysUntilDue must be between 0 and 365.")
+            .ValidateOnStart();
+        services.AddSingleton<InvoiceMapper>();
+        services.AddScoped<InvoiceLines>();
+        services.AddScoped<InvoiceFinalizer>();
+        services.AddScoped<CreateInvoiceHandler>();
+        services.AddScoped<AddInvoiceLinesHandler>();
+        services.AddScoped<RemoveInvoiceLineHandler>();
+        services.AddScoped<UpdateInvoiceHandler>();
+        services.AddScoped<DeleteInvoiceHandler>();
+        services.AddScoped<FinalizeInvoiceHandler>();
+        services.AddScoped<VoidInvoiceHandler>();
+        services.AddScoped<MarkInvoiceUncollectibleHandler>();
+        services.AddScoped<GetInvoiceHandler>();
+        services.AddScoped<ListInvoicesHandler>();
+        services.AddScoped<CreateInvoiceItemHandler>();
+        services.AddScoped<GetInvoiceItemHandler>();
+        services.AddScoped<ListInvoiceItemsHandler>();
+        services.AddScoped<DeleteInvoiceItemHandler>();
+        services.AddScoped<AdjustBalanceHandler>();
+        services.AddScoped<GetBalanceTransactionHandler>();
+        services.AddScoped<ListBalanceTransactionsHandler>();
+        services.AddScoped<ICustomerHistory, BillingHistory>();
         services.AddScoped<CustomerMapper>();
         services.AddScoped<CreateCustomerHandler>();
         services.AddScoped<UpsertCustomerHandler>();

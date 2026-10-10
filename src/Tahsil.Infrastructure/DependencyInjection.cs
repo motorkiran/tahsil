@@ -8,7 +8,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Application.Connections;
+using Tahsil.Application.Invoices;
 using Tahsil.Infrastructure.Auditing;
+using Tahsil.Infrastructure.Billing;
 using Tahsil.Infrastructure.Clock;
 using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
@@ -31,6 +33,7 @@ public static class DependencyInjection
         AddSecurity(services);
         AddBillingClock(services);
         AddProviders(services);
+        AddBilling(services);
         AddWorkers(services);
         AddOutbox(services);
         AddAuditing(services);
@@ -90,6 +93,7 @@ public static class DependencyInjection
         services.AddSingleton<IEncryptedStore, DataProtectionKeyRingStore>();
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("customers", "tax_id", SecretPurposes.CustomerTaxId));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("provider_connections", "credentials", SecretPurposes.ConnectionCredentials));
+        services.AddSingleton<IEncryptedStore>(new EncryptedColumn("invoices", "customer_tax_id", SecretPurposes.CustomerTaxId));
         services.AddScoped<SecretReencryption>();
 
         // Every instance shares one key ring, stored in PostgreSQL and encrypted with the master key.
@@ -103,6 +107,13 @@ public static class DependencyInjection
     {
         services.AddHttpClient();
         services.AddSingleton<IProviderContextFactory, ProviderContextFactory>();
+    }
+
+    private static void AddBilling(IServiceCollection services)
+    {
+        services.AddScoped<BillingLocks>();
+        services.AddScoped<IBillingLocks>(provider => provider.GetRequiredService<BillingLocks>());
+        services.AddScoped<IInvoiceNumbers>(provider => provider.GetRequiredService<BillingLocks>());
     }
 
     private static void AddBillingClock(IServiceCollection services)

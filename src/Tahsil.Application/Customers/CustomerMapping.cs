@@ -8,7 +8,7 @@ namespace Tahsil.Application.Customers;
 /// <summary>Customers as the API shows and takes them; tax IDs are decrypted and encrypted here, never in the domain.</summary>
 public sealed class CustomerMapper(ISecretEncryption encryption, IOptions<ServerOptions> server)
 {
-    public CustomerResponse ToResponse(Model.Customer customer) => new(
+    public CustomerResponse ToResponse(Model.Customer customer, IReadOnlyList<CustomerBalanceResponse>? balances = null) => new(
         customer.Id,
         customer.ExternalId,
         customer.Email,
@@ -24,7 +24,8 @@ public sealed class CustomerMapper(ISecretEncryption encryption, IOptions<Server
         customer.Metadata,
         customer.AnonymizedAt,
         customer.CreatedAt,
-        customer.UpdatedAt);
+        customer.UpdatedAt,
+        balances ?? []);
 
     public Model.CustomerDetails FromCreate(CreateCustomerRequest request) => new()
     {

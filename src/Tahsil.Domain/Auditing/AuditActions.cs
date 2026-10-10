@@ -27,6 +27,17 @@ public static class AuditActions
     /// <summary>The currencies' connections changed; the data has the routing before and after (PAY-6).</summary>
     public const string ConnectionRoutingUpdated = "connection.routing_updated";
 
+    public const string InvoiceCreated = "invoice.created";
+    public const string InvoiceUpdated = "invoice.updated";
+    public const string InvoiceDeleted = "invoice.deleted";
+    public const string InvoiceFinalized = "invoice.finalized";
+    public const string InvoicePaid = "invoice.paid";
+    public const string InvoiceVoided = "invoice.voided";
+    public const string InvoiceMarkedUncollectible = "invoice.marked_uncollectible";
+    public const string InvoiceItemCreated = "invoice_item.created";
+    public const string InvoiceItemDeleted = "invoice_item.deleted";
+    public const string CustomerBalanceAdjusted = "customer.balance_adjusted";
+
     public const string ProvisioningApplied = "provisioning.applied";
 
     public const string ApiKeyCreated = "api_key.created";

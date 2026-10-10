@@ -48,8 +48,11 @@ public sealed partial class RequirementCoverageTests
     [GeneratedRegex(@"\*\*(?<id>[A-Z]{2,4}-\d+)[\s:(*]")]
     private static partial Regex Definition();
 
-    /// <summary>A requirement ID inside a string literal in a test, such as a trait value or a display name.</summary>
-    [GeneratedRegex(@"""[^""\n]*?\b(?<id>[A-Z]{2,4}-\d+)\b")]
+    /// <summary>
+    /// A requirement ID inside a string literal in a test, such as a trait value or a display name; not a longer
+    /// identifier that starts like one, such as the invoice number <c>INV-2026-000001</c>.
+    /// </summary>
+    [GeneratedRegex(@"""[^""\n]*?\b(?<id>[A-Z]{2,4}-\d+)\b(?!-)")]
     private static partial Regex Reference();
 
     /// <summary>By prefix, then number: FND-2 before FND-10.</summary>

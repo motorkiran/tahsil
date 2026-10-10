@@ -23,6 +23,7 @@ public static class AuditSubjects
     public const string CheckoutSession = "checkout_session";
     public const string Subscription = "subscription";
     public const string Invoice = "invoice";
+    public const string InvoiceItem = "invoice_item";
     public const string Payment = "payment";
     public const string Refund = "refund";
     public const string WebhookEndpoint = "webhook_endpoint";

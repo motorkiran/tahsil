@@ -7,6 +7,7 @@ using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Clock;
 using Tahsil.Domain.Customers;
+using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Payments;
 using Tahsil.Infrastructure.Idempotency;
 using Tahsil.Infrastructure.Outbox;
@@ -37,6 +38,14 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
     public DbSet<ConnectionCurrency> ConnectionCurrencies => Set<ConnectionCurrency>();
 
     public DbSet<ProviderCustomer> ProviderCustomers => Set<ProviderCustomer>();
+
+    public DbSet<CustomerBalance> CustomerBalances => Set<CustomerBalance>();
+
+    public DbSet<BalanceTransaction> BalanceTransactions => Set<BalanceTransaction>();
+
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    public DbSet<PendingInvoiceItem> PendingInvoiceItems => Set<PendingInvoiceItem>();
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 

@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Auditing;
 using Tahsil.Application.Common;
+using Tahsil.Application.Invoices;
 using Tahsil.Contracts;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
+
 using Model = Tahsil.Domain.Customers;
 
 namespace Tahsil.Application.Customers;
@@ -141,8 +143,19 @@ public sealed class UpdateCustomerHandler(ITahsilDbContext context, IAuthorizer 
             audit.Record(AuditActions.CustomerUpdated, AuditSubject.Of(AuditSubjects.Customer, customer.Id), new Dictionary<string, object?> { ["changed"] = changed }, customerId: customer.Id);
         }
 
+        if (before.IsTaxExempt != after.IsTaxExempt)
+        {
+            // Drafts follow the customer's tax exemption (INV-4).
+            var now = clock.GetUtcNow();
+            foreach (var draft in await context.Invoices.Include(invoice => invoice.Lines)
+                .Where(invoice => invoice.CustomerId == customer.Id && invoice.Status == Tahsil.Domain.Invoices.InvoiceStatus.Draft).ToListAsync(cancellationToken))
+            {
+                draft.Recalculate(customer.IsTaxExempt, now);
+            }
+        }
+
         await context.SaveChangesAsync(cancellationToken);
-        return new Versioned<CustomerResponse>(after, customer.Version);
+        return new Versioned<CustomerResponse>(mapper.ToResponse(customer, await context.BalancesOfAsync(customer.Id, cancellationToken)), customer.Version);
     }
 
     /// <summary>The fields whose values changed, by their API names; the tax ID is compared but never recorded.</summary>
@@ -193,7 +206,7 @@ public sealed class GetCustomerHandler(ITahsilDbContext context, IAuthorizer aut
         }
 
         return await context.Customers.AsNoTracking().SingleOrDefaultAsync(predicate, cancellationToken) is { } customer
-            ? new Versioned<CustomerResponse>(mapper.ToResponse(customer), customer.Version)
+            ? new Versioned<CustomerResponse>(mapper.ToResponse(customer, await context.BalancesOfAsync(customer.Id, cancellationToken)), customer.Version)
             : Model.CustomerErrors.NotFound;
     }
 }
@@ -245,7 +258,7 @@ public sealed class ListCustomersHandler(ITahsilDbContext context, IAuthorizer a
 #pragma warning restore CA1304, CA1311, CA1862
 
         var page = await Newest.ReadAsync(customers, query.Cursor, limit, cancellationToken);
-        return page is null ? CommonErrors.InvalidCursor : new Page<CustomerResponse>([.. page.Items.Select(mapper.ToResponse)], page.NextCursor);
+        return page is null ? CommonErrors.InvalidCursor : new Page<CustomerResponse>([.. page.Items.Select(customer => mapper.ToResponse(customer))], page.NextCursor);
     }
 }
 
@@ -331,7 +344,7 @@ public sealed class ExportCustomerHandler(
         }
         while (cursor is not null);
 
-        return new CustomerExportResponse(mapper.ToResponse(customer), trail, clock.GetUtcNow());
+        return new CustomerExportResponse(mapper.ToResponse(customer, await context.BalancesOfAsync(customer.Id, cancellationToken)), trail, clock.GetUtcNow());
     }
 }
 

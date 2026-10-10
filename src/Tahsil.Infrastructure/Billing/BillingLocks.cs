@@ -1,0 +1,31 @@
+using Microsoft.EntityFrameworkCore;
+using Tahsil.Application.Invoices;
+using Tahsil.Infrastructure.Persistence;
+
+namespace Tahsil.Infrastructure.Billing;
+
+/// <summary>Row locks and invoice numbers in PostgreSQL, in the transaction of the scope's database context.</summary>
+internal sealed class BillingLocks(TahsilDbContext context) : IBillingLocks, IInvoiceNumbers
+{
+    public async Task LockInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken) =>
+        await context.Database.ExecuteSqlAsync($"SELECT 1 FROM tahsil.invoices WHERE id = {invoiceId} FOR UPDATE", cancellationToken);
+
+    public async Task LockBalanceAsync(Guid customerId, string currency, CancellationToken cancellationToken)
+    {
+        await context.Database.ExecuteSqlAsync(
+            $"INSERT INTO tahsil.customer_balances (customer_id, currency, amount, updated_at) VALUES ({customerId}, {currency}, 0, now()) ON CONFLICT DO NOTHING",
+            cancellationToken);
+        await context.Database.ExecuteSqlAsync(
+            $"SELECT 1 FROM tahsil.customer_balances WHERE customer_id = {customerId} AND currency = {currency} FOR UPDATE", cancellationToken);
+    }
+
+    public async Task<long> NextAsync(int year, CancellationToken cancellationToken)
+    {
+        var numbers = await context.Database.SqlQuery<long>($"""
+            INSERT INTO tahsil.invoice_number_sequences (year, next_value) VALUES ({(short)year}, 2)
+            ON CONFLICT (year) DO UPDATE SET next_value = invoice_number_sequences.next_value + 1
+            RETURNING next_value - 1 AS "Value"
+            """).ToListAsync(cancellationToken);
+        return numbers.Single();
+    }
+}
