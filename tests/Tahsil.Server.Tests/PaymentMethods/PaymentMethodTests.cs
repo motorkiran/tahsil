@@ -84,8 +84,9 @@ public sealed class PaymentMethodTests(TahsilServerFixture server)
         other.IsDefault.ShouldBeFalse();
         setOther.StatusCode.ShouldBe(HttpStatusCode.OK);
         customerAfter.ShouldBe([second.Id]);
-        var token = await host.QueryAsync<string>($"SELECT state->>'removed' AS \"Value\" FROM tahsil.simulator_transactions WHERE kind = 'card' ORDER BY id LIMIT 1");
-        token.ShouldBe(["true"]);
+        // One of the simulator's two cards was removed there too; the fake clock gives both the same instant, so no order.
+        (await host.QueryAsync<string>($"SELECT state->>'removed' AS \"Value\" FROM tahsil.simulator_transactions WHERE kind = 'card'"))
+            .ShouldBe(["false", "true"], ignoreOrder: true);
         (await host.QueryAsync<string>($"SELECT data->>'last4' AS \"Value\" FROM tahsil.audit_events WHERE action = 'payment_method.removed'")).ShouldBe(["4242"]);
     }
 
