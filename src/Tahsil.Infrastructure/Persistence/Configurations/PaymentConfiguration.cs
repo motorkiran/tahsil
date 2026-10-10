@@ -118,3 +118,31 @@ internal sealed class AttentionItemConfiguration : IEntityTypeConfiguration<Atte
         builder.HasIndex(item => item.RaisedAt).HasFilter("resolved_at IS NULL");
     }
 }
+
+internal sealed class RefundConfiguration : IEntityTypeConfiguration<Refund>
+{
+    public void Configure(EntityTypeBuilder<Refund> builder)
+    {
+        builder.ToTable(table => table.HasCheckConstraint("ck_refunds_amount", "amount > 0"));
+        builder.Property(refund => refund.Id).ValueGeneratedNever();
+        builder.Property(refund => refund.Reference).HasMaxLength(64);
+        builder.Property(refund => refund.Currency).HasMaxLength(3);
+        builder.Property(refund => refund.Reason).HasMaxLength(32);
+        builder.Property(refund => refund.Kind).HasMaxLength(16);
+        builder.Property(refund => refund.Status).HasMaxLength(16);
+        builder.Property(refund => refund.ProviderRefundId).HasMaxLength(200);
+        builder.Property(refund => refund.FailureCode).HasMaxLength(32);
+        builder.Property(refund => refund.FailureMessage).HasMaxLength(500);
+        builder.Property(refund => refund.ProviderFailureCode).HasMaxLength(100);
+        builder.Property(refund => refund.ReconcileAttempts).HasColumnType("smallint");
+        builder.Property(refund => refund.Note).HasMaxLength(Refund.NoteMaxLength);
+        builder.Property(refund => refund.Actor)
+            .HasColumnType("jsonb")
+            .HasConversion(new JsonValueConverter<Actor>(), JsonValueConverter<Actor>.Comparer);
+
+        builder.HasOne<Payment>().WithMany().HasForeignKey(refund => refund.PaymentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(refund => refund.Reference).IsUnique();
+        builder.HasIndex(refund => new { refund.PaymentId, refund.Id });
+        builder.HasIndex(refund => refund.ReconcileAt).HasFilter("status = 'processing'");
+    }
+}

@@ -16,6 +16,8 @@ internal sealed class ScriptedProvider : IPaymentProvider
 
     public ReferenceSearch FindByReference { get; set; } = ReferenceSearch.Any;
 
+    public RefundOutcome RefundOutcome { get; set; } = new() { Status = RefundStatus.Succeeded, ProviderRefundId = "scripted-refund" };
+
     public ProviderDescriptor Descriptor => new()
     {
         Key = Key,
@@ -56,7 +58,7 @@ internal sealed class ScriptedProvider : IPaymentProvider
         return Task.FromResult(Lookups.TryDequeue(out var lookup) ? lookup : new PaymentLookup.Unavailable("Nothing scripted."));
     }
 
-    public Task<RefundOutcome> RefundAsync(ProviderContext context, RefundRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public Task<RefundOutcome> RefundAsync(ProviderContext context, RefundRequest request, CancellationToken cancellationToken) => Task.FromResult(RefundOutcome);
 
     public Task<RefundLookup> FindRefundAsync(ProviderContext context, RefundQuery query, CancellationToken cancellationToken) => throw new NotSupportedException();
 

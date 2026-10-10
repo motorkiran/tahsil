@@ -21,13 +21,15 @@ internal static class PaymentEndpoints
         payments.MapGet(string.Empty, async (
             [Description("Only this customer's payments.")] Guid? customer,
             [Description("Only payments of this invoice.")] Guid? invoice,
-            [Description("`processing`, `requires_action`, `succeeded`, `failed` or `canceled`.")] PaymentStatus? status,
+            [Description("`processing`, `requires_action`, `succeeded`, `failed` or `canceled`.")] string? status,
             [Description("Only payments through this provider connection.")] Guid? connection,
             [Description("The `nextCursor` of the previous page.")] string? cursor,
             [Description("Page size, 50 by default and at most 200.")] int? limit,
             ListPaymentsHandler handler,
             CancellationToken cancellationToken) =>
-            (await handler.HandleAsync(new ListPaymentsQuery(customer, invoice, status, connection, cursor, limit), cancellationToken)).ToOk())
+            QueryValues.TryParseEnum<PaymentStatus>(status, out var statusFilter)
+                ? (await handler.HandleAsync(new ListPaymentsQuery(customer, invoice, statusFilter, connection, cursor, limit), cancellationToken)).ToOk()
+                : ApiResults.Problem(CommonErrors.InvalidParameter(nameof(status))))
             .WithName("ListPayments").WithSummary("List payments").WithDescription("Newest first.").RequirePermission(TahsilPermissions.PaymentsRead);
 
         payments.MapGet("{id:guid}", async (Guid id, GetPaymentHandler handler, CancellationToken cancellationToken) =>

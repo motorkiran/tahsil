@@ -50,6 +50,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<Payment> Payments => Set<Payment>();
 
+    public DbSet<Refund> Refunds => Set<Refund>();
+
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
 
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();

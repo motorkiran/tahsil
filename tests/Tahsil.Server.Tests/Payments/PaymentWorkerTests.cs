@@ -1,19 +1,18 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Tahsil.Application.Payments;
 using Tahsil.Contracts;
 using Tahsil.Providers.Abstractions;
-using Tahsil.Providers.Simulator;
+using static Tahsil.Server.Tests.Payments.PaymentScenarios;
 using PaymentStatus = Tahsil.Contracts.PaymentStatus;
 
 namespace Tahsil.Server.Tests.Payments;
 
 /// <summary>The payment worker and reconciliation, driven on a billing clock the tests move.</summary>
-public sealed partial class PaymentWorkerTests(TahsilServerFixture server)
+public sealed class PaymentWorkerTests(TahsilServerFixture server)
 {
     private static readonly string[] Permissions =
     [
@@ -213,7 +212,7 @@ public sealed partial class PaymentWorkerTests(TahsilServerFixture server)
         using var client = await host.CreateClientWithAsync(Permissions);
         await RouteToScriptedAsync(client);
         var customer = await CustomerAsync(client);
-        var invoice = await FinalizedInvoiceAsync(client, customer, CollectionMethod.SendInvoice);
+        var invoice = await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice);
         var payment = await StartOnPageAsync(host, invoice);
         provider.Lookups.Enqueue(succeeded ? new PaymentLookup.Found(new PaymentOutcome { Status = Providers.Abstractions.PaymentStatus.Succeeded }) : new PaymentLookup.NotFound());
 
@@ -241,7 +240,7 @@ public sealed partial class PaymentWorkerTests(TahsilServerFixture server)
     {
         await RouteToScriptedAsync(client);
         var customer = await CustomerAsync(client);
-        var first = await FinalizedInvoiceAsync(client, customer, CollectionMethod.SendInvoice);
+        var first = await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice);
         var started = await StartOnPageAsync(host, first);
         await using (var scope = host.Services.CreateAsyncScope())
         {
@@ -275,52 +274,9 @@ public sealed partial class PaymentWorkerTests(TahsilServerFixture server)
         routed.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    private static async Task<Guid> StartOnPageAsync(WebApplicationFactory<Program> host, Guid invoice)
-    {
-        await using var scope = host.Services.CreateAsyncScope();
-        var started = await scope.ServiceProvider.GetRequiredService<CustomerPayments>().StartAsync(new StartInvoicePayment(
-            invoice, new Uri("https://shop.example.com/return"), new Uri("https://shop.example.com/cancel"), SaveCard: true, new CardConsent("Save my card", IPAddress.Loopback, "Tests"), null), CancellationToken);
-        return started.Value.Payment.Id;
-    }
-
     /// <summary>Saves a simulator card as the customer's default by paying a first invoice on the card page.</summary>
-    private static async Task SaveSimulatorCardAsync(WebApplicationFactory<Program> host, HttpClient client, Guid customer, string card)
-    {
-        var first = await FinalizedInvoiceAsync(client, customer, CollectionMethod.SendInvoice);
-        await using var scope = host.Services.CreateAsyncScope();
-        var payments = scope.ServiceProvider.GetRequiredService<CustomerPayments>();
-        var started = (await payments.StartAsync(new StartInvoicePayment(
-            first, new Uri("https://shop.example.com/return"), new Uri("https://shop.example.com/cancel"), SaveCard: true, new CardConsent("Save my card", IPAddress.Loopback, "Tests"), null), CancellationToken)).Value;
-        var token = TokenPattern().Match(started.Presentation.ShouldBeOfType<Presentation.Embed>().Html).Groups["token"].Value;
-        var bank = host.Services.GetRequiredService<SimulatorBank>();
-        if (await bank.SubmitCardAsync(token, new CardEntryForm(card, "12/30", "123", SaveCard: true), CancellationToken) is CardPageResult.Authenticate)
-        {
-            await bank.AuthenticateAsync(token, AuthenticationDecision.Approve, CancellationToken);
-        }
-
-        (await payments.CompleteAsync(started.Payment.Id, new Dictionary<string, string>(), CancellationToken)).Value.PaymentMethodId.ShouldNotBeNull();
-    }
-
-    private static async Task<Guid> CustomerAsync(HttpClient client)
-    {
-        using var response = await client.PostJsonAsync("/api/v1/customers", new CreateCustomerRequest { Email = "ayse@example.com", Name = "Ayşe Yılmaz" });
-        return (await response.ReadAsync<CustomerResponse>()).Id;
-    }
-
-    private static async Task<Guid> FinalizedInvoiceAsync(HttpClient client, Guid customer, CollectionMethod collection = CollectionMethod.ChargeAutomatically)
-    {
-        using var draft = await client.PostJsonAsync("/api/v1/invoices", new CreateInvoiceRequest
-        {
-            Customer = customer,
-            Currency = "TRY",
-            CollectionMethod = collection,
-            Lines = [new InvoiceLineRequest { Description = "Consulting", UnitAmount = 12_500 }],
-        });
-        var id = (await draft.ReadAsync<InvoiceResponse>()).Id;
-        using var finalized = await client.PostPathAsync($"/api/v1/invoices/{id}/finalize");
-        finalized.StatusCode.ShouldBe(HttpStatusCode.OK, await finalized.Content.ReadAsStringAsync(CancellationToken));
-        return id;
-    }
+    private static async Task SaveSimulatorCardAsync(WebApplicationFactory<Program> host, HttpClient client, Guid customer, string card) =>
+        (await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice), card)).PaymentMethodId.ShouldNotBeNull();
 
     private static async Task<IReadOnlyList<PaymentResponse>> PaymentsAsync(HttpClient client, Guid invoice) =>
         (await (await client.GetPathAsync($"/api/v1/payments?invoice={invoice}")).ReadAsync<Page<PaymentResponse>>()).Items;
@@ -334,6 +290,4 @@ public sealed partial class PaymentWorkerTests(TahsilServerFixture server)
     private static Task<List<string>> AttentionAsync(WebApplicationFactory<Program> host, Guid payment) =>
         host.QueryAsync<string>($"SELECT kind AS \"Value\" FROM tahsil.attention_items WHERE subject_id = {payment}");
 
-    [GeneratedRegex("simulator/pay/(?<token>[A-Za-z0-9_-]+)")]
-    private static partial Regex TokenPattern();
 }

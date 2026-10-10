@@ -61,3 +61,28 @@ internal sealed class ReconciliationWorker(
     protected override Task ProcessAsync(IServiceProvider services, Guid id, DateTimeOffset now, CancellationToken cancellationToken) =>
         services.GetRequiredService<PaymentReconciliation>().ReconcileAsync(id, cancellationToken);
 }
+
+/// <summary>Asks providers about refunds still processing, when their reconciliation is due (PAY-19).</summary>
+internal sealed class RefundReconciliationWorker(
+    IServiceScopeFactory scopes, BillingClock clock, IOptions<WorkerOptions> options, WorkerSignals signals, ILogger<RefundReconciliationWorker> logger)
+    : DueWorker(scopes, clock, options, signals, logger)
+{
+    public override string Name => WorkerNames.RefundReconciliation;
+
+    protected override bool CallsOtherServices => true;
+
+    protected override async Task<Guid?> LockNextDueAsync(TahsilDbContext context, DateTimeOffset now, CancellationToken cancellationToken) =>
+        (await context.Database.SqlQuery<Guid>($"""
+            SELECT id AS "Value" FROM tahsil.refunds
+            WHERE status = 'processing' AND reconcile_at <= {now}
+            ORDER BY reconcile_at
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            """).ToListAsync(cancellationToken)) is [var id] ? id : null;
+
+    protected override Task PostponeAsync(TahsilDbContext context, Guid id, DateTimeOffset until, CancellationToken cancellationToken) =>
+        context.Database.ExecuteSqlAsync($"UPDATE tahsil.refunds SET reconcile_at = {until} WHERE id = {id}", cancellationToken);
+
+    protected override Task ProcessAsync(IServiceProvider services, Guid id, DateTimeOffset now, CancellationToken cancellationToken) =>
+        services.GetRequiredService<RefundReconciliation>().ReconcileAsync(id, cancellationToken);
+}

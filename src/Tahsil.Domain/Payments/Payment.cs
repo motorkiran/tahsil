@@ -244,6 +244,13 @@ public sealed class Payment : AggregateRoot
         UpdatedAt = now;
     }
 
+    /// <summary>A refund of the payment succeeded (DOM-18): the status stays, the amount refunded grows.</summary>
+    public void AddRefunded(long amount, DateTimeOffset now)
+    {
+        AmountRefunded = checked(AmountRefunded + amount);
+        UpdatedAt = now;
+    }
+
     public void AttachPaymentMethod(Guid paymentMethodId, DateTimeOffset now)
     {
         PaymentMethodId = paymentMethodId;

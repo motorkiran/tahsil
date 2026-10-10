@@ -150,6 +150,7 @@ public static class DependencyInjection
         AddHostedSingleton<OutboxDispatcher>(services);
         AddHostedSingleton<PaymentCollectionWorker>(services);
         AddHostedSingleton<ReconciliationWorker>(services);
+        AddHostedSingleton<RefundReconciliationWorker>(services);
         AddHostedSingleton<OutboxCleanup>(services);
     }
 

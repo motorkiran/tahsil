@@ -1,25 +1,22 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Tahsil.Application.Payments;
 using Tahsil.Contracts;
 using Tahsil.Providers.Abstractions;
-using Tahsil.Providers.Simulator;
+using static Tahsil.Server.Tests.Payments.PaymentScenarios;
 using PaymentStatus = Tahsil.Contracts.PaymentStatus;
 
 namespace Tahsil.Server.Tests.Payments;
 
 /// <summary>Payments of invoices through the simulator: customer-present, off session, and every way an outcome can arrive.</summary>
-public sealed partial class PaymentTests(TahsilServerFixture server)
+public sealed class PaymentTests(TahsilServerFixture server)
 {
     private static readonly string[] Permissions =
     [
         TahsilPermissions.InvoicesRead, TahsilPermissions.InvoicesWrite, TahsilPermissions.CustomersRead, TahsilPermissions.CustomersWrite,
         TahsilPermissions.PaymentsRead, TahsilPermissions.ConnectionsWrite, TahsilPermissions.AuditRead,
     ];
-
-    private static readonly Uri ReturnUrl = new("https://shop.example.com/return");
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -32,7 +29,7 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var invoice = await InvoiceAsync(client, customer);
+        var invoice = await FinalizedInvoiceAsync(client, customer);
 
         var payment = await PayOnPageAsync(host, invoice, "4000000000003220");
         await using var scope = host.Services.CreateAsyncScope();
@@ -48,8 +45,8 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         stored.PaymentMethodId.ShouldNotBeNull();
         defaultMethod.ShouldBe([stored.PaymentMethodId]);
         (await host.QueryAsync<string>($"SELECT type AS \"Value\" FROM tahsil.consent_records WHERE customer_id = {customer}")).ShouldBe(["card_storage"]);
-        (await host.QueryAsync<string>($"SELECT action AS \"Value\" FROM tahsil.audit_events WHERE action IN ('payment.succeeded', 'invoice.paid') ORDER BY id"))
-            .ShouldBe(["payment.succeeded", "invoice.paid"], "PAY-13: completing again applies nothing");
+        (await host.QueryAsync<string>($"SELECT action AS \"Value\" FROM tahsil.audit_events WHERE action IN ('payment.succeeded', 'invoice.paid')"))
+            .ShouldBe(["payment.succeeded", "invoice.paid"], ignoreOrder: true, "PAY-13: completing again applies nothing");
     }
 
     [Fact]
@@ -60,7 +57,7 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var invoice = await InvoiceAsync(client, customer);
+        var invoice = await FinalizedInvoiceAsync(client, customer);
 
         var declined = await PayOnPageAsync(host, invoice, "4000000000009995");
         var retried = await PayOnPageAsync(host, invoice, "4242424242424242");
@@ -79,8 +76,8 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var invoice = await InvoiceAsync(client, customer);
-        var pounds = await InvoiceAsync(client, customer, "GBP");
+        var invoice = await FinalizedInvoiceAsync(client, customer);
+        var pounds = await FinalizedInvoiceAsync(client, customer, "GBP");
         await using var scope = host.Services.CreateAsyncScope();
         var payments = scope.ServiceProvider.GetRequiredService<CustomerPayments>();
 
@@ -106,8 +103,8 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var method = (await PayOnPageAsync(host, await InvoiceAsync(client, customer), card)).PaymentMethodId!.Value;
-        var invoice = await InvoiceAsync(client, customer, amount: 9_900);
+        var method = (await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, customer), card)).PaymentMethodId!.Value;
+        var invoice = await FinalizedInvoiceAsync(client, customer, amount: 9_900);
 
         using var response = await client.PostJsonAsync($"/api/v1/invoices/{invoice}/pay", new PayInvoiceRequest { PaymentMethod = method });
         var payment = await ReadAsync<PaymentResponse>(response, HttpStatusCode.Created);
@@ -127,9 +124,9 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var owner = await CustomerAsync(client);
-        var method = (await PayOnPageAsync(host, await InvoiceAsync(client, owner), "4242424242424242")).PaymentMethodId!.Value;
+        var method = (await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, owner), "4242424242424242")).PaymentMethodId!.Value;
         var stranger = await CustomerAsync(client);
-        var invoice = await InvoiceAsync(client, stranger);
+        var invoice = await FinalizedInvoiceAsync(client, stranger);
 
         using var response = await client.PostJsonAsync($"/api/v1/invoices/{invoice}/pay", new PayInvoiceRequest { PaymentMethod = method });
 
@@ -144,8 +141,8 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var invoice = await InvoiceAsync(client, customer);
-        var payment = await StartedAsync(host, invoice);
+        var invoice = await FinalizedInvoiceAsync(client, customer);
+        var payment = await StartOnPageAsync(host, invoice);
 
         var applied = await ApplyAsync(host, payment, new PaymentOutcome { Status = Providers.Abstractions.PaymentStatus.Succeeded, ChargedAmount = new Amount(12_000, "TRY", 2) });
         var after = await ReadAsync<InvoiceResponse>(await client.GetPathAsync($"/api/v1/invoices/{invoice}"));
@@ -162,7 +159,7 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var invoice = await InvoiceAsync(client, customer);
+        var invoice = await FinalizedInvoiceAsync(client, customer);
         var first = (await PayOnPageAsync(host, invoice, "4000000000000002")).Id;
         var second = (await PayOnPageAsync(host, invoice, "4000000000000002")).Id;
 
@@ -185,7 +182,7 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
         var customer = await CustomerAsync(client);
-        var payment = (await PayOnPageAsync(host, await InvoiceAsync(client, customer), "4242424242424242")).Id;
+        var payment = (await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, customer), "4242424242424242")).Id;
 
         var applied = await ApplyAsync(host, payment, PaymentOutcome.Failure(FailureCode.CardDeclined));
         await ApplyAsync(host, payment, PaymentOutcome.Failure(FailureCode.CardDeclined));
@@ -205,9 +202,9 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
         var saved = new SavedCard { Token = "sim_card_shared", Brand = "Visa", Funding = "credit", Last4 = "4242", ExpMonth = 12, ExpYear = 2030 };
         var outcome = new PaymentOutcome { Status = Providers.Abstractions.PaymentStatus.Succeeded, SavedCard = saved };
 
-        var first = await ApplyAsync(host, await StartedAsync(host, await InvoiceAsync(client, customer)), outcome);
-        var second = await ApplyAsync(host, await StartedAsync(host, await InvoiceAsync(client, customer)), outcome with { SavedCard = saved with { Last4 = "4243" } });
-        var foreign = await ApplyAsync(host, await StartedAsync(host, await InvoiceAsync(client, stranger)), outcome);
+        var first = await ApplyAsync(host, await StartOnPageAsync(host, await FinalizedInvoiceAsync(client, customer)), outcome);
+        var second = await ApplyAsync(host, await StartOnPageAsync(host, await FinalizedInvoiceAsync(client, customer)), outcome with { SavedCard = saved with { Last4 = "4243" } });
+        var foreign = await ApplyAsync(host, await StartOnPageAsync(host, await FinalizedInvoiceAsync(client, stranger)), outcome);
 
         second.PaymentMethodId.ShouldBe(first.PaymentMethodId);
         foreign.PaymentMethodId.ShouldBeNull();
@@ -221,56 +218,11 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
     {
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
-        await PayOnPageAsync(host, await InvoiceAsync(client, await CustomerAsync(client)), "4242424242424242");
+        await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, await CustomerAsync(client)), "4242424242424242");
 
         using var response = await client.DeleteAsync(new Uri("/api/v1/provider-connections/simulator", UriKind.Relative), CancellationToken);
 
         (await response.ProblemCodeAsync()).ShouldBe("connection.in_use");
-    }
-
-    /// <summary>Starts a payment on the page, pays with a test card (approving 3D Secure) and completes it, as a customer's return would.</summary>
-    private static async Task<Domain.Payments.Payment> PayOnPageAsync(WebApplicationFactory<Program> host, Guid invoice, string card)
-    {
-        await using var scope = host.Services.CreateAsyncScope();
-        var payments = scope.ServiceProvider.GetRequiredService<CustomerPayments>();
-        var started = (await payments.StartAsync(Start(invoice), CancellationToken)).Value;
-        var token = TokenPattern().Match(started.Presentation.ShouldBeOfType<Presentation.Embed>().Html).Groups["token"].Value;
-        var bank = host.Services.GetRequiredService<SimulatorBank>();
-        if (await bank.SubmitCardAsync(token, new CardEntryForm(card, "12/30", "123", SaveCard: true), CancellationToken) is CardPageResult.Authenticate)
-        {
-            await bank.AuthenticateAsync(token, AuthenticationDecision.Approve, CancellationToken);
-        }
-
-        return (await payments.CompleteAsync(started.Payment.Id, new Dictionary<string, string>(), CancellationToken)).Value;
-    }
-
-    private static async Task<Guid> StartedAsync(WebApplicationFactory<Program> host, Guid invoice)
-    {
-        await using var scope = host.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<CustomerPayments>().StartAsync(Start(invoice), CancellationToken)).Value.Payment.Id;
-    }
-
-    private static async Task<Domain.Payments.Payment> ApplyAsync(WebApplicationFactory<Program> host, Guid payment, PaymentOutcome outcome)
-    {
-        await using var scope = host.Services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<PaymentOutcomes>().ApplyAsync(payment, outcome, CancellationToken);
-    }
-
-    private static StartInvoicePayment Start(Guid invoice) => new(
-        invoice, ReturnUrl, new Uri("https://shop.example.com/cancel"), SaveCard: true, new CardConsent("Save my card for future payments", IPAddress.Loopback, "Tests"), "127.0.0.1");
-
-    private static async Task<Guid> CustomerAsync(HttpClient client) =>
-        (await ReadAsync<CustomerResponse>(await client.PostJsonAsync("/api/v1/customers", new CreateCustomerRequest { Email = "ayse@example.com", Name = "Ayşe Yılmaz" }), HttpStatusCode.Created)).Id;
-
-    private static async Task<Guid> InvoiceAsync(HttpClient client, Guid customer, string currency = "TRY", long amount = 12_500)
-    {
-        var draft = await ReadAsync<InvoiceResponse>(await client.PostJsonAsync("/api/v1/invoices", new CreateInvoiceRequest
-        {
-            Customer = customer,
-            Currency = currency,
-            Lines = [new InvoiceLineRequest { Description = "Consulting", UnitAmount = amount }],
-        }), HttpStatusCode.Created);
-        return (await ReadAsync<InvoiceResponse>(await client.PostPathAsync($"/api/v1/invoices/{draft.Id}/finalize"))).Id;
     }
 
     private static async Task<T> ReadAsync<T>(HttpResponseMessage response, HttpStatusCode status = HttpStatusCode.OK)
@@ -288,6 +240,4 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
             ["Tahsil:Workers:Enabled"] = "false",
         });
 
-    [GeneratedRegex("simulator/pay/(?<token>[A-Za-z0-9_-]+)")]
-    private static partial Regex TokenPattern();
 }

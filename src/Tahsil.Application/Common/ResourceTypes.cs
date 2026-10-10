@@ -13,4 +13,5 @@ public static class ResourceTypes
     public const string InvoiceItem = "invoice_item";
     public const string BalanceTransaction = "balance_transaction";
     public const string Payment = "payment";
+    public const string Refund = "refund";
 }

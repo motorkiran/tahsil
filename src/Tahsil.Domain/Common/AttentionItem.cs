@@ -16,6 +16,9 @@ public enum AttentionKind
 
     /// <summary>The provider cannot be searched by reference, so an uncertain payment needs an operator (ENG-17).</summary>
     ReconciliationImpossible,
+
+    /// <summary>A refund failed at the provider; the customer has not got their money back (PAY-19).</summary>
+    RefundFailed,
 }
 
 /// <summary>Something an operator must look at and resolve, such as an amount mismatch; one open item per kind and subject.</summary>

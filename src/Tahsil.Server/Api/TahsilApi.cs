@@ -28,6 +28,7 @@ internal static class TahsilApi
         services.AddConnectionResourceReaders();
         services.AddInvoiceResourceReaders();
         services.AddPaymentResourceReaders();
+        services.AddRefundResourceReaders();
 
         services.ConfigureHttpJsonOptions(options => TahsilJson.Configure(options.SerializerOptions));
         services.AddValidation();
@@ -69,6 +70,7 @@ internal static class TahsilApi
             .MapConnectionEndpoints()
             .MapInvoiceEndpoints()
             .MapPaymentEndpoints()
+            .MapRefundEndpoints()
             .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();
 

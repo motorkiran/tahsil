@@ -34,13 +34,15 @@ internal static class InvoiceEndpoints
     {
         invoices.MapGet(string.Empty, async (
             [Description("Only this customer's invoices.")] Guid? customer,
-            [Description("`draft`, `open`, `paid`, `void` or `uncollectible`.")] InvoiceStatus? status,
+            [Description("`draft`, `open`, `paid`, `void` or `uncollectible`.")] string? status,
             [Description("An invoice number, such as `INV-2026-000123`.")] string? number,
             [Description("The `nextCursor` of the previous page.")] string? cursor,
             [Description("Page size, 50 by default and at most 200.")] int? limit,
             ListInvoicesHandler handler,
             CancellationToken cancellationToken) =>
-            (await handler.HandleAsync(new ListInvoicesQuery(customer, status, number, cursor, limit), cancellationToken)).ToOk())
+            QueryValues.TryParseEnum<InvoiceStatus>(status, out var statusFilter)
+                ? (await handler.HandleAsync(new ListInvoicesQuery(customer, statusFilter, number, cursor, limit), cancellationToken)).ToOk()
+                : ApiResults.Problem(CommonErrors.InvalidParameter(nameof(status))))
             .WithName("ListInvoices").WithSummary("List invoices").WithDescription("Newest first.").RequirePermission(TahsilPermissions.InvoicesRead);
 
         invoices.MapPost(string.Empty, async (CreateInvoiceRequest request, CreateInvoiceHandler handler, HttpResponse response, CancellationToken cancellationToken) =>

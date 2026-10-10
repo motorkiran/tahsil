@@ -41,6 +41,9 @@ public static class AuditActions
     public const string PaymentSucceeded = "payment.succeeded";
     public const string PaymentFailed = "payment.failed";
     public const string PaymentCanceled = "payment.canceled";
+    public const string RefundCreated = "refund.created";
+    public const string RefundSucceeded = "refund.succeeded";
+    public const string RefundFailed = "refund.failed";
 
     /// <summary>Something needs an operator, such as an amount mismatch (PAY-15); the data names the kind.</summary>
     public const string AttentionRaised = "attention.raised";

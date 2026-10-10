@@ -2798,7 +2798,7 @@
             "in": "query",
             "description": "`draft`, `open`, `paid`, `void` or `uncollectible`.",
             "schema": {
-              "$ref": "#/components/schemas/InvoiceStatus"
+              "type": "string"
             }
           },
           {
@@ -4047,7 +4047,7 @@
             "in": "query",
             "description": "`processing`, `requires_action`, `succeeded`, `failed` or `canceled`.",
             "schema": {
-              "$ref": "#/components/schemas/PaymentStatus"
+              "type": "string"
             }
           },
           {
@@ -4132,6 +4132,225 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.payments:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/refunds": {
+      "post": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "Refund a payment",
+        "description": "Refunds what is left of a succeeded payment, or part of it. The provider may answer later: `processing` refunds settle by themselves. Refunds never change the status of the payment or its invoice.\n\nRequires the `tahsil.refunds:write` permission.",
+        "operationId": "CreateRefund",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "List refunds",
+        "description": "Newest first.\n\nRequires the `tahsil.payments:read` permission.",
+        "operationId": "ListRefunds",
+        "parameters": [
+          {
+            "name": "payment",
+            "in": "query",
+            "description": "Only refunds of this payment.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`processing`, `succeeded` or `failed`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfRefundResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.payments:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/refunds/{id}": {
+      "get": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "Get a refund",
+        "description": "Requires the `tahsil.payments:read` permission.",
+        "operationId": "GetRefund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundResponse"
                 }
               }
             }
@@ -5206,6 +5425,37 @@
             "additionalProperties": {
               "type": "string"
             }
+          }
+        }
+      },
+      "CreateRefundRequest": {
+        "required": [
+          "payment"
+        ],
+        "type": "object",
+        "properties": {
+          "payment": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Minor units; what is left to refund of the payment when omitted.",
+            "format": "int64"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RefundReason"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6576,6 +6826,28 @@
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
+      "PageOfRefundResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
       "PageOfTaxRateResponse": {
         "required": [
           "items",
@@ -7736,6 +8008,135 @@
         },
         "description": "What applying a document did, or would do in a dry run."
       },
+      "RefundKind": {
+        "enum": [
+          "refund",
+          "void",
+          "out_of_band"
+        ]
+      },
+      "RefundReason": {
+        "enum": [
+          "requested_by_customer",
+          "duplicate",
+          "fraudulent",
+          "subscription_canceled",
+          "late_success",
+          "card_verification",
+          "other"
+        ]
+      },
+      "RefundResponse": {
+        "required": [
+          "id",
+          "reference",
+          "paymentId",
+          "amount",
+          "currency",
+          "reason",
+          "kind",
+          "status",
+          "providerRefundId",
+          "failureCode",
+          "failureMessage",
+          "note",
+          "actor",
+          "succeededAt",
+          "failedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RefundReason"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RefundKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RefundStatus"
+          },
+          "providerRefundId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "failureMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActorResponse"
+          },
+          "succeededAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RefundStatus": {
+        "enum": [
+          "processing",
+          "succeeded",
+          "failed"
+        ]
+      },
       "TaxRateResponse": {
         "required": [
           "id",
@@ -8181,6 +8582,9 @@
     },
     {
       "name": "Payments"
+    },
+    {
+      "name": "Refunds"
     },
     {
       "name": "Provisioning"

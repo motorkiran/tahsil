@@ -17,7 +17,8 @@ namespace Tahsil.Application.Payments;
 /// a notification or reconciliation. It locks the payment and its invoice, so concurrent paths apply an outcome
 /// once, and repeating an outcome changes nothing.
 /// </summary>
-public sealed class PaymentOutcomes(ITahsilDbContext context, IBillingLocks locks, IAuditLog audit, Attention attention, SavedCards cards, BillingClock clock)
+public sealed class PaymentOutcomes(
+    ITahsilDbContext context, IBillingLocks locks, IAuditLog audit, IOutbox outbox, Attention attention, SavedCards cards, BillingClock clock)
 {
     private static readonly Counter<long> Payments = TahsilDiagnostics.Meter.CreateCounter<long>(
         "tahsil.payments", unit: "{payment}", description: "Payments that reached a final status, by connection, initiator, status and failure code.");
@@ -95,12 +96,13 @@ public sealed class PaymentOutcomes(ITahsilDbContext context, IBillingLocks lock
 
         if (!invoice.NeedsPayment(payment.Amount))
         {
-            // PAY-14: the money arrived after the invoice stopped needing it; it goes back to the customer.
+            // PAY-14: the money arrived after the invoice stopped needing it; it goes back to the customer once this commits.
             await attention.RaiseAsync(AttentionKind.LateSuccess, AuditSubjects.Payment, payment.Id, payment.CustomerId, new Dictionary<string, string>
             {
                 ["invoiceId"] = invoice.Id.ToString(),
                 ["invoiceStatus"] = invoice.Status.ToString(),
             }, now, cancellationToken);
+            outbox.Enqueue(new RefundLateSuccess(payment.Id));
             return;
         }
 

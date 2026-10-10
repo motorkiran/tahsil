@@ -370,6 +370,13 @@ public sealed class Invoice : AggregateRoot
         return Result.Success();
     }
 
+    /// <summary>A refund of one of its payments succeeded (INV-19); the status stays.</summary>
+    public void AddRefunded(long amount, DateTimeOffset now)
+    {
+        AmountRefunded = checked(AmountRefunded + amount);
+        UpdatedAt = now;
+    }
+
     /// <summary>The payment worker takes the scheduled attempt (ENG-13): none is scheduled until dunning sets the next.</summary>
     public void ClaimPaymentAttempt(DateTimeOffset now)
     {

@@ -131,6 +131,17 @@ public static class DependencyInjection
         services.AddScoped<CustomerPayments>();
         services.AddScoped<MerchantPayments>();
         services.AddScoped<PaymentReconciliation>();
+        services.AddOptions<RefundOptions>()
+            .BindConfiguration(RefundOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{RefundOptions.SectionName}:DailyLimitPerActor limits must be positive.")
+            .ValidateOnStart();
+        services.AddScoped<RefundOutcomes>();
+        services.AddScoped<Refunds>();
+        services.AddScoped<RefundReconciliation>();
+        services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
+        services.AddScoped<CreateRefundHandler>();
+        services.AddScoped<GetRefundHandler>();
+        services.AddScoped<ListRefundsHandler>();
         services.AddScoped<PayInvoiceHandler>();
         services.AddScoped<GetPaymentHandler>();
         services.AddScoped<ListPaymentsHandler>();

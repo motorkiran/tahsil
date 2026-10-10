@@ -96,3 +96,59 @@ public sealed record PaymentResponse
 
     public required DateTimeOffset UpdatedAt { get; init; }
 }
+
+public enum RefundStatus
+{
+    Processing,
+    Succeeded,
+    Failed,
+}
+
+public enum RefundKind
+{
+    Refund,
+    Void,
+    OutOfBand,
+}
+
+public enum RefundReason
+{
+    RequestedByCustomer,
+    Duplicate,
+    Fraudulent,
+    SubscriptionCanceled,
+    LateSuccess,
+    CardVerification,
+    Other,
+}
+
+public sealed record CreateRefundRequest
+{
+    public required Guid Payment { get; init; }
+
+    /// <summary>Minor units; what is left to refund of the payment when omitted.</summary>
+    public long? Amount { get; init; }
+
+    public RefundReason Reason { get; init; } = RefundReason.RequestedByCustomer;
+
+    public string? Note { get; init; }
+}
+
+public sealed record RefundResponse(
+    Guid Id,
+    string Reference,
+    Guid PaymentId,
+    long Amount,
+    string Currency,
+    RefundReason Reason,
+    RefundKind Kind,
+    RefundStatus Status,
+    string? ProviderRefundId,
+    string? FailureCode,
+    string? FailureMessage,
+    string? Note,
+    ActorResponse Actor,
+    DateTimeOffset? SucceededAt,
+    DateTimeOffset? FailedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);

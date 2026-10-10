@@ -41,6 +41,8 @@ public interface ITahsilDbContext
 
     DbSet<Payment> Payments { get; }
 
+    DbSet<Refund> Refunds { get; }
+
     DbSet<PaymentMethod> PaymentMethods { get; }
 
     DbSet<ConsentRecord> ConsentRecords { get; }

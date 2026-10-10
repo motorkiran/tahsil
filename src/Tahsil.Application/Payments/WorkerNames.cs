@@ -5,4 +5,5 @@ public static class WorkerNames
 {
     public const string PaymentCollection = "payment-collection";
     public const string Reconciliation = "reconciliation";
+    public const string RefundReconciliation = "refund-reconciliation";
 }
