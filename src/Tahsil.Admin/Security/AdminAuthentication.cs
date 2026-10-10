@@ -67,7 +67,13 @@ public static class AdminAuthentication
 
         if (admin.Oidc.Authority is not null)
         {
-            authentication.AddOpenIdConnect(OidcScheme, oidc => ConfigureOidc(oidc, admin.Oidc));
+            // Plain HTTP to the provider only where Tahsil itself allows it: local development.
+            var requireHttps = configuration.GetSection(ServerOptions.SectionName).GetValue(nameof(ServerOptions.RequireHttps), defaultValue: true);
+            authentication.AddOpenIdConnect(OidcScheme, oidc =>
+            {
+                ConfigureOidc(oidc, admin.Oidc);
+                oidc.RequireHttpsMetadata = requireHttps;
+            });
         }
 
         services.AddAuthorization(AddPolicies);
@@ -108,8 +114,10 @@ public static class AdminAuthentication
 
         endpoints.MapGet(SignOutPath, async (HttpContext context, IAuthenticationSchemeProvider schemes) =>
         {
+            // The session cookie is not the default scheme, so it is read explicitly.
+            var session = await context.AuthenticateAsync(CookieScheme);
             await context.SignOutAsync(CookieScheme);
-            if (await schemes.GetSchemeAsync(OidcScheme) is not null && context.User.Identity?.AuthenticationType == OidcScheme)
+            if (await schemes.GetSchemeAsync(OidcScheme) is not null && session.Principal?.Identity?.AuthenticationType == OidcScheme)
             {
                 // RP-initiated logout, with the ID token as the hint.
                 return Results.SignOut(new AuthenticationProperties { RedirectUri = SignInPath }, [OidcScheme]);
