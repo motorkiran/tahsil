@@ -42,18 +42,6 @@ internal sealed class FakeProvider(string key, params string[] currencies) : IPa
         ContentSecurity = new Dictionary<ProviderEnvironment, ContentSecuritySources>(),
     };
 
-    /// <summary>A simulator stand-in: no credentials or settings, every currency of the simulator connection.</summary>
-    public static FakeProvider Simulator() => new("simulator")
-    {
-        Descriptor = new FakeProvider("simulator").Descriptor with
-        {
-            Credentials = [],
-            Settings = [],
-            Currencies = new HashSet<string> { "TRY", "USD", "EUR", "GBP" },
-            Environments = new HashSet<ProviderEnvironment> { ProviderEnvironment.Sandbox },
-        },
-    };
-
     public Task<ConnectionTestResult> TestConnectionAsync(ProviderContext context, CancellationToken cancellationToken)
     {
         Contexts.Enqueue(context);

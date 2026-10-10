@@ -934,6 +934,62 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("outbox_messages", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Infrastructure.Simulator.SimulatorRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("state");
+
+                    b.Property<byte[]>("TokenHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_simulator_transactions");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_simulator_transactions_token_hash")
+                        .HasFilter("token_hash IS NOT NULL");
+
+                    b.HasIndex("ConnectionId", "Kind", "Reference")
+                        .IsUnique()
+                        .HasDatabaseName("ix_simulator_transactions_connection_id_kind_reference");
+
+                    b.ToTable("simulator_transactions", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Infrastructure.Workers.WorkerFailure", b =>
                 {
                     b.Property<string>("Worker")
@@ -1022,6 +1078,16 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_provider_customers_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Infrastructure.Simulator.SimulatorRecord", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_simulator_transactions_provider_connections_connection_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -81,7 +81,7 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
 
         result.Created.ShouldBe(8);
         (await (await client.GetPathAsync("/api/v1/products")).ReadAsync<Page<ProductResponse>>()).Items.ShouldBeEmpty();
-        (await host.QueryAsync<int>($"SELECT count(*)::int AS \"Value\" FROM tahsil.audit_events WHERE action <> 'api_key.created'")).ShouldBe([0]);
+        (await host.QueryAsync<int>($"SELECT count(*)::int AS \"Value\" FROM tahsil.audit_events WHERE action NOT IN ('api_key.created', 'connection.created')")).ShouldBe([0]);
     }
 
     [Fact]

@@ -13,6 +13,39 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="Amount: {0}" xml:space="preserve">
+    <value>Tutar: {0}</value>
+  </data>
+  <data name="Approve" xml:space="preserve">
+    <value>Onayla</value>
+  </data>
+  <data name="Approve the payment with the card ending in {0}?" xml:space="preserve">
+    <value>Sonu {0} ile biten kartla yapılan ödemeyi onaylıyor musunuz?</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Vazgeç</value>
+  </data>
+  <data name="Card number" xml:space="preserve">
+    <value>Kart numarası</value>
+  </data>
+  <data name="Continue" xml:space="preserve">
+    <value>Devam et</value>
+  </data>
+  <data name="Decline" xml:space="preserve">
+    <value>Reddet</value>
+  </data>
+  <data name="Do nothing" xml:space="preserve">
+    <value>Hiçbir şey yapma</value>
+  </data>
+  <data name="Enter a future expiry date as MM/YY." xml:space="preserve">
+    <value>Gelecekteki bir son kullanma tarihini AA/YY biçiminde girin.</value>
+  </data>
+  <data name="Enter the 3 or 4 digit security code." xml:space="preserve">
+    <value>3 veya 4 haneli güvenlik kodunu girin.</value>
+  </data>
+  <data name="Expiry (MM/YY)" xml:space="preserve">
+    <value>Son kullanma (AA/YY)</value>
+  </data>
   <data name="Go back to the page and try again." xml:space="preserve">
     <value>Sayfaya dönüp yeniden deneyin.</value>
   </data>
@@ -25,11 +58,35 @@
   <data name="No sign-in is configured. Set Tahsil:Admin:Oidc to sign in with your identity provider, such as Kimlik." xml:space="preserve">
     <value>Giriş yöntemi yapılandırılmamış. Kimlik gibi bir kimlik sağlayıcıyla giriş için Tahsil:Admin:Oidc ayarlarını yapın.</value>
   </data>
+  <data name="Only simulator test cards are accepted, such as 4242 4242 4242 4242." xml:space="preserve">
+    <value>Yalnızca 4242 4242 4242 4242 gibi simülatör test kartları kabul edilir.</value>
+  </data>
+  <data name="Only simulator test cards are accepted." xml:space="preserve">
+    <value>Yalnızca simülatör test kartları kabul edilir.</value>
+  </data>
   <data name="Page not found" xml:space="preserve">
     <value>Sayfa bulunamadı</value>
   </data>
+  <data name="Pay" xml:space="preserve">
+    <value>Öde</value>
+  </data>
   <data name="Reference" xml:space="preserve">
     <value>Referans</value>
+  </data>
+  <data name="Returning to the merchant…" xml:space="preserve">
+    <value>Satıcıya dönülüyor…</value>
+  </data>
+  <data name="Save card" xml:space="preserve">
+    <value>Kartı kaydet</value>
+  </data>
+  <data name="Save the card for future payments" xml:space="preserve">
+    <value>Kartı sonraki ödemeler için kaydet</value>
+  </data>
+  <data name="Saving a card: nothing is charged." xml:space="preserve">
+    <value>Kart kaydediliyor: ücret alınmaz.</value>
+  </data>
+  <data name="Security code" xml:space="preserve">
+    <value>Güvenlik kodu</value>
   </data>
   <data name="Set up two-factor authentication" xml:space="preserve">
     <value>İki adımlı doğrulamayı aç</value>
@@ -45,6 +102,12 @@
   </data>
   <data name="Sign in with your organization" xml:space="preserve">
     <value>Kurumsal hesabınızla giriş yapın</value>
+  </data>
+  <data name="Simulated bank" xml:space="preserve">
+    <value>Simüle edilmiş banka</value>
+  </data>
+  <data name="Simulated payment" xml:space="preserve">
+    <value>Simüle edilmiş ödeme</value>
   </data>
   <data name="Something went wrong" xml:space="preserve">
     <value>Bir şeyler ters gitti</value>

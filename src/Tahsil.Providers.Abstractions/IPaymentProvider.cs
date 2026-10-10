@@ -10,6 +10,12 @@ public interface IPaymentProvider
 {
     ProviderDescriptor Descriptor { get; }
 
+    /// <summary>
+    /// What a connection with these settings can do: the descriptor's capabilities, unless the adapter lets settings
+    /// restrict them (as the simulator does, to mimic a real provider). The engine decides flows from this.
+    /// </summary>
+    ProviderCapabilities CapabilitiesFor(IReadOnlyDictionary<string, string> settings) => Descriptor.Capabilities;
+
     Task<ConnectionTestResult> TestConnectionAsync(ProviderContext context, CancellationToken cancellationToken);
 
     /// <summary>Begins a payment (or card setup) with the customer present.</summary>

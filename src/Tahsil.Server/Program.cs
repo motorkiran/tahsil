@@ -9,6 +9,7 @@ using Tahsil.Server.Api;
 using Tahsil.Server.Diagnostics;
 using Tahsil.Server.ErrorHandling;
 using Tahsil.Server.Hosting;
+using Tahsil.Server.Simulator;
 using Tahsil.Server.Ui;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,7 @@ builder.Services.AddScoped<IRequestContext>(services =>
 builder.Services.AddTahsilAdmin(builder.Configuration);
 builder.Services.AddTahsilApi();
 builder.Services.AddHostedPages();
+builder.Services.AddSimulator();
 builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));
 builder.Services.AddHealthProbes();
 

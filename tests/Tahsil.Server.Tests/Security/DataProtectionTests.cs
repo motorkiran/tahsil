@@ -68,7 +68,8 @@ public sealed class DataProtectionTests(TahsilServerFixture server)
         }
 
         await using var after = Host(database, Key2, keyId: 2);
-        reencrypted.ShouldBe(2);
+        // The key ring, the simulator connection's credentials and the test secret.
+        reencrypted.ShouldBe(3);
         Protector(after).Unprotect(payload).ShouldBe("session");
         var stored = await ReadSecretAsync(database, owner);
         stored[1].ShouldBe((byte)2);

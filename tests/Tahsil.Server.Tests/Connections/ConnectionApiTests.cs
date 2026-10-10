@@ -378,7 +378,6 @@ public sealed class ConnectionApiTests(TahsilServerFixture server)
         return server.WithSettings(settings, collection =>
         {
             collection.AddSingleton<IPaymentProvider>(provider ?? new FakeProvider("fakepay", "TRY", "USD"));
-            collection.AddSingleton<IPaymentProvider>(FakeProvider.Simulator());
             services?.Invoke(collection);
         });
     }

@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Tahsil.Providers.Simulator\Tahsil.Providers.Simulator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

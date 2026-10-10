@@ -21,7 +21,7 @@ public sealed class AuditApiTests(TahsilServerFixture server)
 
         var byActor = await ListAsync(client, $"actorType=api_key&actorId={admin.ApiKey.Id}");
         var bySubject = await ListAsync(client, $"subjectType=api_key&subjectId={created.ApiKey.Id}&action=api_key.revoked");
-        var bySystem = await ListAsync(client, "actorType=system");
+        var bySystem = await ListAsync(client, "actorType=system&subjectType=api_key");
         var future = await ListAsync(client, "from=2999-01-01T00:00:00%2B03:00");
 
         byActor.Items.Select(auditEvent => auditEvent.Action).ShouldBe(["api_key.revoked", "api_key.created"]);
@@ -39,8 +39,8 @@ public sealed class AuditApiTests(TahsilServerFixture server)
         using var client = await host.CreateClientWithAsync(TahsilPermissions.AuditRead);
         await host.CreateApiKeyAsync(TahsilPermissions.AuditRead);
 
-        var first = await ListAsync(client, "limit=1");
-        var second = await ListAsync(client, $"limit=1&cursor={first.NextCursor}");
+        var first = await ListAsync(client, "limit=1&action=api_key.created");
+        var second = await ListAsync(client, $"limit=1&action=api_key.created&cursor={first.NextCursor}");
         using var invalid = await client.GetPathAsync("/api/v1/audit-events?actorType=robot");
 
         first.Items.Count.ShouldBe(1);
@@ -68,7 +68,7 @@ public sealed class AuditApiTests(TahsilServerFixture server)
 
         var remaining = await host.QueryAsync<string>($"""
             SELECT action || ' ' || coalesce(data->>'category', '-') || ' ' || coalesce(data->>'count', '-') AS "Value"
-            FROM tahsil.audit_events ORDER BY occurred_at
+            FROM tahsil.audit_events WHERE action <> 'connection.created' ORDER BY occurred_at
             """);
         remaining.ShouldBe(["data.destroyed - -", "data.destroyed audit_events 3"]);
     }

@@ -1,0 +1,67 @@
+@page "/simulator/pay/{token}"
+@using Tahsil.Providers.Simulator
+@using Tahsil.Server.Ui
+@model Tahsil.Server.Pages.Simulator.PayModel
+@{
+    ViewData["Title"] = L["Simulated payment"];
+    var payment = Model.Payment!;
+}
+
+<h1 id="page-title">@L["Simulated payment"]</h1>
+<p class="lead">@(Model.IsSetup ? L["Saving a card: nothing is charged."] : L["Amount: {0}", Model.Amount])</p>
+
+@switch (payment.Step)
+{
+    case CardPageStep.CardEntry:
+        @if (Model.Error is { } error)
+        {
+            <p class="alert alert-error" role="alert" id="card-error">@(error switch
+            {
+                CardEntryError.NotATestCard => L["Only simulator test cards are accepted."],
+                CardEntryError.InvalidExpiry => L["Enter a future expiry date as MM/YY."],
+                _ => L["Enter the 3 or 4 digit security code."],
+            })</p>
+        }
+        <form method="post" asp-page-handler="Pay" autocomplete="off">
+            <div class="field">
+                <label for="number">@L["Card number"]</label>
+                <input type="text" id="number" name="number" inputmode="numeric" required aria-invalid="@(Model.Error == CardEntryError.NotATestCard ? "true" : null)" />
+            </div>
+            <div class="field-pair">
+                <div class="field">
+                    <label for="expiry">@L["Expiry (MM/YY)"]</label>
+                    <input type="text" id="expiry" name="expiry" placeholder="12/30" required />
+                </div>
+                <div class="field">
+                    <label for="cvc">@L["Security code"]</label>
+                    <input type="text" id="cvc" name="cvc" inputmode="numeric" required />
+                </div>
+            </div>
+            @if (payment.AskToSave)
+            {
+                <label class="checkbox"><input type="checkbox" name="saveCard" value="true" /> @L["Save the card for future payments"]</label>
+            }
+            <button class="button" type="submit" id="pay">@(Model.IsSetup ? L["Save card"] : L["Pay"])</button>
+        </form>
+        <form method="post" asp-page-handler="Cancel">
+            <button class="button button-secondary" type="submit" id="cancel">@L["Cancel"]</button>
+        </form>
+        <p class="hint">@L["Only simulator test cards are accepted, such as 4242 4242 4242 4242."]</p>
+        break;
+
+    case CardPageStep.Authentication:
+        <h2>@L["Simulated bank"]</h2>
+        <p>@L["Approve the payment with the card ending in {0}?", payment.CardLast4 ?? string.Empty]</p>
+        <form method="post" asp-page-handler="Authenticate" class="actions">
+            <button class="button" type="submit" name="decision" value="Approve" id="approve">@L["Approve"]</button>
+            <button class="button button-danger" type="submit" name="decision" value="Decline" id="decline">@L["Decline"]</button>
+            <button class="button button-secondary" type="submit" name="decision" value="DoNothing" id="do-nothing">@L["Do nothing"]</button>
+        </form>
+        break;
+
+    default:
+        <p>@L["Returning to the merchant…"]</p>
+        <a class="button" id="continue" href="@payment.RedirectUrl" target="_top">@L["Continue"]</a>
+        <script nonce="@HttpContext.GetCspNonce()">window.top.location.href = document.getElementById("continue").href;</script>
+        break;
+}

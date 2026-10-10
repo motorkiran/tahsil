@@ -19,6 +19,9 @@ public sealed record CspSources
     public IReadOnlyList<string> Images { get; init; } = [];
 
     public IReadOnlyList<string> FormActions { get; init; } = [];
+
+    /// <summary>Who may embed the page; nobody unless given, such as <c>'self'</c> for the simulator's card page.</summary>
+    public IReadOnlyList<string> FrameAncestors { get; init; } = [];
 }
 
 /// <summary>Implemented by page models whose page needs more than the base policy allows.</summary>
@@ -48,8 +51,8 @@ internal static class ContentSecurityPolicy
     }
 
     /// <summary>
-    /// The policy of a page: nothing but Tahsil's own resources, no plugins, no framing; scripts only when the page
-    /// runs Tahsil's scripts or adds a provider's; plus whatever the page adds.
+    /// The policy of a page: nothing but Tahsil's own resources, no plugins, no framing unless the page allows it;
+    /// scripts only when the page runs Tahsil's scripts or adds a provider's; plus whatever the page adds.
     /// </summary>
     public static string Build(string nonce, bool runsScripts, CspSources? sources = null)
     {
@@ -67,7 +70,7 @@ internal static class ContentSecurityPolicy
             $"form-action {Join("'self'", sources.FormActions)}",
             "object-src 'none'",
             "base-uri 'self'",
-            "frame-ancestors 'none'",
+            $"frame-ancestors {(sources.FrameAncestors.Count == 0 ? "'none'" : string.Join(' ', sources.FrameAncestors))}",
         ]);
     }
 

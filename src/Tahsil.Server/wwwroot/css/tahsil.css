@@ -287,6 +287,13 @@ form > .button + .button {
     flex-basis: 100%;
 }
 
+/* A provider's card fields embedded in a page, such as the simulator's. */
+.provider-frame {
+    width: 100%;
+    min-height: 34rem;
+    border: 0;
+}
+
 .visually-hidden {
     position: absolute;
     width: 1px;

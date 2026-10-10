@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>A payment provider inside Tahsil for Test mode: test cards, simulated 3D Secure and failure injection.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tahsil.Providers.Tests" />
+  </ItemGroup>
+
+</Project>

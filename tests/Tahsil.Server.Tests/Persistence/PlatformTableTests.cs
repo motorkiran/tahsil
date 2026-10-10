@@ -47,7 +47,8 @@ public sealed class PlatformTableTests(TahsilServerFixture server)
         }
 
         await using var query = host.Services.CreateAsyncScope();
-        var recorded = await query.ServiceProvider.GetRequiredService<ITahsilDbContext>().AuditEvents.SingleAsync(CancellationToken);
+        var recorded = await query.ServiceProvider.GetRequiredService<ITahsilDbContext>().AuditEvents
+            .SingleAsync(auditEvent => auditEvent.Action == "customer.created", CancellationToken);
 
         recorded.ActorType.ShouldBe(ActorType.System);
         recorded.ActorId.ShouldBeNull();
