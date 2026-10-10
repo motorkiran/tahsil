@@ -95,6 +95,7 @@ public static class DependencyInjection
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("provider_connections", "credentials", SecretPurposes.ConnectionCredentials));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("invoices", "customer_tax_id", SecretPurposes.CustomerTaxId));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("payment_methods", "token", SecretPurposes.PaymentMethodToken));
+        services.AddSingleton<IEncryptedStore>(new EncryptedColumn("provider_notifications", "raw_body", SecretPurposes.ProviderNotificationRawBody));
         services.AddScoped<SecretReencryption>();
 
         // Every instance shares one key ring, stored in PostgreSQL and encrypted with the master key.
@@ -151,6 +152,8 @@ public static class DependencyInjection
         AddHostedSingleton<PaymentCollectionWorker>(services);
         AddHostedSingleton<ReconciliationWorker>(services);
         AddHostedSingleton<RefundReconciliationWorker>(services);
+        AddHostedSingleton<ProviderNotificationWorker>(services);
+        AddHostedSingleton<ProviderNotificationCleanup>(services);
         AddHostedSingleton<OutboxCleanup>(services);
     }
 

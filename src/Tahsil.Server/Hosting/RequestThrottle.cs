@@ -11,6 +11,9 @@ public enum ThrottledAction
 {
     /// <summary>Any request to a hosted page.</summary>
     HostedPage,
+
+    /// <summary>A provider notification (SEC-4).</summary>
+    ProviderNotification,
 }
 
 /// <summary>
@@ -29,6 +32,7 @@ public sealed class RequestThrottle : IDisposable
         _limiters = new Dictionary<ThrottledAction, PartitionedRateLimiter<string>>
         {
             [ThrottledAction.HostedPage] = CreateLimiter(limits.HostedPageRequestsPerMinute),
+            [ThrottledAction.ProviderNotification] = CreateLimiter(limits.ProviderNotificationsPerMinute),
         }.ToFrozenDictionary();
     }
 

@@ -5,6 +5,16 @@ public enum SimulatorEntryKind
     Payment,
     Refund,
     Card,
+
+    /// <summary>The connection's key for signing the simulator's notifications.</summary>
+    Key,
+}
+
+/// <summary>Sends the simulator's notifications to Tahsil, as a provider would (SIM-9).</summary>
+public interface ISimulatorNotifier
+{
+    /// <summary>Queues a notification that a payment or refund changed, such as <c>payment.succeeded</c>.</summary>
+    void Notify(Guid connectionId, string type, string reference);
 }
 
 /// <summary>A record of the simulated provider: a payment, a refund or a saved card, with its state as JSON.</summary>

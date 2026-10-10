@@ -84,6 +84,7 @@ app.MapRazorPages().WithStaticAssets();
 app.MapCultureSwitch();
 app.MapBrandingStylesheet();
 app.MapTahsilApi();
+app.MapProviderNotifications();
 app.MapContributedEndpoints();
 
 if (adminPanel)

@@ -1764,6 +1764,82 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("provider_customers", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Payments.ProviderNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<short>("Attempts")
+                        .HasColumnType("smallint")
+                        .HasColumnName("attempts");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTimeOffset?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("ProviderEventId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_event_id");
+
+                    b.Property<byte[]>("RawBody")
+                        .HasColumnType("bytea")
+                        .HasColumnName("raw_body");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_provider_notifications");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasDatabaseName("ix_provider_notifications_next_attempt_at")
+                        .HasFilter("status = 'pending'");
+
+                    b.HasIndex("ReceivedAt")
+                        .HasDatabaseName("ix_provider_notifications_received_at")
+                        .HasFilter("raw_body IS NOT NULL");
+
+                    b.HasIndex("ConnectionId", "ProviderEventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_provider_notifications_connection_id_provider_event_id")
+                        .HasFilter("provider_event_id IS NOT NULL");
+
+                    b.ToTable("provider_notifications", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Payments.Refund", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2355,6 +2431,16 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_provider_customers_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Payments.ProviderNotification", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_provider_notifications_provider_connections_connection_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Payments.Refund", b =>

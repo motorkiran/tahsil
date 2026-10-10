@@ -46,6 +46,9 @@ public sealed record NotificationResult
     /// <summary>The provider's ID of the event, to apply each notification once.</summary>
     public string? ProviderEventId { get; init; }
 
+    /// <summary>The provider's name for the event, such as <c>payment_intent.succeeded</c>.</summary>
+    public string? EventType { get; init; }
+
     public required NotificationResponse Response { get; init; }
 
     public IReadOnlyList<NotificationUpdate> Updates { get; init; } = [];

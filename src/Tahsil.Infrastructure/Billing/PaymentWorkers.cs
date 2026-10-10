@@ -86,3 +86,51 @@ internal sealed class RefundReconciliationWorker(
     protected override Task ProcessAsync(IServiceProvider services, Guid id, DateTimeOffset now, CancellationToken cancellationToken) =>
         services.GetRequiredService<RefundReconciliation>().ReconcileAsync(id, cancellationToken);
 }
+
+/// <summary>Applies stored provider notifications when they are due (PAY-24).</summary>
+internal sealed class ProviderNotificationWorker(
+    IServiceScopeFactory scopes, BillingClock clock, IOptions<WorkerOptions> options, WorkerSignals signals, ILogger<ProviderNotificationWorker> logger)
+    : DueWorker(scopes, clock, options, signals, logger)
+{
+    public override string Name => WorkerNames.ProviderNotifications;
+
+    // Hints are checked with the provider, so items are leased rather than processed under a lock.
+    protected override bool CallsOtherServices => true;
+
+    protected override async Task<Guid?> LockNextDueAsync(TahsilDbContext context, DateTimeOffset now, CancellationToken cancellationToken) =>
+        (await context.Database.SqlQuery<Guid>($"""
+            SELECT id AS "Value" FROM tahsil.provider_notifications
+            WHERE status = 'pending' AND next_attempt_at <= {now}
+            ORDER BY next_attempt_at
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            """).ToListAsync(cancellationToken)) is [var id] ? id : null;
+
+    protected override Task PostponeAsync(TahsilDbContext context, Guid id, DateTimeOffset until, CancellationToken cancellationToken) =>
+        context.Database.ExecuteSqlAsync($"UPDATE tahsil.provider_notifications SET next_attempt_at = {until} WHERE id = {id}", cancellationToken);
+
+    protected override Task ProcessAsync(IServiceProvider services, Guid id, DateTimeOffset now, CancellationToken cancellationToken) =>
+        services.GetRequiredService<ProviderNotificationProcessing>().ProcessAsync(id, cancellationToken);
+}
+
+/// <summary>Clears the raw bodies of provider notifications after 30 days (DOM §5.4), every hour.</summary>
+internal sealed class ProviderNotificationCleanup(
+    IServiceScopeFactory scopes, BillingClock clock, IOptions<WorkerOptions> options, ILogger<ProviderNotificationCleanup> logger)
+    : PeriodicJob(scopes, clock, options, logger)
+{
+    private static readonly TimeSpan RawBodyRetention = TimeSpan.FromDays(30);
+
+    public override string Name => "provider-notification-cleanup";
+
+    protected override long LockKey => AdvisoryLockKeys.ProviderNotificationCleanup;
+
+    protected override TimeSpan Interval => TimeSpan.FromHours(1);
+
+    protected override async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var cutoff = Clock.GetUtcNow() - RawBodyRetention;
+        await services.GetRequiredService<TahsilDbContext>().ProviderNotifications
+            .Where(notification => notification.RawBody != null && notification.ReceivedAt < cutoff)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(notification => notification.RawBody, (byte[]?)null), cancellationToken);
+    }
+}

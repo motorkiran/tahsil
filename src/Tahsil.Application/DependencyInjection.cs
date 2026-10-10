@@ -138,6 +138,8 @@ public static class DependencyInjection
         services.AddScoped<RefundOutcomes>();
         services.AddScoped<Refunds>();
         services.AddScoped<RefundReconciliation>();
+        services.AddScoped<ProviderNotifications>();
+        services.AddScoped<ProviderNotificationProcessing>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();

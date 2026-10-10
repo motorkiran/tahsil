@@ -19,6 +19,9 @@ public enum AttentionKind
 
     /// <summary>A refund failed at the provider; the customer has not got their money back (PAY-19).</summary>
     RefundFailed,
+
+    /// <summary>A verified provider notification could not be applied in ten attempts (PAY-24).</summary>
+    NotificationFailed,
 }
 
 /// <summary>Something an operator must look at and resolve, such as an amount mismatch; one open item per kind and subject.</summary>

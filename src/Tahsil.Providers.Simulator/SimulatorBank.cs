@@ -54,8 +54,10 @@ public abstract record CardPageResult
 /// The simulated provider behind the simulator adapter and its card page: payments, 3D Secure, saved cards and
 /// refunds, answering as the test cards say (SIM §3). Time is the billing clock, so time travel moves it too.
 /// </summary>
-public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock)
+public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock, ISimulatorNotifier? notifier = null)
 {
+    public const string SignatureHeader = "Simulator-Signature";
+
     private const int Attempts = 5;
     private static readonly TimeSpan PageLifetime = TimeSpan.FromHours(1);
     private static readonly TimeSpan PendingRefundDuration = TimeSpan.FromHours(1);
@@ -227,6 +229,11 @@ public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock)
                 continue;
             }
 
+            if (state.Status != SimulatedPaymentStatus.Pending)
+            {
+                Notify(payment, charged ? "payment.succeeded" : "payment.failed");
+            }
+
             return behavior.Kind == CardBehaviorKind.TimeoutAfterCharge
                 ? PaymentOutcome.Unknown("The simulated charge was made, but its answer timed out.")
                 : Outcome(payment, state);
@@ -293,6 +300,11 @@ public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock)
             var entry = new SimulatorEntry(Guid.CreateVersion7(now), connectionId, SimulatorEntryKind.Refund, request.Reference, null, SimulatorJson.Write(refund), 0, now);
             if (await ledger.SaveAsync(entry, cancellationToken))
             {
+                if (refund.Status != RefundStatus.Pending)
+                {
+                    Notify(entry, refund.Status == RefundStatus.Succeeded ? "refund.succeeded" : "refund.failed");
+                }
+
                 return RefundOutcomeOf(entry, refund);
             }
         }
@@ -319,6 +331,7 @@ public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock)
             var settled = refund with { Status = RefundStatus.Succeeded };
             if (await ledger.SaveAsync(entry with { State = SimulatorJson.Write(settled) }, cancellationToken))
             {
+                Notify(entry, "refund.succeeded");
                 return new RefundLookup.Found(RefundOutcomeOf(entry, settled));
             }
         }
@@ -351,6 +364,47 @@ public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock)
         throw Contention(token);
     }
 
+    /// <summary>The signature of a notification body: <c>t={unix seconds},v1={hex HMAC-SHA256 of "t.body"}</c>.</summary>
+    public async Task<string> SignAsync(Guid connectionId, long timestamp, byte[] body, CancellationToken cancellationToken)
+    {
+        var key = await SigningKeyAsync(connectionId, cancellationToken);
+        return $"t={timestamp},v1={Convert.ToHexStringLower(Hmac.Compute(HmacAlgorithm.Sha256, key, Signed(timestamp, body)))}";
+    }
+
+    /// <summary>Checks a notification's signature with the connection's key, in constant time.</summary>
+    public async Task<bool> VerifyAsync(Guid connectionId, string? signature, byte[] body, CancellationToken cancellationToken)
+    {
+        var parts = signature?.Split(',').Select(part => part.Split('=', 2)).Where(pair => pair.Length == 2).ToDictionary(pair => pair[0], pair => pair[1]);
+        if (parts is null || !parts.TryGetValue("t", out var t) || !long.TryParse(t, out var timestamp) || !parts.TryGetValue("v1", out var received))
+        {
+            return false;
+        }
+
+        var key = await SigningKeyAsync(connectionId, cancellationToken);
+        return Hmac.MatchesHex(Hmac.Compute(HmacAlgorithm.Sha256, key, Signed(timestamp, body)), received);
+    }
+
+    private async Task<byte[]> SigningKeyAsync(Guid connectionId, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < Attempts; attempt++)
+        {
+            if (await ledger.FindAsync(connectionId, SimulatorEntryKind.Key, "signing", cancellationToken) is { } stored)
+            {
+                return Convert.FromBase64String(SimulatorJson.Read<KeyState>(stored).Key);
+            }
+
+            var now = clock.GetUtcNow();
+            var state = new KeyState(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
+            await ledger.SaveAsync(new SimulatorEntry(Guid.CreateVersion7(now), connectionId, SimulatorEntryKind.Key, "signing", null, SimulatorJson.Write(state), 0, now), cancellationToken);
+        }
+
+        throw Contention("signing");
+    }
+
+    private static byte[] Signed(long timestamp, byte[] body) => [.. Encoding.UTF8.GetBytes($"{timestamp}."), .. body];
+
+    private void Notify(SimulatorEntry entry, string type) => notifier?.Notify(entry.ConnectionId, type, entry.Reference);
+
     private async Task<SimulatorEntry?> FindPageAsync(string token, CancellationToken cancellationToken) =>
         await ledger.FindByTokenAsync(Hash(token), cancellationToken) is { Kind: SimulatorEntryKind.Payment } entry
         && SimulatorJson.Read<PaymentState>(entry).ExpiresAt is { } expiresAt
@@ -379,6 +433,11 @@ public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock)
             var next = await change(entry, state);
             if (await ledger.SaveAsync(entry with { State = SimulatorJson.Write(next) }, cancellationToken))
             {
+                if (next.Status != SimulatedPaymentStatus.AwaitingAuthentication)
+                {
+                    Notify(entry, next.Status == SimulatedPaymentStatus.Succeeded ? "payment.succeeded" : "payment.failed");
+                }
+
                 return next.Status == SimulatedPaymentStatus.AwaitingAuthentication ? new CardPageResult.Authenticate() : new CardPageResult.Redirect(RedirectOf(next));
             }
         }

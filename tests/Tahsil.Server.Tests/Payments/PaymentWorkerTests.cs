@@ -33,6 +33,7 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
     {
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
+        await WithoutSimulatorNotificationsAsync(client);
         var customer = await CustomerAsync(client);
         await SaveSimulatorCardAsync(host, client, customer, card);
 
@@ -74,6 +75,7 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
     {
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
+        await WithoutSimulatorNotificationsAsync(client);
         var customer = await CustomerAsync(client);
         await SaveSimulatorCardAsync(host, client, customer, card);
         var invoice = await FinalizedInvoiceAsync(client, customer);
@@ -234,6 +236,20 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
                 services.AddSingleton<IPaymentProvider>(provider);
             }
         });
+
+    /// <summary>
+    /// The simulator would settle unanswered charges by notifying itself, at a moment of its own; these tests settle
+    /// them through reconciliation only.
+    /// </summary>
+    private static async Task WithoutSimulatorNotificationsAsync(HttpClient client)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri("/api/v1/provider-connections/simulator", UriKind.Relative))
+        {
+            Content = JsonContent.Create(new { settings = new { notifications = false } }, options: ApiClients.Json),
+        };
+        using var response = await client.SendAsync(request, CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(CancellationToken));
+    }
 
     /// <summary>A finalized invoice whose automatic charge got no answer, through the scripted provider.</summary>
     private static async Task<(Guid Invoice, Guid Payment)> UnansweredChargeAsync(WebApplicationFactory<Program> host, HttpClient client, ScriptedProvider provider)

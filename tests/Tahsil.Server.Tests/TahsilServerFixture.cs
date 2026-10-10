@@ -55,8 +55,17 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
     }
 
     /// <summary>A connection string for another database on the same server.</summary>
+    /// <summary>
+    /// A connection string for one of the tests' databases. Hundreds of hosts each get a pool of their own, so idle
+    /// connections are closed within seconds instead of the default five minutes, before the server runs out of them.
+    /// </summary>
     public string ConnectionStringFor(string database) =>
-        new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString()) { Database = database }.ConnectionString;
+        new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+        {
+            Database = database,
+            ConnectionIdleLifetime = 2,
+            ConnectionPruningInterval = 1,
+        }.ConnectionString;
 
     /// <summary>A connection string for a database no other test uses; it is created by whoever connects first.</summary>
     public string NewDatabase(string prefix) => ConnectionStringFor($"{prefix}_{Guid.CreateVersion7():N}");

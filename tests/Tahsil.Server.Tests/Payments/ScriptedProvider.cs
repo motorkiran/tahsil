@@ -18,6 +18,12 @@ internal sealed class ScriptedProvider : IPaymentProvider
 
     public RefundOutcome RefundOutcome { get; set; } = new() { Status = RefundStatus.Succeeded, ProviderRefundId = "scripted-refund" };
 
+    /// <summary>What a notification means: verified hints about the references in its body, one per line.</summary>
+    public bool VerifyNotifications { get; set; } = true;
+
+    /// <summary>Makes lookups throw, as an adapter bug would.</summary>
+    public bool FailLookups { get; set; }
+
     public ProviderDescriptor Descriptor => new()
     {
         Key = Key,
@@ -55,6 +61,11 @@ internal sealed class ScriptedProvider : IPaymentProvider
     public Task<PaymentLookup> FindPaymentAsync(ProviderContext context, PaymentQuery query, CancellationToken cancellationToken)
     {
         Queries.Enqueue(query);
+        if (FailLookups)
+        {
+            throw new InvalidOperationException("The scripted lookup failed.");
+        }
+
         return Task.FromResult(Lookups.TryDequeue(out var lookup) ? lookup : new PaymentLookup.Unavailable("Nothing scripted."));
     }
 
@@ -65,6 +76,21 @@ internal sealed class ScriptedProvider : IPaymentProvider
     public Task<RemoveCardResult> RemoveSavedCardAsync(ProviderContext context, SavedCardReference card, CancellationToken cancellationToken) =>
         Task.FromResult(new RemoveCardResult(true));
 
-    public Task<NotificationResult> HandleNotificationAsync(ProviderContext context, IncomingNotification notification, CancellationToken cancellationToken) =>
-        throw new NotSupportedException();
+    public Task<NotificationResult> HandleNotificationAsync(ProviderContext context, IncomingNotification notification, CancellationToken cancellationToken)
+    {
+        if (!VerifyNotifications)
+        {
+            return Task.FromResult(NotificationResult.Rejected(new NotificationResponse(401, "text/plain", "No")));
+        }
+
+        var references = System.Text.Encoding.UTF8.GetString(notification.Body).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        return Task.FromResult(new NotificationResult
+        {
+            Verified = true,
+            ProviderEventId = notification.Headers.GetValueOrDefault("Event-Id"),
+            EventType = "payment.hint",
+            Response = new NotificationResponse(200, "text/plain", "OK"),
+            Updates = [.. references.Select(reference => new NotificationUpdate.CheckPayment(reference))],
+        });
+    }
 }

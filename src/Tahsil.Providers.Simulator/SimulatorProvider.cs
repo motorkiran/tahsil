@@ -80,6 +80,30 @@ public sealed class SimulatorProvider(SimulatorBank bank, Uri publicUrl) : IPaym
             },
             new FieldDefinition
             {
+                Key = "notifications",
+                Label = "Send notifications",
+                Type = FieldType.Boolean,
+                Default = "true",
+                Description = "Whether the simulator notifies Tahsil of the payments and refunds it settles, as most providers do.",
+            },
+            new FieldDefinition
+            {
+                Key = "notificationDelaySeconds",
+                Label = "Notification delay (seconds)",
+                Type = FieldType.Number,
+                Default = "0",
+                Description = "How long the simulator waits before it sends a notification.",
+            },
+            new FieldDefinition
+            {
+                Key = "notificationDuplicate",
+                Label = "Send each notification twice",
+                Type = FieldType.Boolean,
+                Default = "false",
+                Description = "Tests that repeated notifications are applied once.",
+            },
+            new FieldDefinition
+            {
                 Key = "savesCards",
                 Label = "Saving cards during a payment",
                 Type = FieldType.Choice,
@@ -143,7 +167,43 @@ public sealed class SimulatorProvider(SimulatorBank bank, Uri publicUrl) : IPaym
             ? new RemoveCardResult(true)
             : new RemoveCardResult(false, "The simulator has no such saved card.");
 
-    /// <summary>The simulator's signed notifications to itself arrive with provider notifications (SIM-9); until then none verify.</summary>
-    public Task<NotificationResult> HandleNotificationAsync(ProviderContext context, IncomingNotification notification, CancellationToken cancellationToken) =>
-        Task.FromResult(NotificationResult.Rejected(new NotificationResponse(400, "text/plain", "Unverified")));
+    /// <summary>
+    /// Verifies the simulator's signed notifications to itself (SIM-9) and reads the outcome they announce from the
+    /// simulated provider, as an adapter for a signing provider would.
+    /// </summary>
+    public async Task<NotificationResult> HandleNotificationAsync(ProviderContext context, IncomingNotification notification, CancellationToken cancellationToken)
+    {
+        if (!await bank.VerifyAsync(context.ConnectionId, notification.Headers.GetValueOrDefault(SimulatorBank.SignatureHeader), notification.Body, cancellationToken)
+            || ReadEvent(notification.Body) is not { } simulated)
+        {
+            return NotificationResult.Rejected(new NotificationResponse(400, "text/plain", "Invalid signature"));
+        }
+
+        IReadOnlyList<NotificationUpdate> updates = simulated.Type.StartsWith("refund.", StringComparison.Ordinal)
+            ? await bank.FindRefundAsync(context.ConnectionId, simulated.Reference, cancellationToken) is RefundLookup.Found refund
+                ? [new NotificationUpdate.Refund(simulated.Reference, refund.Outcome)]
+                : [new NotificationUpdate.CheckRefund(simulated.Reference)]
+            : await bank.FindPaymentAsync(context.ConnectionId, simulated.Reference, cancellationToken) is PaymentLookup.Found payment
+                ? [new NotificationUpdate.Payment(simulated.Reference, payment.Outcome)]
+                : [new NotificationUpdate.CheckPayment(simulated.Reference)];
+        return new NotificationResult
+        {
+            Verified = true,
+            ProviderEventId = simulated.Id,
+            EventType = simulated.Type,
+            Response = new NotificationResponse(200, "text/plain", "OK"),
+            Updates = updates,
+        };
+    }
+
+    private static SimulatedEvent? ReadEvent(byte[] body)
+    {
+        using var document = LenientJson.TryParse(System.Text.Encoding.UTF8.GetString(body));
+        return document?.RootElement is { } root && root.TextAt("id") is { } id && root.TextAt("type") is { } type && root.TextAt("reference") is { } reference
+            ? new SimulatedEvent(id, type, reference)
+            : null;
+    }
+
+    /// <summary>A notification's body: the event's ID and type, and the reference of the payment or refund.</summary>
+    public sealed record SimulatedEvent(string Id, string Type, string Reference);
 }

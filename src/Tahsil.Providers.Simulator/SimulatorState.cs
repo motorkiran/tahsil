@@ -91,6 +91,8 @@ internal sealed record CardState
     public int Charges { get; init; }
 }
 
+internal sealed record KeyState(string Key);
+
 internal static class SimulatorJson
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)

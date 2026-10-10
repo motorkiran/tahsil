@@ -146,3 +146,22 @@ internal sealed class RefundConfiguration : IEntityTypeConfiguration<Refund>
         builder.HasIndex(refund => refund.ReconcileAt).HasFilter("status = 'processing'");
     }
 }
+
+internal sealed class ProviderNotificationConfiguration : IEntityTypeConfiguration<ProviderNotification>
+{
+    public void Configure(EntityTypeBuilder<ProviderNotification> builder)
+    {
+        builder.Property(notification => notification.Id).ValueGeneratedNever();
+        builder.Property(notification => notification.ProviderEventId).HasMaxLength(ProviderNotification.EventIdMaxLength);
+        builder.Property(notification => notification.Type).HasMaxLength(ProviderNotification.TypeMaxLength);
+        builder.Property(notification => notification.Payload).HasColumnType("jsonb");
+        builder.Property(notification => notification.Status).HasMaxLength(16);
+        builder.Property(notification => notification.Attempts).HasColumnType("smallint");
+        builder.Property(notification => notification.LastError).HasMaxLength(ProviderNotification.LastErrorMaxLength);
+
+        builder.HasOne<ProviderConnection>().WithMany().HasForeignKey(notification => notification.ConnectionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(notification => new { notification.ConnectionId, notification.ProviderEventId }).IsUnique().HasFilter("provider_event_id IS NOT NULL");
+        builder.HasIndex(notification => notification.NextAttemptAt).HasFilter("status = 'pending'");
+        builder.HasIndex(notification => notification.ReceivedAt).HasFilter("raw_body IS NOT NULL");
+    }
+}

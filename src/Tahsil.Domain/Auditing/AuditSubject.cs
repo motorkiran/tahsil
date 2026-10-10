@@ -26,6 +26,7 @@ public static class AuditSubjects
     public const string InvoiceItem = "invoice_item";
     public const string Payment = "payment";
     public const string Refund = "refund";
+    public const string ProviderNotification = "provider_notification";
     public const string WebhookEndpoint = "webhook_endpoint";
     public const string ApiKey = "api_key";
     public const string TestClock = "test_clock";

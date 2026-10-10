@@ -16,7 +16,11 @@ internal static class SimulatorServices
         // Live mode's provider registry leaves the simulator out, and its pages are not mapped.
         services.AddSingleton<SimulatorRecordStore>();
         services.AddSingleton<ISimulatorLedger, SimulatorLedger>();
-        services.AddSingleton(provider => new SimulatorBank(provider.GetRequiredService<ISimulatorLedger>(), provider.GetRequiredService<BillingClock>()));
+        services.AddSingleton<SimulatorNotifier>();
+        services.AddSingleton<ISimulatorNotifier>(provider => provider.GetRequiredService<SimulatorNotifier>());
+        services.AddHostedService(provider => provider.GetRequiredService<SimulatorNotifier>());
+        services.AddSingleton(provider => new SimulatorBank(
+            provider.GetRequiredService<ISimulatorLedger>(), provider.GetRequiredService<BillingClock>(), provider.GetRequiredService<ISimulatorNotifier>()));
         services.AddSingleton<IPaymentProvider>(provider => new SimulatorProvider(
             provider.GetRequiredService<SimulatorBank>(), provider.GetRequiredService<IOptions<ServerOptions>>().Value.PublicUrl!));
         services.AddSingleton<IConfigureOptions<RazorPagesOptions>, UnmapPagesInLiveMode>();
