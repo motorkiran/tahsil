@@ -50,6 +50,8 @@ public interface ITahsilDbContext
 
     DbSet<WebhookDelivery> WebhookDeliveries { get; }
 
+    DbSet<Domain.Clock.TestClock> TestClocks { get; }
+
     DbSet<PaymentMethod> PaymentMethods { get; }
 
     DbSet<ConsentRecord> ConsentRecords { get; }

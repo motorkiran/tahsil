@@ -137,6 +137,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<TestClockOffset>();
         services.AddSingleton<BillingClock, OffsetBillingClock>();
+        services.AddSingleton<Application.TestClock.ITimeTravel, TimeTravel>();
         services.AddHostedService<TestClockRefresher>();
     }
 

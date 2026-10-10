@@ -59,6 +59,9 @@ public static class AuditActions
     public const string WebhookEndpointDeleted = "webhook_endpoint.deleted";
     public const string WebhookEndpointSecretRotated = "webhook_endpoint.secret_rotated";
 
+    /// <summary>The billing clock moved forward in Test mode (ENG-22).</summary>
+    public const string TestClockAdvanced = "test_clock.advanced";
+
     public const string ProvisioningApplied = "provisioning.applied";
 
     public const string ApiKeyCreated = "api_key.created";

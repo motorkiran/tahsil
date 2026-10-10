@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Tahsil.Application.Common;
 using Tahsil.Application.PaymentMethods;
+using Tahsil.Application.TestClock;
 using Tahsil.Contracts;
 
 namespace Tahsil.Server.Api;
@@ -43,6 +44,15 @@ internal static class PaymentMethodEndpoints
     /// <summary>The test API, mapped in Test mode only.</summary>
     public static IEndpointRouteBuilder MapSimulatorTestEndpoints(this IEndpointRouteBuilder api)
     {
+        var clock = api.MapGroup("test/clock").WithTags("Test mode");
+        clock.MapGet(string.Empty, async (GetTestClockHandler handler, CancellationToken cancellationToken) => (await handler.HandleAsync(cancellationToken)).ToOk())
+            .WithName("GetTestClock").WithSummary("Read the billing clock").RequirePermission(TahsilPermissions.TestWrite);
+        clock.MapPost(string.Empty, async (AdvanceClockRequest request, AdvanceTestClockHandler handler, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(request, cancellationToken)).ToOk())
+            .WithName("AdvanceTestClock").WithSummary("Travel forward in time")
+            .WithDescription("Test mode only: moves the billing clock forward by `advanceBy` (an ISO 8601 duration such as `P1M`) or to `advanceTo`, at most 400 days, and processes everything that falls due on the way, at its own instant. Returns when done.")
+            .ProducesValidationProblem().ProducesProblem(StatusCodes.Status409Conflict).RequirePermission(TahsilPermissions.TestWrite);
+
         var simulator = api.MapGroup("test/simulator").WithTags("Test mode");
         simulator.MapPost("payment-methods", async (CreateSimulatorPaymentMethodRequest request, CreateTestPaymentMethodHandler handler, CancellationToken cancellationToken) =>
             (await handler.HandleAsync(request, cancellationToken)).ToCreated(method => $"{TahsilApi.BasePath}/payment-methods/{method.Id}"))

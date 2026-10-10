@@ -17,4 +17,6 @@ internal static class AdvisoryLockKeys
     public const long ProviderNotificationCleanup = 0x544148_53494C_0005;
 
     public const long WebhookDeliveryCleanup = 0x544148_53494C_0006;
+
+    public const long TimeTravel = 0x544148_53494C_0007;
 }

@@ -57,3 +57,25 @@ public sealed record UpdateSimulatorPaymentMethodRequest
 {
     public required string Behavior { get; init; }
 }
+
+/// <summary>Moves the billing clock forward in Test mode: by an ISO 8601 duration such as <c>P1M</c>, or to an instant (ENG-22).</summary>
+public sealed record AdvanceClockRequest
+{
+    /// <summary>An ISO 8601 duration such as <c>P1M</c>, <c>P14D</c> or <c>PT2H</c>.</summary>
+    public string? AdvanceBy { get; init; }
+
+    public DateTimeOffset? AdvanceTo { get; init; }
+}
+
+public sealed record TestClockResponse(DateTimeOffset Now, long OffsetSeconds, DateTimeOffset? UpdatedAt);
+
+/// <summary>What a time travel did, step by step (ENG-23).</summary>
+public sealed record TimeTravelResponse(
+    DateTimeOffset From,
+    DateTimeOffset To,
+    int Steps,
+    int InvoicesCreated,
+    int PaymentsAttempted,
+    int PaymentsSucceeded,
+    int PaymentsFailed,
+    int SubscriptionsCanceled);

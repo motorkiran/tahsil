@@ -23,4 +23,17 @@ public sealed class TestClock
     public Actor Actor { get; private set; } = Actor.System;
 
     public static TestClock Create(DateTimeOffset now) => new() { UpdatedAt = now };
+
+    /// <summary>Moves the clock forward to <paramref name="offsetSeconds"/>; it never goes back.</summary>
+    public void AdvanceTo(long offsetSeconds, Actor actor, DateTimeOffset now)
+    {
+        if (offsetSeconds < OffsetSeconds)
+        {
+            throw new InvalidOperationException("The test clock only moves forward.");
+        }
+
+        OffsetSeconds = offsetSeconds;
+        Actor = actor;
+        UpdatedAt = now;
+    }
 }

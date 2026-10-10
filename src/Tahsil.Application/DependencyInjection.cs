@@ -173,6 +173,8 @@ public static class DependencyInjection
         services.AddScoped<PaymentMethodExpiry>();
         services.AddScoped<IOutboxMessageHandler<DeleteProviderToken>, ProviderTokenDeleter>();
         services.AddScoped<CreateTestPaymentMethodHandler>();
+        services.AddScoped<TestClock.GetTestClockHandler>();
+        services.AddScoped<TestClock.AdvanceTestClockHandler>();
         services.AddScoped<UpdateTestPaymentMethodHandler>();
         services.AddScoped<CustomerMapper>();
         services.AddScoped<CreateCustomerHandler>();

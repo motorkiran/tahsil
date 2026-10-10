@@ -5415,6 +5415,114 @@
         ]
       }
     },
+    "/api/v1/test/clock": {
+      "get": {
+        "tags": [
+          "Test mode"
+        ],
+        "summary": "Read the billing clock",
+        "description": "Requires the `tahsil.test:write` permission.",
+        "operationId": "GetTestClock",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestClockResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.test:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Test mode"
+        ],
+        "summary": "Travel forward in time",
+        "description": "Test mode only: moves the billing clock forward by `advanceBy` (an ISO 8601 duration such as `P1M`) or to `advanceTo`, at most 400 days, and processes everything that falls due on the way, at its own instant. Returns when done.\n\nRequires the `tahsil.test:write` permission.",
+        "operationId": "AdvanceTestClock",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceClockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTravelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.test:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/test/simulator/payment-methods": {
       "post": {
         "tags": [
@@ -5604,6 +5712,26 @@
             }
           }
         }
+      },
+      "AdvanceClockRequest": {
+        "type": "object",
+        "properties": {
+          "advanceBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An ISO 8601 duration such as `P1M`, `P14D` or `PT2H`."
+          },
+          "advanceTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "Moves the billing clock forward in Test mode: by an ISO 8601 duration such as `P1M`, or to an instant (ENG-22)."
       },
       "ApiKeyResponse": {
         "required": [
@@ -9630,12 +9758,113 @@
           }
         }
       },
+      "TestClockResponse": {
+        "required": [
+          "now",
+          "offsetSeconds",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "offsetSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "TiersMode": {
         "enum": [
           "graduated",
           "volume",
           null
         ]
+      },
+      "TimeTravelResponse": {
+        "required": [
+          "from",
+          "to",
+          "steps",
+          "invoicesCreated",
+          "paymentsAttempted",
+          "paymentsSucceeded",
+          "paymentsFailed",
+          "subscriptionsCanceled"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "steps": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "invoicesCreated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "paymentsAttempted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "paymentsSucceeded": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "paymentsFailed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "subscriptionsCanceled": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "What a time travel did, step by step (ENG-23)."
       },
       "UpdateConnectionRequest": {
         "type": "object",
