@@ -132,6 +132,30 @@ public sealed class PaymentMethod : AggregateRoot
         Show(card, expiresAt, now);
     }
 
+    /// <summary>Removed by the customer, an operator or the API (CUS-16); it is never charged again.</summary>
+    public bool Remove(DateTimeOffset now)
+    {
+        if (Status == PaymentMethodStatus.Removed)
+        {
+            return false;
+        }
+
+        Status = PaymentMethodStatus.Removed;
+        RemovedAt = now;
+        UpdatedAt = now;
+        return true;
+    }
+
+    /// <summary>The expiry worker passed the card's expiry (CUS-14).</summary>
+    public void Expire(DateTimeOffset now)
+    {
+        if (Status == PaymentMethodStatus.Active && ExpiresAt <= now)
+        {
+            Status = PaymentMethodStatus.Expired;
+            UpdatedAt = now;
+        }
+    }
+
     private void Show(CardDetails card, DateTimeOffset? expiresAt, DateTimeOffset now)
     {
         Brand = card.Brand;

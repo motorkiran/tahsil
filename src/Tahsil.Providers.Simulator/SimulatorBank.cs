@@ -339,6 +339,32 @@ public sealed class SimulatorBank(ISimulatorLedger ledger, TimeProvider clock, I
         throw Contention(reference);
     }
 
+    /// <summary>Saves a test card without a payment, as the test API asks (SIM-7); <see langword="null"/> for other numbers.</summary>
+    public async Task<SavedCard?> SaveCardAsync(Guid connectionId, string number, int expMonth, int expYear, CancellationToken cancellationToken)
+    {
+        if (TestCards.Find(number) is not { } card)
+        {
+            return null;
+        }
+
+        var now = clock.GetUtcNow();
+        var token = $"sim_card_{Guid.CreateVersion7(now):N}";
+        var state = new CardState { Card = card.Number, ExpMonth = expMonth, ExpYear = expYear };
+        await ledger.SaveAsync(new SimulatorEntry(Guid.CreateVersion7(now), connectionId, SimulatorEntryKind.Card, token, null, SimulatorJson.Write(state), 0, now), cancellationToken);
+        return new SavedCard
+        {
+            Token = token,
+            Brand = card.Brand,
+            Funding = card.Funding,
+            Bin = card.Bin,
+            Last4 = card.Last4,
+            ExpMonth = expMonth,
+            ExpYear = expYear,
+            Issuer = "Simulator Bank",
+            Country = "TR",
+        };
+    }
+
     public async Task<bool> RemoveCardAsync(Guid connectionId, string token, CancellationToken cancellationToken) =>
         await UpdateCardAsync(connectionId, token, card => card with { Removed = true }, cancellationToken);
 

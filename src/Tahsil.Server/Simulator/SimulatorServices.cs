@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.PaymentMethods;
 using Tahsil.Infrastructure.Simulator;
 using Tahsil.Providers.Abstractions;
 using Tahsil.Providers.Simulator;
@@ -23,6 +24,7 @@ internal static class SimulatorServices
             provider.GetRequiredService<ISimulatorLedger>(), provider.GetRequiredService<BillingClock>(), provider.GetRequiredService<ISimulatorNotifier>()));
         services.AddSingleton<IPaymentProvider>(provider => new SimulatorProvider(
             provider.GetRequiredService<SimulatorBank>(), provider.GetRequiredService<IOptions<ServerOptions>>().Value.PublicUrl!));
+        services.AddSingleton<ISimulatorCards, SimulatorCards>();
         services.AddSingleton<IConfigureOptions<RazorPagesOptions>, UnmapPagesInLiveMode>();
         return services;
     }

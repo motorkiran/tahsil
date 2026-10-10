@@ -41,6 +41,8 @@ public static class AuditActions
     public const string InvoiceItemCreated = "invoice_item.created";
     public const string InvoiceItemDeleted = "invoice_item.deleted";
     public const string CustomerBalanceAdjusted = "customer.balance_adjusted";
+    public const string PaymentMethodAttached = "payment_method.attached";
+    public const string PaymentMethodRemoved = "payment_method.removed";
     public const string InvoicePaymentFailed = "invoice.payment_failed";
     public const string PaymentSucceeded = "payment.succeeded";
     public const string PaymentFailed = "payment.failed";

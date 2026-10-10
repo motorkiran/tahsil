@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using Tahsil.Application.Common;
 using Tahsil.Contracts.Serialization;
 using Tahsil.Domain.Common;
 
@@ -61,7 +63,7 @@ internal static class TahsilApi
 
     public static IEndpointRouteBuilder MapTahsilApi(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGroup(BasePath)
+        var api = endpoints.MapGroup(BasePath)
             .AddEndpointFilter<ParameterBindingFilter>()
             .AddEndpointFilter<IdempotencyFilter>()
             .RequireRateLimiting(ApiRateLimiting.PolicyName)
@@ -73,8 +75,15 @@ internal static class TahsilApi
             .MapPaymentEndpoints()
             .MapRefundEndpoints()
             .MapWebhookEndpoints()
+            .MapPaymentMethodEndpoints()
             .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();
+
+        // The test API exists in Test mode only, like the simulator it controls.
+        if (endpoints.ServiceProvider.GetRequiredService<IOptions<ServerOptions>>().Value.IsTestMode)
+        {
+            api.MapSimulatorTestEndpoints();
+        }
 
         // Unknown API paths are not found, whatever the method; without this, the static assets' GET fallback would turn
         // a POST to a mistyped path into 405 Method Not Allowed.

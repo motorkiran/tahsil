@@ -2136,6 +2136,253 @@
         ]
       }
     },
+    "/api/v1/customers/{id}/payment-methods": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "List a customer's saved cards",
+        "description": "Active cards first.\n\nRequires the `tahsil.customers:read` permission.",
+        "operationId": "ListPaymentMethods",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`active`, `expired` or `removed`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfPaymentMethodResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/{id}/default-payment-method": {
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Set a customer's default card",
+        "description": "Requires the `tahsil.customers:write` permission.",
+        "operationId": "SetDefaultPaymentMethod",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDefaultPaymentMethodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/payment-methods/{id}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get a saved card",
+        "description": "Requires the `tahsil.customers:read` permission.",
+        "operationId": "GetPaymentMethod",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Remove a saved card",
+        "description": "The card is never charged again and stops being the default; the provider is asked to delete its token.\n\nRequires the `tahsil.customers:write` permission.",
+        "operationId": "RemovePaymentMethod",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/audit-events": {
       "get": {
         "tags": [
@@ -5167,6 +5414,150 @@
           }
         ]
       }
+    },
+    "/api/v1/test/simulator/payment-methods": {
+      "post": {
+        "tags": [
+          "Test mode"
+        ],
+        "summary": "Save a simulator test card for a customer",
+        "description": "Test mode only: a saved card without a browser, with a consent record marked as made by the test API.\n\nRequires the `tahsil.test:write` permission.",
+        "operationId": "CreateSimulatorPaymentMethod",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSimulatorPaymentMethodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.test:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/test/simulator/payment-methods/{id}": {
+      "patch": {
+        "tags": [
+          "Test mode"
+        ],
+        "summary": "Change how a simulator card answers",
+        "description": "Test mode only: `succeed`, a failure code such as `insufficient_funds`, `timeout_after_charge`, `timeout_before_charge` or `pending`.\n\nRequires the `tahsil.test:write` permission.",
+        "operationId": "UpdateSimulatorPaymentMethod",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSimulatorPaymentMethodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.test:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6154,6 +6545,44 @@
             ]
           }
         }
+      },
+      "CreateSimulatorPaymentMethodRequest": {
+        "required": [
+          "customer",
+          "card"
+        ],
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "card": {
+            "type": "string",
+            "description": "A simulator test card number, such as `4242424242424242`."
+          },
+          "expMonth": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "12 when omitted.",
+            "format": "int32"
+          },
+          "expYear": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Four years from now when omitted.",
+            "format": "int32"
+          }
+        },
+        "description": "Test mode only: a saved simulator card for a customer, without a browser (SIM-7)."
       },
       "CreateTaxRateRequest": {
         "required": [
@@ -7502,6 +7931,28 @@
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
+      "PageOfPaymentMethodResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
       "PageOfPaymentResponse": {
         "required": [
           "items",
@@ -7704,6 +8155,134 @@
           "bank_transfer",
           "cash",
           "other"
+        ]
+      },
+      "PaymentMethodResponse": {
+        "required": [
+          "id",
+          "customerId",
+          "connectionId",
+          "type",
+          "status",
+          "isDefault",
+          "brand",
+          "funding",
+          "bin",
+          "last4",
+          "expMonth",
+          "expYear",
+          "expiresAt",
+          "issuer",
+          "cardFamily",
+          "country",
+          "removedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentMethodStatus"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "funding": {
+            "type": "string"
+          },
+          "bin": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "last4": {
+            "type": "string"
+          },
+          "expMonth": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "expYear": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "issuer": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cardFamily": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "removedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "A saved card, with what may be shown about it; never card data."
+      },
+      "PaymentMethodStatus": {
+        "enum": [
+          "active",
+          "expired",
+          "removed"
         ]
       },
       "PaymentPurpose": {
@@ -8945,6 +9524,18 @@
           "failed"
         ]
       },
+      "SetDefaultPaymentMethodRequest": {
+        "required": [
+          "paymentMethod"
+        ],
+        "type": "object",
+        "properties": {
+          "paymentMethod": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "TaxRateResponse": {
         "required": [
           "id",
@@ -9320,6 +9911,18 @@
         },
         "description": "JSON Merge Patch: omitted fields stay as they are, `null` clears."
       },
+      "UpdateSimulatorPaymentMethodRequest": {
+        "required": [
+          "behavior"
+        ],
+        "type": "object",
+        "properties": {
+          "behavior": {
+            "type": "string"
+          }
+        },
+        "description": "Test mode only: how a saved simulator card answers from now on (SIM-8): `succeed`, a failure code such as\n`insufficient_funds`, `timeout_after_charge`, `timeout_before_charge` or `pending`."
+      },
       "UpdateTaxRateRequest": {
         "type": "object",
         "properties": {
@@ -9604,6 +10207,9 @@
     },
     {
       "name": "Provisioning"
+    },
+    {
+      "name": "Test mode"
     }
   ]
 }

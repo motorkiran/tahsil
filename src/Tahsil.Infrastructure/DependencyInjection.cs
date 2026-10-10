@@ -169,6 +169,7 @@ public static class DependencyInjection
         AddHostedSingleton<RefundReconciliationWorker>(services);
         AddHostedSingleton<ProviderNotificationWorker>(services);
         AddHostedSingleton<ProviderNotificationCleanup>(services);
+        AddHostedSingleton<PaymentMethodExpiryWorker>(services);
         AddHostedSingleton<OutboxCleanup>(services);
     }
 
