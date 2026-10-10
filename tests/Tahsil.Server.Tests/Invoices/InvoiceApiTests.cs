@@ -414,7 +414,11 @@ public sealed partial class InvoiceApiTests(TahsilServerFixture server)
     private WebApplicationFactory<Program> Host(
         string? database = null, FakeProvider? provider = null, FakeTimeProvider? clock = null, Dictionary<string, string?>? settings = null)
     {
-        var all = new Dictionary<string, string?>(settings ?? []) { ["ConnectionStrings:Tahsil"] = database ?? server.NewDatabase("invoices") };
+        var all = new Dictionary<string, string?>(settings ?? [])
+        {
+            ["ConnectionStrings:Tahsil"] = database ?? server.NewDatabase("invoices"),
+            ["Tahsil:Workers:Enabled"] = "false",
+        };
         return server.WithSettings(all, services =>
         {
             if (provider is not null)

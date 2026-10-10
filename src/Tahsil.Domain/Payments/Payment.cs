@@ -158,6 +158,33 @@ public sealed class Payment : AggregateRoot
         return payment;
     }
 
+    /// <summary>
+    /// An automatic charge that could not be made at all, such as without a usable card (ENG-13): recorded as failed
+    /// before any provider call, so dunning sees the attempt.
+    /// </summary>
+    public static Payment FailedBeforeCharge(Guid customerId, Guid invoiceId, long amount, string currency, PaymentFailure failure, Actor actor, DateTimeOffset now)
+    {
+        var payment = New(customerId, invoiceId, null, null, null, amount, currency, PaymentPurpose.Charge, PaymentInitiator.Merchant, false, null, actor, now);
+        payment.Fail(failure, null, null, now);
+        return payment;
+    }
+
+    /// <summary>Claims the next reconciliation (ENG-15): one more attempt, and the time of the one after it.</summary>
+    public int ClaimReconciliation(DateTimeOffset next, DateTimeOffset now)
+    {
+        ReconcileAttempts++;
+        ReconcileAt = next;
+        UpdatedAt = now;
+        return ReconcileAttempts;
+    }
+
+    /// <summary>Automatic reconciliation gives up; an operator resolves the payment (ENG-16, ENG-17).</summary>
+    public void StopReconciling(DateTimeOffset now)
+    {
+        ReconcileAt = null;
+        UpdatedAt = now;
+    }
+
     /// <summary>The provider needs the customer, such as for 3D Secure or a hosted page.</summary>
     public void RequireAction(IReadOnlyDictionary<string, string> providerData, DateTimeOffset now)
     {
@@ -227,7 +254,7 @@ public sealed class Payment : AggregateRoot
         Guid customerId,
         Guid? invoiceId,
         Guid? checkoutSessionId,
-        Guid connectionId,
+        Guid? connectionId,
         Guid? paymentMethodId,
         long amount,
         string currency,

@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<PaymentOutcomes>();
         services.AddScoped<CustomerPayments>();
         services.AddScoped<MerchantPayments>();
+        services.AddScoped<PaymentReconciliation>();
         services.AddScoped<PayInvoiceHandler>();
         services.AddScoped<GetPaymentHandler>();
         services.AddScoped<ListPaymentsHandler>();

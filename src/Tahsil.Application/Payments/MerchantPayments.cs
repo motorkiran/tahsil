@@ -28,22 +28,81 @@ public sealed class MerchantPayments(
     IOptions<PaymentOptions> options,
     BillingClock clock)
 {
+    /// <summary>Charges the given card for the invoice now, whatever its schedule (INV §5.3).</summary>
     public async Task<Result<Payment>> ChargeAsync(Guid invoiceId, Guid paymentMethodId, CancellationToken cancellationToken)
     {
         var written = await WriteAheadAsync(invoiceId, paymentMethodId, cancellationToken);
-        if (written.IsFailure)
+        return written.IsFailure ? written.Error : await ChargeWrittenAsync(written.Value.Payment, written.Value.Method, written.Value.Connection, cancellationToken);
+    }
+
+    /// <summary>
+    /// The payment worker's attempt for a due invoice (ENG-13): the scheduled attempt is claimed, the card is the
+    /// customer's default, and without a usable card the attempt is recorded as failed without a provider call.
+    /// Returns <see langword="null"/> when the invoice is no longer due.
+    /// </summary>
+    public async Task<Payment?> CollectDueAsync(Guid invoiceId, CancellationToken cancellationToken)
+    {
+        Payment payment;
+        PaymentMethod? method = null;
+        ProviderConnection? connection = null;
+        await using (var transaction = await context.BeginTransactionAsync(cancellationToken))
         {
-            return written.Error;
+            await locks.LockInvoiceAsync(invoiceId, cancellationToken);
+            var invoice = await context.FindInvoiceAsync(invoiceId, cancellationToken);
+            if (invoice is not { Status: InvoiceStatus.Open, CollectionMethod: CollectionMethod.ChargeAutomatically, NextPaymentAttemptAt: not null }
+                || !invoice.NeedsPayment(invoice.AmountRemaining))
+            {
+                return null;
+            }
+
+            var now = clock.GetUtcNow();
+            if (await PaymentRequests.HasPaymentInFlightAsync(context, invoice.Id, cancellationToken))
+            {
+                // The customer may be paying on a page right now; try again once that payment is settled.
+                invoice.PostponePaymentAttempt(now + options.Value.ReconcileAfter, now);
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return null;
+            }
+
+            invoice.ClaimPaymentAttempt(now);
+            var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == invoice.CustomerId, cancellationToken);
+            if (customer.DefaultPaymentMethodId is { } defaultMethod)
+            {
+                method = await context.PaymentMethods.AsNoTracking().SingleOrDefaultAsync(row => row.Id == defaultMethod, cancellationToken);
+                connection = method is null ? null : await context.ProviderConnections.AsNoTracking().SingleAsync(row => row.Id == method.ConnectionId, cancellationToken);
+            }
+
+            if (method is null || connection is null || !Usable(method, connection, invoice))
+            {
+                payment = Payment.FailedBeforeCharge(
+                    invoice.CustomerId, invoice.Id, invoice.AmountRemaining, invoice.Currency, PaymentOutcomes.Failure(FailureCode.PaymentMethodMissing), request.Caller.ToActor(), now);
+                context.Payments.Add(payment);
+                outcomes.RecordFailure(payment, invoice);
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return payment;
+            }
+
+            payment = Payment.ForMerchant(
+                invoice.CustomerId, invoice.Id, connection.Id, method.Id, invoice.AmountRemaining, invoice.Currency, now + options.Value.ReconcileAfter, request.Caller.ToActor(), now);
+            context.Payments.Add(payment);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
 
-        var (payment, method, connection) = written.Value;
-        var invoice = await context.Invoices.AsNoTracking().SingleAsync(row => row.Id == invoiceId, cancellationToken);
+        return await ChargeWrittenAsync(payment, method, connection, cancellationToken);
+    }
+
+    /// <summary>Steps 2 and 3 of ENG-13. The charge and its record run to the end even if the caller goes away: an abandoned call is only reconciled.</summary>
+    private async Task<Payment> ChargeWrittenAsync(Payment payment, PaymentMethod method, ProviderConnection connection, CancellationToken cancellationToken)
+    {
+        var invoice = await context.Invoices.AsNoTracking().SingleAsync(row => row.Id == payment.InvoiceId, cancellationToken);
         if (providers.For(connection) is not { } call)
         {
             return await outcomes.ApplyAsync(payment.Id, PaymentOutcome.Failure(FailureCode.ProviderUnavailable), CancellationToken.None);
         }
 
-        // The charge and its record run to the end even if the caller goes away: an abandoned call is only reconciled.
         var outcome = await call.Provider.ChargeSavedCardAsync(call.Context, new ChargeRequest
         {
             PaymentId = payment.Id,

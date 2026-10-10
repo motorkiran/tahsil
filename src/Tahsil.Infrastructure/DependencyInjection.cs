@@ -148,6 +148,8 @@ public static class DependencyInjection
         services.AddScoped<OutboxSignalInterceptor>();
         services.AddScoped<IOutbox, Outbox.Outbox>();
         AddHostedSingleton<OutboxDispatcher>(services);
+        AddHostedSingleton<PaymentCollectionWorker>(services);
+        AddHostedSingleton<ReconciliationWorker>(services);
         AddHostedSingleton<OutboxCleanup>(services);
     }
 

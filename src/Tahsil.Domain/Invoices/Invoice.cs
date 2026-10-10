@@ -370,6 +370,21 @@ public sealed class Invoice : AggregateRoot
         return Result.Success();
     }
 
+    /// <summary>The payment worker takes the scheduled attempt (ENG-13): none is scheduled until dunning sets the next.</summary>
+    public void ClaimPaymentAttempt(DateTimeOffset now)
+    {
+        NextPaymentAttemptAt = null;
+        AttemptCount++;
+        UpdatedAt = now;
+    }
+
+    /// <summary>Moves the scheduled attempt, such as while another payment of the invoice is in flight.</summary>
+    public void PostponePaymentAttempt(DateTimeOffset until, DateTimeOffset now)
+    {
+        NextPaymentAttemptAt = until;
+        UpdatedAt = now;
+    }
+
     /// <summary>Stops collecting an open invoice; the debt stays payable (INV-17).</summary>
     public Result MarkUncollectible(DateTimeOffset now)
     {

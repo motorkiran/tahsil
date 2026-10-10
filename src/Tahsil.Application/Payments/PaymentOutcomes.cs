@@ -129,6 +129,12 @@ public sealed class PaymentOutcomes(ITahsilDbContext context, IBillingLocks lock
         }
 
         payment.Fail(failure, outcome.ProviderPaymentId, ThreeDSecureOf(outcome), now);
+        RecordFailure(payment, invoice);
+    }
+
+    /// <summary>Counts and announces a failed payment: <c>payment.failed</c>, and <c>invoice.payment_failed</c> for automatic charges.</summary>
+    internal void RecordFailure(Payment payment, Invoice? invoice)
+    {
         Count(payment);
         audit.Record(AuditActions.PaymentFailed, AuditSubject.Of(AuditSubjects.Payment, payment.Id), Details(payment, late: false), customerId: payment.CustomerId);
         if (invoice is not null && payment.Initiator == PaymentInitiator.Merchant)
@@ -141,6 +147,24 @@ public sealed class PaymentOutcomes(ITahsilDbContext context, IBillingLocks lock
                 ["nextAttemptAt"] = invoice.NextPaymentAttemptAt,
             }, customerId: invoice.CustomerId);
         }
+    }
+
+    /// <summary>The customer's time ran out and the provider has no success for the payment (ENG-18).</summary>
+    public async Task<Payment> CancelAsync(Guid paymentId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.BeginTransactionAsync(cancellationToken);
+        await locks.LockPaymentAsync(paymentId, cancellationToken);
+        var payment = await context.Payments.SingleAsync(row => row.Id == paymentId, cancellationToken);
+        if (payment.Status == PaymentStatus.RequiresAction)
+        {
+            payment.Cancel(clock.GetUtcNow());
+            Count(payment);
+            audit.Record(AuditActions.PaymentCanceled, AuditSubject.Of(AuditSubjects.Payment, payment.Id), Details(payment, late: false), customerId: payment.CustomerId);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return payment;
     }
 
     internal static PaymentFailure Failure(FailureCode code, PaymentOutcome? outcome = null) =>

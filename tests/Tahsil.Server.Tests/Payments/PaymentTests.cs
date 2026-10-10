@@ -280,7 +280,13 @@ public sealed partial class PaymentTests(TahsilServerFixture server)
     }
 
     private WebApplicationFactory<Program> Host() =>
-        server.WithSettings(new Dictionary<string, string?> { ["ConnectionStrings:Tahsil"] = server.NewDatabase("payments") });
+        server.WithSettings(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Tahsil"] = server.NewDatabase("payments"),
+
+            // The payment worker would race the payments these tests make; worker tests drive it themselves.
+            ["Tahsil:Workers:Enabled"] = "false",
+        });
 
     [GeneratedRegex("simulator/pay/(?<token>[A-Za-z0-9_-]+)")]
     private static partial Regex TokenPattern();

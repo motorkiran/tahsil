@@ -287,7 +287,8 @@ public sealed class DeleteInvoiceHandler(ITahsilDbContext context, IAuthorizer a
     }
 }
 
-public sealed class FinalizeInvoiceHandler(ITahsilDbContext context, IAuthorizer authorizer, IBillingLocks locks, InvoiceFinalizer finalizer, InvoiceMapper mapper)
+public sealed class FinalizeInvoiceHandler(
+    ITahsilDbContext context, IAuthorizer authorizer, IBillingLocks locks, InvoiceFinalizer finalizer, IWorkerSignals signals, InvoiceMapper mapper)
 {
     public async Task<Result<Versioned<InvoiceResponse>>> HandleAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -310,6 +311,12 @@ public sealed class FinalizeInvoiceHandler(ITahsilDbContext context, IAuthorizer
 
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (invoice.NextPaymentAttemptAt is not null)
+        {
+            // ENG-11: an invoice to charge now wakes the payment worker.
+            signals.Notify(Payments.WorkerNames.PaymentCollection);
+        }
+
         return new Versioned<InvoiceResponse>(mapper.ToResponse(invoice), invoice.Version);
     }
 }
