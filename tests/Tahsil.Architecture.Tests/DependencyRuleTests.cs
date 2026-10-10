@@ -22,6 +22,7 @@ public sealed class DependencyRuleTests
         names.ShouldContain("Tahsil.Application");
         names.ShouldContain("Tahsil.Infrastructure");
         names.ShouldContain("Tahsil.Server");
+        names.ShouldContain("Tahsil.Providers.Abstractions");
     }
 
     [Fact]
@@ -60,9 +61,7 @@ public sealed class DependencyRuleTests
     [Fact]
     public void ProviderAbstractions_DependOnTheRuntimeAndExtensionAbstractionsOnly()
     {
-        CheckAll(
-            name => name == "Tahsil.Providers.Abstractions",
-            name => IsRuntime(name) || IsExtensionAbstraction(name));
+        Check("Tahsil.Providers.Abstractions", name => IsRuntime(name) || IsExtensionAbstraction(name));
     }
 
     [Fact]

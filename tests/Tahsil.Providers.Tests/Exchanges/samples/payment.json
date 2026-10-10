@@ -1,0 +1,23 @@
+{
+  "source": "Hand-written sample for the recorded exchange handler's own tests",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/payments",
+        "query": { "expand": "card" },
+        "headers": { "Authorization": "*", "Content-Type": "application/json; charset=utf-8" },
+        "json": { "amount": "12.50", "reference": "*", "buyer": { "email": "ayse@example.com" }, "items": [ { "id": "1" } ] }
+      },
+      "response": { "status": 200, "headers": { "X-Request-Id": "r-1" }, "json": { "status": "success", "paymentId": "p-1" } }
+    },
+    {
+      "request": { "method": "POST", "path": "/v1/refunds", "form": { "payment": "p-1", "amount": "5.00" } },
+      "response": { "status": 200, "text": "OK" }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/payments/p-1" },
+      "failure": "timeout"
+    }
+  ]
+}
