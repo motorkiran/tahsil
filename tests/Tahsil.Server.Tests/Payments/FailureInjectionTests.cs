@@ -89,7 +89,8 @@ public sealed partial class FailureInjectionTests(TahsilServerFixture server)
 
     /// <remarks>
     /// The killed attempt's work item is retried after the restart, once its payment is settled: a charge that never
-    /// reached the provider is made again, one that did leaves the invoice paid. Never twice.
+    /// reached the provider is made again on dunning's technical backoff (it is not the customer's failure, DUN-7), one
+    /// that did leaves the invoice paid. Never twice.
     /// </remarks>
     [Theory]
     [Trait("Requirement", "ENG-13")]
@@ -115,7 +116,7 @@ public sealed partial class FailureInjectionTests(TahsilServerFixture server)
         _faults.Death = ProcessDeath.None;
         await using var restarted = Host(database);
         using var again = await restarted.CreateClientWithAsync(Permissions);
-        await AdvanceAsync(restarted, TimeSpan.FromMinutes(1), times: 30);
+        await AdvanceAsync(restarted, TimeSpan.FromMinutes(1), times: 45);
 
         (await PaymentsAsync(again, invoice)).Select(payment => payment.FailureCode is { } code ? $"failed:{code}" : payment.Status.ToString().ToLowerInvariant())
             .ShouldBe(payments, ignoreOrder: true);

@@ -15,14 +15,14 @@ internal static class SubscriptionScenarios
     [
         TahsilPermissions.SubscriptionsWrite, TahsilPermissions.SubscriptionsRead, TahsilPermissions.ProvisioningWrite, TahsilPermissions.CatalogWrite,
         TahsilPermissions.CustomersWrite, TahsilPermissions.CustomersRead, TahsilPermissions.InvoicesRead, TahsilPermissions.InvoicesWrite,
-        TahsilPermissions.PaymentsRead, TahsilPermissions.RefundsWrite, TahsilPermissions.TestWrite,
+        TahsilPermissions.PaymentsRead, TahsilPermissions.RefundsWrite, TahsilPermissions.TestWrite, TahsilPermissions.ConnectionsWrite,
     ];
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     /// <summary>
     /// A client with every permission the tests need, on a host with the catalog: Team monthly (30,000), yearly and Plus
-    /// (60,000), a setup fee, Pro with a 14-day trial, and Growth's Starter (29,900) and Growth (49,900).
+    /// (60,000), a setup fee, Pro with a 14-day trial, and Growth's Starter (29,900), Growth (49,900) and daily (2,000).
     /// </summary>
     public static async Task<HttpClient> ClientAsync(WebApplicationFactory<Program> host)
     {
@@ -49,7 +49,12 @@ internal static class SubscriptionScenarios
                 {
                     Key = "growth",
                     Name = "Growth",
-                    Prices = [Recurring("starter-monthly-try", "Starter", PriceInterval.Month, 29_900), Recurring("growth-monthly-try", "Growth", PriceInterval.Month, 49_900)],
+                    Prices =
+                    [
+                        Recurring("starter-monthly-try", "Starter", PriceInterval.Month, 29_900),
+                        Recurring("growth-monthly-try", "Growth", PriceInterval.Month, 49_900),
+                        Recurring("growth-daily-try", "Günlük", PriceInterval.Day, 2_000),
+                    ],
                 },
             ],
         });

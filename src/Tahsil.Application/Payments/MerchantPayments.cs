@@ -65,11 +65,25 @@ public sealed class MerchantPayments(
                 return null;
             }
 
+            Guid? subscriptionMethod = null;
+            if (invoice.SubscriptionId is { } subscriptionId)
+            {
+                var subscription = await context.Subscriptions.AsNoTracking().SingleAsync(row => row.Id == subscriptionId, cancellationToken);
+                if (subscription.IsTerminal && invoice.DunningStartedAt is not null)
+                {
+                    // An ended subscription's invoices stay open, but failed ones are not tried again (DUN-12, SUB-32);
+                    // its final invoice and a draft finalized after the end still get their first attempt (SUB-29, ENG-12).
+                    invoice.EndDunning(now);
+                    await context.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return null;
+                }
+
+                subscriptionMethod = subscription.DefaultPaymentMethodId;
+            }
+
             invoice.ClaimPaymentAttempt(now);
             var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == invoice.CustomerId, cancellationToken);
-            var subscriptionMethod = invoice.SubscriptionId is { } subscriptionId
-                ? await context.Subscriptions.Where(row => row.Id == subscriptionId).Select(row => row.DefaultPaymentMethodId).SingleAsync(cancellationToken)
-                : null;
             if (await chargeable.ForInvoiceAsync(customer, subscriptionMethod, invoice.Currency, cancellationToken) is { } card)
             {
                 (method, connection) = (card.Method, card.Connection);
@@ -77,8 +91,13 @@ public sealed class MerchantPayments(
 
             if (method is null || connection is null)
             {
+                // A card the customer gave that its connection cannot charge now is the merchant's problem, not theirs (DUN-7).
+                var given = await context.PaymentMethods.AsNoTracking()
+                    .FirstOrDefaultAsync(row => (row.Id == subscriptionMethod || row.Id == customer.DefaultPaymentMethodId) && row.CustomerId == customer.Id, cancellationToken);
+                var failure = given is { IsChargeable: true } ? FailureCode.ProviderUnavailable : FailureCode.PaymentMethodMissing;
                 payment = Payment.FailedBeforeCharge(
-                    invoice.CustomerId, invoice.Id, invoice.AmountRemaining, invoice.Currency, PaymentOutcomes.Failure(FailureCode.PaymentMethodMissing), request.Caller.ToActor(), now);
+                    invoice.CustomerId, invoice.Id, invoice.AmountRemaining, invoice.Currency, PaymentOutcomes.Failure(failure), request.Caller.ToActor(), now,
+                    given is { IsChargeable: true } ? given.ConnectionId : null, given is { IsChargeable: true } ? given.Id : null);
                 context.Payments.Add(payment);
                 await outcomes.RecordFailureAsync(payment, invoice, now, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);

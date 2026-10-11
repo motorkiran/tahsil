@@ -81,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<InvoiceVoiding>();
         services.AddScoped<DraftFinalization>();
         services.AddScoped<ChargeableCards>();
+        services.AddScoped<Dunning>();
         services.AddScoped<SubscriptionSettlement>();
         services.AddScoped<SubscriptionMapper>();
         services.AddScoped<CreateSubscriptionHandler>();
@@ -117,6 +118,10 @@ public static class DependencyInjection
             .BindConfiguration(BillingOptions.SectionName)
             .Validate(options => options.HasKnownTimeZone(), $"{BillingOptions.SectionName}:TimeZone must be an IANA time zone such as Europe/Istanbul.")
             .Validate(options => options.DraftPeriod >= TimeSpan.Zero, $"{BillingOptions.SectionName}:DraftPeriod must not be negative.")
+            .ValidateOnStart();
+        services.AddOptions<DunningOptions>()
+            .BindConfiguration(DunningOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{DunningOptions.SectionName}: InvoiceAction is leave_open, mark_uncollectible or void; the retry schedule lists positive offsets in increasing order; FinalReminderBefore is not negative.")
             .ValidateOnStart();
         services.AddOptions<SubscriptionOptions>()
             .BindConfiguration(SubscriptionOptions.SectionName)

@@ -52,6 +52,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasFilter("billing_reason IN ('subscription_create', 'subscription_cycle')");
         builder.HasIndex(invoice => invoice.FinalizeAt).HasFilter("status = 'draft' AND auto_advance");
         builder.HasIndex(invoice => invoice.NextPaymentAttemptAt).HasFilter("status = 'open'");
+        builder.HasIndex(invoice => invoice.DunningDeadlineAt).HasFilter("status = 'open' AND dunning_ended_at IS NULL");
     }
 }
 

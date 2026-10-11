@@ -16,9 +16,9 @@ namespace Tahsil.Server.Tests;
 internal static class IsolatedHosts
 {
     public static WebApplicationFactory<Program> Create(
-        TahsilServerFixture server, string database, FakeTimeProvider time, Action<IServiceCollection>? services = null) =>
+        TahsilServerFixture server, string database, FakeTimeProvider time, Action<IServiceCollection>? services = null, IReadOnlyDictionary<string, string?>? settings = null) =>
         server.WithSettings(
-            new Dictionary<string, string?>
+            new Dictionary<string, string?>(settings ?? new Dictionary<string, string?>())
             {
                 ["ConnectionStrings:Tahsil"] = database,
                 ["Tahsil:Workers:Enabled"] = "false",

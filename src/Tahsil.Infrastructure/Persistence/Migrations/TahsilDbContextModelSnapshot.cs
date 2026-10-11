@@ -1284,6 +1284,18 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("due_date");
 
+                    b.Property<DateTimeOffset?>("DunningDeadlineAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dunning_deadline_at");
+
+                    b.Property<DateTimeOffset?>("DunningEndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dunning_ended_at");
+
+                    b.Property<DateTimeOffset?>("DunningStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dunning_started_at");
+
                     b.Property<DateTimeOffset?>("FinalizeAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("finalize_at");
@@ -1314,6 +1326,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("memo");
+
+                    b.Property<DateTimeOffset?>("MerchantFailingSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("merchant_failing_since");
 
                     b.Property<string>("Metadata")
                         .IsRequired()
@@ -1385,6 +1401,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_invoices");
+
+                    b.HasIndex("DunningDeadlineAt")
+                        .HasDatabaseName("ix_invoices_dunning_deadline_at")
+                        .HasFilter("status = 'open' AND dunning_ended_at IS NULL");
 
                     b.HasIndex("FinalizeAt")
                         .HasDatabaseName("ix_invoices_finalize_at")

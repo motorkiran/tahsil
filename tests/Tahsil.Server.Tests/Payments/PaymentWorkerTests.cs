@@ -27,9 +27,10 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
     [Theory]
     [Trait("Requirement", "ENG-13")]
     [Trait("Requirement", "ENG-11")]
-    [InlineData("4242424242424242", PaymentStatus.Succeeded, InvoiceStatus.Paid)]
-    [InlineData("4000000000000341", PaymentStatus.Failed, InvoiceStatus.Open)]
-    public async Task TheWorker_ChargesTheCustomersDefaultCard_WhenTheAttemptIsDue(string card, PaymentStatus status, InvoiceStatus invoiceStatus)
+    [Trait("Requirement", "DUN-2")]
+    [InlineData("4242424242424242", PaymentStatus.Succeeded, InvoiceStatus.Paid, null)]
+    [InlineData("4000000000000341", PaymentStatus.Failed, InvoiceStatus.Open, 1)]
+    public async Task TheWorker_ChargesTheCustomersDefaultCard_WhenTheAttemptIsDue(string card, PaymentStatus status, InvoiceStatus invoiceStatus, int? retryInDays)
     {
         await using var host = Host();
         using var client = await host.CreateClientWithAsync(Permissions);
@@ -44,7 +45,7 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
 
         payments.ShouldHaveSingleItem().Status.ShouldBe(status);
         payments[0].Initiator.ShouldBe(PaymentInitiator.Merchant);
-        (after.Status, after.AttemptCount, after.NextPaymentAttemptAt).ShouldBe((invoiceStatus, 1, null));
+        (after.Status, after.AttemptCount, after.NextPaymentAttemptAt).ShouldBe((invoiceStatus, 1, retryInDays is { } days ? _time.GetUtcNow().AddDays(days) : null));
     }
 
     [Fact]

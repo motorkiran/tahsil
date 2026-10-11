@@ -8,14 +8,14 @@ using Tahsil.Domain.Subscriptions;
 namespace Tahsil.Application.Subscriptions;
 
 /// <summary>How a subscription follows the payment of its invoices (DOM §7.3).</summary>
-public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLocks locks, IAuditLog audit)
+public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLocks locks, IAuditLog audit, IWorkerSignals signals)
 {
     internal static readonly string[] StatusChanged = ["status"];
 
     /// <summary>
     /// An invoice of a subscription was paid in full, in the caller's transaction, which holds the invoice's lock: an
     /// incomplete subscription's first invoice (SUB-8), the first invoice after a trial (SUB-14), or the last open
-    /// invoice of a past due subscription makes it active.
+    /// invoice of a past due subscription makes it active (DUN-10); the next unpaid invoice is collected now (DUN-9).
     /// </summary>
     public async Task InvoicePaidAsync(Invoice invoice, DateTimeOffset now, CancellationToken cancellationToken)
     {
@@ -26,6 +26,7 @@ public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLoc
 
         await locks.LockSubscriptionAsync(subscriptionId, cancellationToken);
         var subscription = await context.Subscriptions.SingleAsync(row => row.Id == subscriptionId, cancellationToken);
+        await CollectNextAsync(invoice, subscriptionId, now, cancellationToken);
         var activates = subscription.Status switch
         {
             SubscriptionStatus.Incomplete => invoice.BillingReason == BillingReason.SubscriptionCreate,
@@ -45,13 +46,13 @@ public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLoc
     }
 
     /// <summary>
-    /// An automatic payment of a cycle invoice failed, in the caller's transaction, which holds the invoice's lock: an
-    /// active subscription, or one whose trial just ended, is past due (DOM §7.3, SUB-11, SUB-14). Dunning decides what
-    /// follows ([dunning.md](dunning.md)).
+    /// The first customer failure of an invoice of the subscription, in the caller's transaction, which holds the
+    /// invoice's lock (DUN-5): an active subscription, or one whose trial just ended, is past due. A first invoice leaves
+    /// its subscription incomplete instead (SUB-6).
     /// </summary>
-    public async Task AutomaticPaymentFailedAsync(Invoice invoice, DateTimeOffset now, CancellationToken cancellationToken)
+    public async Task CustomerFailureAsync(Invoice invoice, Domain.Payments.Payment payment, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (invoice is not { SubscriptionId: { } subscriptionId, BillingReason: BillingReason.SubscriptionCycle })
+        if (invoice.SubscriptionId is not { } subscriptionId || invoice.BillingReason == BillingReason.SubscriptionCreate)
         {
             return;
         }
@@ -66,6 +67,50 @@ public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLoc
         var previous = subscription.Status;
         subscription.MarkPastDue(now);
         RecordStatusChange(subscription, previous);
+        audit.Record(AuditActions.SubscriptionPastDue, AuditSubject.Of(AuditSubjects.Subscription, subscription.Id), new Dictionary<string, object?>
+        {
+            ["invoiceId"] = invoice.Id,
+            ["failureCode"] = payment.FailureCode,
+        }, customerId: subscription.CustomerId);
+    }
+
+    /// <summary>The final action of dunning ends the subscription (DUN-6), in the caller's transaction, which holds the invoice's lock.</summary>
+    public async Task CancelForNonPaymentAsync(Guid subscriptionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        await locks.LockSubscriptionAsync(subscriptionId, cancellationToken);
+        var subscription = await context.Subscriptions.SingleAsync(row => row.Id == subscriptionId, cancellationToken);
+        if (subscription.Cancel(now, CancellationReason.PaymentFailed, null, null, now).IsFailure)
+        {
+            return;
+        }
+
+        audit.Record(AuditActions.SubscriptionCanceled, AuditSubject.Of(AuditSubjects.Subscription, subscription.Id), new Dictionary<string, object?>
+        {
+            ["reason"] = SubscriptionMapper.Wire(CancellationReason.PaymentFailed),
+            ["endedAt"] = subscription.EndedAt,
+        }, customerId: subscription.CustomerId);
+    }
+
+    /// <summary>
+    /// When the oldest unpaid invoice of a subscription is paid, the next one, held meanwhile, is tried now (DUN-9).
+    /// Its lock is taken after the subscription's, unlike other paths; PostgreSQL resolves the rare deadlock.
+    /// </summary>
+    private async Task CollectNextAsync(Invoice paid, Guid subscriptionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var open = context.Invoices.Where(other => other.SubscriptionId == subscriptionId && other.Id != paid.Id && other.Status == InvoiceStatus.Open);
+        if (await open.AnyAsync(other => other.FinalizedAt < paid.FinalizedAt, cancellationToken)
+            || await open.Where(other => other.CollectionMethod == CollectionMethod.ChargeAutomatically && other.NextPaymentAttemptAt == null && other.DunningEndedAt == null)
+                .OrderBy(other => other.FinalizedAt).Select(other => (Guid?)other.Id).FirstOrDefaultAsync(cancellationToken) is not { } nextId)
+        {
+            return;
+        }
+
+        await locks.LockInvoiceAsync(nextId, cancellationToken);
+        if (await context.FindInvoiceAsync(nextId, cancellationToken) is { Status: InvoiceStatus.Open } next)
+        {
+            next.PostponePaymentAttempt(now, now);
+            signals.Notify(Payments.WorkerNames.PaymentCollection);
+        }
     }
 
     private void RecordStatusChange(Subscription subscription, SubscriptionStatus previous) =>

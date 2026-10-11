@@ -65,7 +65,7 @@ public sealed class GetPaymentMethodHandler(ITahsilDbContext context, IAuthorize
 }
 
 /// <summary>Makes an active card the customer's default (CUS §2.3).</summary>
-public sealed class SetDefaultPaymentMethodHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, BillingClock clock)
+public sealed class SetDefaultPaymentMethodHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, Payments.Dunning dunning, BillingClock clock)
 {
     private static readonly string[] DefaultChanged = ["defaultPaymentMethod"];
 
@@ -92,12 +92,16 @@ public sealed class SetDefaultPaymentMethodHandler(ITahsilDbContext context, IAu
             return PaymentMethodErrors.NotActive;
         }
 
-        customer.SetDefaultPaymentMethod(method.Id, clock.GetUtcNow());
+        var now = clock.GetUtcNow();
+        customer.SetDefaultPaymentMethod(method.Id, now);
         audit.Record(AuditActions.CustomerUpdated, AuditSubject.Of(AuditSubjects.Customer, customer.Id), new Dictionary<string, object?>
         {
             ["changed"] = DefaultChanged,
         }, customerId: customer.Id);
         await context.SaveChangesAsync(cancellationToken);
+
+        // Invoices waiting for the customer to act are tried with the new card at once (DUN-8).
+        await dunning.RetryWaitingAsync(customer.Id, null, now, cancellationToken);
         return PaymentMethodMapper.ToResponse(method, customer.DefaultPaymentMethodId);
     }
 }

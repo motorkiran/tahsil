@@ -25,6 +25,9 @@ public enum AttentionKind
 
     /// <summary>More than half of a connection's checkout payments failed lately, a sign of card testing (CHK-22).</summary>
     DeclineSpike,
+
+    /// <summary>A connection's automatic payments fail for the merchant's or provider's reasons, for a day or with a missing permission (DUN-7).</summary>
+    MerchantFailures,
 }
 
 /// <summary>Something an operator must look at and resolve, such as an amount mismatch; one open item per kind and subject.</summary>

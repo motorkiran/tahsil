@@ -103,6 +103,18 @@ public sealed class Invoice : AggregateRoot
 
     public int AttemptCount { get; private set; }
 
+    /// <summary>The first customer failure of an automatic payment; the retry schedule counts from it (DUN-1).</summary>
+    public DateTimeOffset? DunningStartedAt { get; private set; }
+
+    /// <summary>When the final action runs if the invoice is still unpaid (DUN-6).</summary>
+    public DateTimeOffset? DunningDeadlineAt { get; private set; }
+
+    /// <summary>When the final action ran, or dunning stopped for good.</summary>
+    public DateTimeOffset? DunningEndedAt { get; private set; }
+
+    /// <summary>Since when automatic payments have failed for the merchant's or provider's reasons only (DUN-7).</summary>
+    public DateTimeOffset? MerchantFailingSince { get; private set; }
+
     public CustomerSnapshot? CustomerSnapshot { get; private set; }
 
     /// <summary>The snapshot's tax ID, encrypted for this invoice.</summary>
@@ -389,6 +401,65 @@ public sealed class Invoice : AggregateRoot
     {
         NextPaymentAttemptAt = null;
         AttemptCount++;
+        UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// An automatic payment failed for the customer (DUN-1 to DUN-4): the first such failure starts the schedule and
+    /// sets the final action's deadline; a retryable failure schedules the next retry, others wait for the customer.
+    /// Returns whether this was the first customer failure.
+    /// </summary>
+    public bool RecordCustomerFailure(IReadOnlyList<TimeSpan> schedule, bool retries, DateTimeOffset now)
+    {
+        var first = DunningStartedAt is null;
+        if (first)
+        {
+            DunningStartedAt = now;
+            DunningDeadlineAt = now + schedule[^1];
+        }
+
+        MerchantFailingSince = null;
+        NextPaymentAttemptAt = retries ? DunningSchedule.NextRetry(DunningStartedAt!.Value, schedule, now) : null;
+        UpdatedAt = now;
+        return first;
+    }
+
+    /// <summary>An automatic payment failed for the merchant's or provider's reasons (DUN-7): tried again on the technical backoff.</summary>
+    public void RecordMerchantFailure(DateTimeOffset now)
+    {
+        MerchantFailingSince ??= now;
+        NextPaymentAttemptAt = DunningSchedule.NextTechnicalRetry(MerchantFailingSince.Value, now);
+        UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// A new card was given while the invoice waits for a retry or for the customer (DUN-8): it is tried now. Returns
+    /// whether it was waiting.
+    /// </summary>
+    public bool RetryNow(DateTimeOffset now)
+    {
+        if (Status != InvoiceStatus.Open || CollectionMethod != CollectionMethod.ChargeAutomatically || DunningStartedAt is null || DunningEndedAt is not null)
+        {
+            return false;
+        }
+
+        NextPaymentAttemptAt = now;
+        UpdatedAt = now;
+        return true;
+    }
+
+    /// <summary>An older invoice of the subscription is collected first (DUN-9).</summary>
+    public void WaitForOlderInvoices(DateTimeOffset now)
+    {
+        NextPaymentAttemptAt = null;
+        UpdatedAt = now;
+    }
+
+    /// <summary>Dunning is over: the final action ran (DUN-6), or collection stopped (DUN-12). The invoice stays as it is otherwise.</summary>
+    public void EndDunning(DateTimeOffset now)
+    {
+        DunningEndedAt = now;
+        NextPaymentAttemptAt = null;
         UpdatedAt = now;
     }
 

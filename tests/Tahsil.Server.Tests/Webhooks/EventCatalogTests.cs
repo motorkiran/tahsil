@@ -29,7 +29,6 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     private static readonly Dictionary<string, string> EmittedLater = new(StringComparer.Ordinal)
     {
         [TahsilEventTypes.PaymentMethodWillExpire] = "M5: card expiry reminders for running subscriptions (CUS-15)",
-        [TahsilEventTypes.InvoiceActionRequired] = "M5: dunning asks the customer to authenticate (DUN-4)",
         [TahsilEventTypes.InvoiceOverdue] = "M5: overdue invoices (INV-13)",
     };
 
@@ -63,6 +62,8 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.SubscriptionUpdated, ["changed", "status", "previousStatus"] },
         { TahsilEventTypes.SubscriptionRenewed, ["periodStart", "periodEnd", "invoiceId"] },
         { TahsilEventTypes.SubscriptionCanceled, ["reason", "endedAt"] },
+        { TahsilEventTypes.SubscriptionPastDue, ["invoiceId", "failureCode"] },
+        { TahsilEventTypes.InvoiceActionRequired, ["number", "hostedUrl"] },
         { TahsilEventTypes.InvoiceCreated, ["billingReason", "subscriptionId", "finalizeAt"] },
     };
 
@@ -160,6 +161,11 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         await host.RunWorkersUntilIdleAsync();
         (await SendAsync(client, HttpMethod.Post, $"/api/v1/invoices/{declined}/mark-uncollectible")).Dispose();
         (await SendAsync(client, HttpMethod.Post, $"/api/v1/invoices/{declined}/void")).Dispose();
+
+        // The bank wants the customer for the next one.
+        (await SendAsync(client, HttpMethod.Patch, $"/api/v1/test/simulator/payment-methods/{card}", new UpdateSimulatorPaymentMethodRequest { Behavior = "authentication_required" })).Dispose();
+        await FinalizedInvoiceAsync(client, customer);
+        await host.RunWorkersUntilIdleAsync();
         (await SendAsync(client, HttpMethod.Delete, $"/api/v1/payment-methods/{card}")).Dispose();
 
         // A payment whose refund the provider declines.
@@ -199,9 +205,15 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         // A customer without history, deleted.
         (await SendAsync(client, HttpMethod.Delete, $"/api/v1/customers/{await CustomerAsync(client)}")).Dispose();
 
-        // A month later, the subscription renews, and is then canceled.
+        // A month later, the subscription renews, its payment fails, and it is canceled.
+        (await SendAsync(client, HttpMethod.Patch, $"/api/v1/test/simulator/payment-methods/{unrefundable.PaymentMethodId}", new UpdateSimulatorPaymentMethodRequest
+        {
+            Behavior = "card_declined",
+        })).Dispose();
         await host.RunWorkersUntilIdleAsync();
         _time.Advance(TimeSpan.FromDays(32));
+        await host.RunWorkersUntilIdleAsync();
+        _time.Advance(TimeSpan.FromHours(1));
         await host.RunWorkersUntilIdleAsync();
         (await SendAsync(client, HttpMethod.Post, $"/api/v1/subscriptions/{subscription}/cancel", new { at = "now" })).Dispose();
         await host.RunWorkersUntilIdleAsync();

@@ -168,9 +168,10 @@ public sealed class Payment : AggregateRoot
     /// An automatic charge that could not be made at all, such as without a usable card (ENG-13): recorded as failed
     /// before any provider call, so dunning sees the attempt.
     /// </summary>
-    public static Payment FailedBeforeCharge(Guid customerId, Guid invoiceId, long amount, string currency, PaymentFailure failure, Actor actor, DateTimeOffset now)
+    public static Payment FailedBeforeCharge(
+        Guid customerId, Guid invoiceId, long amount, string currency, PaymentFailure failure, Actor actor, DateTimeOffset now, Guid? connectionId = null, Guid? paymentMethodId = null)
     {
-        var payment = New(customerId, invoiceId, null, null, null, amount, currency, PaymentPurpose.Charge, PaymentInitiator.Merchant, false, null, actor, now);
+        var payment = New(customerId, invoiceId, null, connectionId, paymentMethodId, amount, currency, PaymentPurpose.Charge, PaymentInitiator.Merchant, false, null, actor, now);
         payment.Fail(failure, null, null, now);
         return payment;
     }

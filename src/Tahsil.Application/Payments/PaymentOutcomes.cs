@@ -27,6 +27,7 @@ public sealed class PaymentOutcomes(
     Checkout.CheckoutCompletion checkout,
     Checkout.CheckoutProtection protection,
     Subscriptions.SubscriptionSettlement subscriptions,
+    Dunning dunning,
     BillingClock clock)
 {
     private static readonly Counter<long> Payments = TahsilDiagnostics.Meter.CreateCounter<long>(
@@ -125,6 +126,7 @@ public sealed class PaymentOutcomes(
         if (invoice.Status == InvoiceStatus.Paid)
         {
             audit.Record(AuditActions.InvoicePaid, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: invoice.CustomerId);
+            Dunning.Recovered(invoice);
             await subscriptions.InvoicePaidAsync(invoice, now, cancellationToken);
         }
     }
@@ -152,8 +154,8 @@ public sealed class PaymentOutcomes(
     }
 
     /// <summary>
-    /// Counts and announces a failed payment: <c>payment.failed</c>, and <c>invoice.payment_failed</c> for automatic
-    /// charges, whose subscription follows. Runs in the caller's transaction, which holds the invoice's lock.
+    /// Counts and announces a failed payment: <c>payment.failed</c>, and for automatic charges dunning's next step and
+    /// <c>invoice.payment_failed</c>. Runs in the caller's transaction, which holds the invoice's lock.
     /// </summary>
     internal async Task RecordFailureAsync(Payment payment, Invoice? invoice, DateTimeOffset now, CancellationToken cancellationToken)
     {
@@ -161,6 +163,8 @@ public sealed class PaymentOutcomes(
         audit.Record(AuditActions.PaymentFailed, AuditSubject.Of(AuditSubjects.Payment, payment.Id), Details(payment, late: false), customerId: payment.CustomerId);
         if (invoice is not null && payment.Initiator == PaymentInitiator.Merchant)
         {
+            // Dunning first, so that the event says when the next attempt is.
+            await dunning.PaymentFailedAsync(payment, invoice, now, cancellationToken);
             audit.Record(AuditActions.InvoicePaymentFailed, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), new Dictionary<string, object?>
             {
                 ["number"] = invoice.Number,
@@ -171,7 +175,6 @@ public sealed class PaymentOutcomes(
                 ["attempt"] = invoice.AttemptCount,
                 ["nextAttemptAt"] = invoice.NextPaymentAttemptAt,
             }, customerId: invoice.CustomerId);
-            await subscriptions.AutomaticPaymentFailedAsync(invoice, now, cancellationToken);
         }
     }
 

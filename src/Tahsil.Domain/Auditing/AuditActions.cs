@@ -44,6 +44,9 @@ public static class AuditActions
     public const string PaymentMethodAttached = "payment_method.attached";
     public const string PaymentMethodRemoved = "payment_method.removed";
     public const string InvoicePaymentFailed = "invoice.payment_failed";
+
+    /// <summary>The customer must authenticate the payment on the invoice's hosted page (DUN-4).</summary>
+    public const string InvoiceActionRequired = "invoice.action_required";
     public const string PaymentSucceeded = "payment.succeeded";
     public const string PaymentFailed = "payment.failed";
     public const string PaymentCanceled = "payment.canceled";
@@ -59,6 +62,9 @@ public static class AuditActions
     /// <summary>A new period started, after a renewal or a trial (ENG-8).</summary>
     public const string SubscriptionRenewed = "subscription.renewed";
     public const string SubscriptionCanceled = "subscription.canceled";
+
+    /// <summary>A customer failure made the subscription past due (DUN-5).</summary>
+    public const string SubscriptionPastDue = "subscription.past_due";
     public const string RefundCreated = "refund.created";
     public const string RefundSucceeded = "refund.succeeded";
     public const string RefundFailed = "refund.failed";

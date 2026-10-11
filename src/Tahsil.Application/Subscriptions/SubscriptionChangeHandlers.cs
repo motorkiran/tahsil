@@ -26,7 +26,7 @@ public sealed class UpdateSubscriptionHandler(
     IAuthorizer authorizer,
     IAuditLog audit,
     IBillingLocks locks,
-    IWorkerSignals signals,
+    Dunning dunning,
     SubscriptionChanges changes,
     SubscriptionCycles cycles,
     SubscriptionMapper mapper,
@@ -177,9 +177,10 @@ public sealed class UpdateSubscriptionHandler(
             await payments.ChargeAsync(invoice.Id, cardId, cancellationToken);
         }
 
-        if (request is { HasDefaultPaymentMethod: true } && subscription.Status == Model.SubscriptionStatus.PastDue)
+        if (request.HasDefaultPaymentMethod)
         {
-            await RetryOldestOpenInvoiceAsync(subscription, now, cancellationToken);
+            // Invoices waiting for the customer to act are tried with the new card at once (SUB-26, DUN-8).
+            await dunning.RetryWaitingAsync(subscription.CustomerId, subscription.Id, now, cancellationToken);
         }
 
         return new Versioned<SubscriptionResponse>(await mapper.ToResponseAsync(subscription, cancellationToken), subscription.Version);
@@ -223,31 +224,6 @@ public sealed class UpdateSubscriptionHandler(
         }
 
         return (applied.Value, null, "items");
-    }
-
-    /// <summary>A new card for a past due subscription is tried at once on its oldest open invoice (SUB-26).</summary>
-    private async Task RetryOldestOpenInvoiceAsync(Subscription subscription, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        await using var transaction = await context.BeginTransactionAsync(cancellationToken);
-        var oldest = await context.Invoices.AsNoTracking()
-            .Where(row => row.SubscriptionId == subscription.Id && row.Status == ModelInvoices.InvoiceStatus.Open && row.CollectionMethod == ModelInvoices.CollectionMethod.ChargeAutomatically)
-            .OrderBy(row => row.FinalizedAt)
-            .Select(row => (Guid?)row.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (oldest is not { } invoiceId)
-        {
-            return;
-        }
-
-        await locks.LockInvoiceAsync(invoiceId, cancellationToken);
-        if (await context.FindInvoiceAsync(invoiceId, cancellationToken) is { Status: ModelInvoices.InvoiceStatus.Open } invoice)
-        {
-            invoice.PostponePaymentAttempt(now, now);
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-        signals.Notify(WorkerNames.PaymentCollection);
     }
 }
 
