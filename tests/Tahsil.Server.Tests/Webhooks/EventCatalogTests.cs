@@ -21,7 +21,8 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     [
         TahsilPermissions.CustomersWrite, TahsilPermissions.CustomersRead, TahsilPermissions.InvoicesRead, TahsilPermissions.InvoicesWrite,
         TahsilPermissions.PaymentsRead, TahsilPermissions.RefundsWrite, TahsilPermissions.ConnectionsWrite, TahsilPermissions.WebhooksWrite,
-        TahsilPermissions.TestWrite, TahsilPermissions.CheckoutWrite,
+        TahsilPermissions.TestWrite, TahsilPermissions.CheckoutWrite, TahsilPermissions.SubscriptionsWrite, TahsilPermissions.ProvisioningWrite,
+        TahsilPermissions.CatalogWrite,
     ];
 
     /// <summary>Catalog types that no M2 scenario emits, and the milestone that emits them.</summary>
@@ -59,6 +60,8 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.RefundFailed, ["paymentId", "amount", "currency", "failureCode"] },
         { TahsilEventTypes.CheckoutExpired, ["mode", "clientReferenceId"] },
         { TahsilEventTypes.CheckoutCompleted, ["mode", "clientReferenceId", "subscriptionId", "invoiceId", "paymentMethodId"] },
+        { TahsilEventTypes.SubscriptionCreated, ["status", "items", "currentPeriodEnd", "trialEnd"] },
+        { TahsilEventTypes.SubscriptionUpdated, ["changed", "status", "previousStatus"] },
     };
 
     [Fact]
@@ -99,6 +102,36 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         }
     }
 
+    private static async Task SubscribeAsync(HttpClient client, Guid customer, Guid card)
+    {
+        (await SendAsync(client, HttpMethod.Post, "/api/v1/provisioning", new ProvisioningDocument
+        {
+            Products =
+            [
+                new ProvisionedProduct
+                {
+                    Key = "team",
+                    Name = "Team",
+                    Prices =
+                    [
+                        new ProvisionedPrice
+                        {
+                            Key = "team-monthly-try", Currency = "TRY", Type = PriceType.Recurring, Interval = PriceInterval.Month, IntervalCount = 1,
+                            UsageType = UsageType.Licensed, UnitAmount = 30_000,
+                        },
+                    ],
+                },
+            ],
+        })).Dispose();
+        using var subscribed = await SendAsync(client, HttpMethod.Post, "/api/v1/subscriptions", new CreateSubscriptionRequest
+        {
+            Customer = customer,
+            Items = [new SubscriptionItemRequest { Price = "team-monthly-try" }],
+            DefaultPaymentMethod = card,
+        });
+        subscribed.StatusCode.ShouldBe(HttpStatusCode.Created, await subscribed.Content.ReadAsStringAsync(CancellationToken));
+    }
+
     private async Task<IReadOnlyList<WebhookEvent>> TellAsync()
     {
         await using var host = IsolatedHosts.Create(server, server.NewDatabase("catalog"), _time, services =>
@@ -114,8 +147,11 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         var paid = await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice), "4242424242424242");
         (await SendAsync(client, HttpMethod.Post, "/api/v1/refunds", new CreateRefundRequest { Payment = paid.Id })).Dispose();
 
-        // The card declines a renewal; the invoice is given up on, then voided.
+        // The card pays a subscription's first invoice.
         var card = paid.PaymentMethodId!.Value;
+        await SubscribeAsync(client, customer, card);
+
+        // The card declines a renewal; the invoice is given up on, then voided.
         (await SendAsync(client, HttpMethod.Patch, $"/api/v1/test/simulator/payment-methods/{card}", new UpdateSimulatorPaymentMethodRequest { Behavior = "card_declined" })).Dispose();
         var declined = await FinalizedInvoiceAsync(client, customer);
         await host.RunWorkersUntilIdleAsync();

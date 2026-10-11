@@ -26,6 +26,8 @@ public static class TahsilEventTypes
     public const string PaymentMethodWillExpire = "payment_method.will_expire";
     public const string CheckoutCompleted = "checkout.completed";
     public const string CheckoutExpired = "checkout.expired";
+    public const string SubscriptionCreated = "subscription.created";
+    public const string SubscriptionUpdated = "subscription.updated";
     public const string InvoiceCreated = "invoice.created";
     public const string InvoiceFinalized = "invoice.finalized";
     public const string InvoicePaid = "invoice.paid";
@@ -53,6 +55,8 @@ public static class TahsilEventTypes
         [PaymentMethodWillExpire] = "A default card of a running subscription expires soon.",
         [CheckoutCompleted] = "A checkout session was paid: `details` names what it created (the invoice, the saved card).",
         [CheckoutExpired] = "A checkout session ended unpaid: it ran out of time or the application expired it.",
+        [SubscriptionCreated] = "A subscription was created; `details.status` says whether it is active, trialing or waiting for its first payment.",
+        [SubscriptionUpdated] = "A subscription's items, trial, cancellation schedule, payment or collection method, or status changed; `details.changed` names what.",
         [InvoiceCreated] = "A draft with a draft period was created; it is finalized at `details.finalizeAt`.",
         [InvoiceFinalized] = "An invoice was finalized: it has a number and is due.",
         [InvoicePaid] = "An invoice was paid in full.",

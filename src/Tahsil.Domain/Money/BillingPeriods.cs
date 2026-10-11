@@ -16,10 +16,12 @@ public readonly record struct BillingPeriod(DateTimeOffset Start, DateTimeOffset
 /// </summary>
 public static class BillingPeriods
 {
-    /// <summary>The start of period <paramref name="n"/> (n ≥ 0).</summary>
+    /// <summary>
+    /// The start of period <paramref name="n"/>; a negative <paramref name="n"/> counts back from the anchor, such as the
+    /// full period a shorter first period is a share of (SUB-4).
+    /// </summary>
     public static DateTimeOffset Start(DateTimeOffset anchor, PriceInterval interval, int intervalCount, long n, TimeZoneInfo zone)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(n);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(intervalCount);
         var local = TimeZoneInfo.ConvertTime(anchor, zone).DateTime;
         var units = checked((int)(n * intervalCount));

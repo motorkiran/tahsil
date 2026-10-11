@@ -181,10 +181,15 @@ public sealed class InvoiceLines(ITahsilDbContext context)
     private async Task<string> DescribeAsync(Price price, decimal quantity, string locale, CancellationToken cancellationToken)
     {
         var product = await context.Products.AsNoTracking().SingleAsync(row => row.Id == price.ProductId, cancellationToken);
-        var culture = CultureInfo.GetCultureInfo(locale.StartsWith("tr", StringComparison.OrdinalIgnoreCase) ? "tr-TR" : "en-US");
-        var name = price.Name is { } priceName ? $"{product.Name} ({priceName})" : product.Name;
-        return $"{name} × {quantity.ToString("#,0.########", culture)}";
+        return Describe(product, price, quantity, locale);
     }
 
-    private static decimal? UnitAmountOf(Price price) => price.BillingScheme == BillingScheme.PerUnit ? price.UnitAmountDecimal ?? price.UnitAmount : null;
+    /// <summary>A price's line description, as <c>Pro (Monthly) × 5</c> or <c>Pro (Aylık) × 5</c> (INV-2).</summary>
+    internal static string Describe(Product product, Price price, decimal quantity, string locale)
+    {
+        var culture = CultureInfo.GetCultureInfo(locale.StartsWith("tr", StringComparison.OrdinalIgnoreCase) ? "tr-TR" : "en-US");
+        return $"{PriceDisplay.Name(product.Name, price.Name)} × {quantity.ToString("#,0.########", culture)}";
+    }
+
+    internal static decimal? UnitAmountOf(Price price) => price.BillingScheme == BillingScheme.PerUnit ? price.UnitAmountDecimal ?? price.UnitAmount : null;
 }

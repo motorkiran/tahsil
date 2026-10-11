@@ -145,7 +145,9 @@ public sealed class Invoice : AggregateRoot
         string? memo,
         bool autoAdvance,
         IReadOnlyDictionary<string, string> metadata,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        Guid? subscriptionId = null,
+        BillingPeriod? period = null)
     {
         if (ValidateTerms(memo, daysUntilDue) is { } invalid)
         {
@@ -156,6 +158,9 @@ public sealed class Invoice : AggregateRoot
         {
             Id = Guid.CreateVersion7(now),
             CustomerId = customerId,
+            SubscriptionId = subscriptionId,
+            PeriodStart = period?.Start,
+            PeriodEnd = period?.End,
             Currency = currency,
             Status = InvoiceStatus.Draft,
             BillingReason = billingReason,

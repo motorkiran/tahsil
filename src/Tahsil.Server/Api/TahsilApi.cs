@@ -33,6 +33,7 @@ internal static class TahsilApi
         services.AddRefundResourceReaders();
         services.AddWebhookResourceReaders();
         services.AddCheckoutResourceReaders();
+        services.AddSubscriptionResourceReaders();
 
         services.ConfigureHttpJsonOptions(options => TahsilJson.Configure(options.SerializerOptions));
         services.AddValidation();
@@ -77,6 +78,7 @@ internal static class TahsilApi
             .MapRefundEndpoints()
             .MapWebhookEndpoints()
             .MapCheckoutEndpoints()
+            .MapSubscriptionEndpoints()
             .MapPaymentMethodEndpoints()
             .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();

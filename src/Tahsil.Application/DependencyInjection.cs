@@ -11,6 +11,7 @@ using Tahsil.Application.Invoices;
 using Tahsil.Application.PaymentMethods;
 using Tahsil.Application.Payments;
 using Tahsil.Application.Provisioning;
+using Tahsil.Application.Subscriptions;
 using Tahsil.Application.Webhooks;
 
 namespace Tahsil.Application;
@@ -74,6 +75,12 @@ public static class DependencyInjection
         services.AddScoped<UpdateProductHandler>();
         services.AddScoped<DeleteProductHandler>();
         services.AddScoped<IPriceUsage, BillingPriceUsage>();
+        services.AddScoped<SubscriptionLines>();
+        services.AddScoped<SubscriptionSettlement>();
+        services.AddScoped<SubscriptionMapper>();
+        services.AddScoped<CreateSubscriptionHandler>();
+        services.AddScoped<GetSubscriptionHandler>();
+        services.AddScoped<ListSubscriptionsHandler>();
         services.AddScoped<GetProductHandler>();
         services.AddScoped<ListProductsHandler>();
         services.AddScoped<CreatePriceHandler>();
@@ -97,6 +104,10 @@ public static class DependencyInjection
         services.AddOptions<BillingOptions>()
             .BindConfiguration(BillingOptions.SectionName)
             .Validate(options => options.HasKnownTimeZone(), $"{BillingOptions.SectionName}:TimeZone must be an IANA time zone such as Europe/Istanbul.")
+            .ValidateOnStart();
+        services.AddOptions<SubscriptionOptions>()
+            .BindConfiguration(SubscriptionOptions.SectionName)
+            .Validate(options => options.IncompleteExpiry > TimeSpan.Zero, $"{SubscriptionOptions.SectionName}:IncompleteExpiry must be positive.")
             .ValidateOnStart();
         services.AddOptions<InvoiceOptions>()
             .BindConfiguration(InvoiceOptions.SectionName)

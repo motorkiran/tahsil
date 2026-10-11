@@ -164,12 +164,15 @@ public sealed class MerchantPayments(
     /// INV-10: an active card of the invoice's customer, with consent, whose connection is enabled, fits the mode and
     /// takes the currency. It need not be the connection routed for the currency: cards stay with the connection that saved them.
     /// </summary>
-    private bool Usable(PaymentMethod method, ProviderConnection connection, Invoice invoice) =>
+    private bool Usable(PaymentMethod method, ProviderConnection connection, Invoice invoice) => CanCharge(method, connection, invoice.CustomerId, invoice.Currency);
+
+    /// <summary>Whether the card can be charged without the customer for the customer's payments in the currency (INV-10).</summary>
+    public bool CanCharge(PaymentMethod method, ProviderConnection connection, Guid customerId, string currency) =>
         method.IsChargeable
-        && method.CustomerId == invoice.CustomerId
+        && method.CustomerId == customerId
         && connection.IsEnabled
         && ProviderRegistry.AllowsInMode(registry.Mode, connection.Provider, connection.Environment)
         && registry.Find(connection.Provider) is { } provider
-        && provider.Descriptor.Currencies.Contains(invoice.Currency)
+        && provider.Descriptor.Currencies.Contains(currency)
         && provider.CapabilitiesFor(connection.Settings).ChargesSavedCards;
 }

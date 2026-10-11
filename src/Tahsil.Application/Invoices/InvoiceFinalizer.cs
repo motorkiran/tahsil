@@ -21,6 +21,7 @@ public sealed class InvoiceFinalizer(
     IRequestContext request,
     IAuditLog audit,
     ProviderRegistry providers,
+    Subscriptions.SubscriptionSettlement subscriptions,
     IOptions<BillingOptions> billing,
     IOptions<InvoiceOptions> invoices,
     BillingClock clock)
@@ -83,6 +84,7 @@ public sealed class InvoiceFinalizer(
         if (invoice.Status == InvoiceStatus.Paid)
         {
             audit.Record(AuditActions.InvoicePaid, subject, Details(invoice), customerId: invoice.CustomerId);
+            await subscriptions.InvoicePaidAsync(invoice, now, cancellationToken);
         }
 
         return Result.Success();

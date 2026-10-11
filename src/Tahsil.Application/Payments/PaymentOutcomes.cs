@@ -26,6 +26,7 @@ public sealed class PaymentOutcomes(
     SavedCards cards,
     Checkout.CheckoutCompletion checkout,
     Checkout.CheckoutProtection protection,
+    Subscriptions.SubscriptionSettlement subscriptions,
     BillingClock clock)
 {
     private static readonly Counter<long> Payments = TahsilDiagnostics.Meter.CreateCounter<long>(
@@ -124,6 +125,7 @@ public sealed class PaymentOutcomes(
         if (invoice.Status == InvoiceStatus.Paid)
         {
             audit.Record(AuditActions.InvoicePaid, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: invoice.CustomerId);
+            await subscriptions.InvoicePaidAsync(invoice, now, cancellationToken);
         }
     }
 

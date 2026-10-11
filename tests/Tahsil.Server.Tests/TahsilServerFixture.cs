@@ -23,6 +23,9 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
 
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(30);
 
+    // WebApplicationFactory keeps derived factories in a plain list to dispose them; tests derive hosts in parallel.
+    private readonly Lock _derivation = new();
+
     // Tests in parallel each open a few connections, many to databases of their own.
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(PostgreSqlImage)
         .WithCommand("-c", "max_connections=1000")
@@ -85,24 +88,13 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
         IReadOnlyDictionary<string, string?> settings,
         Action<IServiceCollection>? services = null,
         Action<IEndpointRouteBuilder>? endpoints = null,
-        string? environment = null) =>
-        WithWebHostBuilder(builder =>
+        string? environment = null)
+    {
+        lock (_derivation)
         {
-            if (environment is not null)
-            {
-                builder.UseEnvironment(environment);
-            }
-
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
-            builder.ConfigureTestServices(collection =>
-            {
-                services?.Invoke(collection);
-                if (endpoints is not null)
-                {
-                    collection.AddSingleton<IEndpointMapper>(new TestEndpoints(endpoints));
-                }
-            });
-        });
+            return WithWebHostBuilder(builder => Configure(builder, settings, services, endpoints, environment));
+        }
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder
         .UseEnvironment(TestConfiguration.Environment)
@@ -113,5 +105,28 @@ public sealed class TahsilServerFixture : WebApplicationFactory<Program>, IAsync
     {
         await base.DisposeAsync();
         await _postgres.DisposeAsync();
+    }
+
+    private static void Configure(
+        IWebHostBuilder builder,
+        IReadOnlyDictionary<string, string?> settings,
+        Action<IServiceCollection>? services,
+        Action<IEndpointRouteBuilder>? endpoints,
+        string? environment)
+    {
+        if (environment is not null)
+        {
+            builder.UseEnvironment(environment);
+        }
+
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
+        builder.ConfigureTestServices(collection =>
+        {
+            services?.Invoke(collection);
+            if (endpoints is not null)
+            {
+                collection.AddSingleton<IEndpointMapper>(new TestEndpoints(endpoints));
+            }
+        });
     }
 }

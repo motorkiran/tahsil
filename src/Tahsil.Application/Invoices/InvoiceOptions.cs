@@ -69,6 +69,12 @@ public interface IBillingLocks
     /// <summary>Locks a checkout session until the transaction ends; load it after this.</summary>
     Task LockCheckoutSessionAsync(Guid sessionId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Locks a subscription until the transaction ends; load it after this. Paths that also lock one of its invoices
+    /// lock the invoice first.
+    /// </summary>
+    Task LockSubscriptionAsync(Guid subscriptionId, CancellationToken cancellationToken);
+
     /// <summary>Creates the customer's balance in the currency if it is missing, and locks it until the transaction ends.</summary>
     Task LockBalanceAsync(Guid customerId, string currency, CancellationToken cancellationToken);
 }

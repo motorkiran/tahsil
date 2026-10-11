@@ -50,6 +50,11 @@ public static class AuditActions
     public const string CheckoutSessionCreated = "checkout_session.created";
     public const string CheckoutExpired = "checkout.expired";
     public const string CheckoutCompleted = "checkout.completed";
+
+    public const string SubscriptionCreated = "subscription.created";
+
+    /// <summary>Items, the trial, the cancellation schedule, the payment or collection method, or the status changed.</summary>
+    public const string SubscriptionUpdated = "subscription.updated";
     public const string RefundCreated = "refund.created";
     public const string RefundSucceeded = "refund.succeeded";
     public const string RefundFailed = "refund.failed";
