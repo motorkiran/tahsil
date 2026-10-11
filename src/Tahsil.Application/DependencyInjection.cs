@@ -174,6 +174,11 @@ public static class DependencyInjection
         services.AddScoped<PaymentMethodExpiry>();
         services.AddScoped<IOutboxMessageHandler<DeleteProviderToken>, ProviderTokenDeleter>();
         services.AddScoped<CreateTestPaymentMethodHandler>();
+        services.AddOptions<Checkout.MerchantOptions>().BindConfiguration(Checkout.MerchantOptions.SectionName);
+        services.AddOptions<Checkout.CheckoutOptions>().BindConfiguration(Checkout.CheckoutOptions.SectionName).ValidateOnStart();
+        services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<Checkout.CheckoutOptions>, Checkout.CheckoutOptionsValidation>();
+        services.AddScoped<Checkout.LegalDocumentModels>();
+        services.AddScoped<Checkout.LegalDocumentVersions>();
         services.AddScoped<Checkout.CheckoutMapper>();
         services.AddScoped<Checkout.CheckoutExpiry>();
         services.AddScoped<Checkout.CreateCheckoutSessionHandler>();

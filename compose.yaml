@@ -39,6 +39,11 @@ services:
       Tahsil__Server__RequireHttps: "false"
       # Development key only, which Live mode refuses. Production installations generate their own: openssl rand -base64 32
       Tahsil__Security__MasterKey: RS4WftirAh28WH2LxhF6vetp9iHyc2xfGSQou5e16R0=
+      # Example merchant: the starter legal documents print these details. Use your own.
+      Tahsil__Merchant__LegalName: Acme Yazılım A.Ş.
+      Tahsil__Merchant__Address: Caferağa Mah. Moda Cad. No:1, 34710 Kadıköy/İstanbul
+      Tahsil__Merchant__Phone: +90 216 000 00 00
+      Tahsil__Merchant__Email: destek@acme.example
     ports:
       - "8090:8080"
 

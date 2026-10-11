@@ -1,0 +1,47 @@
+{% comment %}TASLAK: Bu başlangıç metni Tahsil ile gelir ve kullanılmadan önce satıcının avukatı tarafından incelenmelidir. Hukuki tavsiye değildir.{% endcomment %}
+<h1>{{ title }}</h1>
+<p>Bu form, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca, sözleşme kurulmadan önce alıcıyı bilgilendirmek için hazırlanmıştır.</p>
+
+<h2>1. Satıcı</h2>
+<p>
+  Unvan: {{ merchant.legal_name }}{% if merchant.trade_name %} ({{ merchant.trade_name }}){% endif %}<br>
+  {% if merchant.mersis_number %}MERSİS No: {{ merchant.mersis_number }}<br>{% endif %}
+  {% if merchant.tax_number %}Vergi dairesi ve no: {{ merchant.tax_office }} {{ merchant.tax_number }}<br>{% endif %}
+  Adres: {{ merchant.address }}<br>
+  Telefon: {{ merchant.phone }}<br>
+  E-posta: {{ merchant.email }}{% if merchant.kep_address %}<br>
+  KEP: {{ merchant.kep_address }}{% endif %}
+</p>
+
+<h2>2. Alıcı</h2>
+<p>
+  Ad soyad / unvan: {{ customer.name }}<br>
+  E-posta: {{ customer.email }}{% if customer.phone %}<br>
+  Telefon: {{ customer.phone }}{% endif %}{% if customer.address %}<br>
+  Adres: {{ customer.address }}{% endif %}
+</p>
+
+<h2>3. Ürün veya hizmetin temel nitelikleri ve fiyatı</h2>
+<table>
+  <thead><tr><th>Ürün / hizmet</th><th>Adet</th><th>Tutar (vergiler dahil)</th></tr></thead>
+  <tbody>
+    {% for item in items %}<tr><td>{{ item.description }}</td><td>{{ item.quantity }}</td><td>{{ item.amount }}{% if item.tax_rate %} (KDV %{{ item.tax_rate }}){% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>Vergiler dahil toplam fiyat: <strong>{{ totals.total }}</strong>{% if totals.tax %} (bunun {{ totals.tax }} tutarı vergidir){% endif %}.</p>
+{% if subscription %}
+<p>Bu bir aboneliktir: hizmet belirsiz süreli olarak sunulur ve her {{ subscription.period }} {{ subscription.renewal_amount }} tahsil edilir. İlk otomatik tahsilat tarihi {{ subscription.first_charge_date }}. Abonelik dilediğiniz zaman iptal edilebilir; iptal, ödenmiş dönemin sonunda geçerli olur.</p>
+{% endif %}
+
+<h2>4. Ödeme ve ifa</h2>
+<p>Ödeme kredi veya banka kartıyla, sipariş sırasında 3D Secure doğrulamasıyla alınır. Kart bilgileri satıcıya iletilmez; ödeme kuruluşu tarafından işlenir. Hizmet veya dijital içerik, ödemenin onaylanmasının ardından derhal sağlanır.</p>
+
+<h2>5. Cayma hakkı</h2>
+<p>Alıcı, sözleşmenin kurulduğu günden itibaren 14 gün içinde herhangi bir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayabilir. Cayma bildirimi bu süre içinde {{ merchant.email }} adresine e-posta ile{% if merchant.kep_address %} veya {{ merchant.kep_address }} KEP adresine{% endif %} iletilebilir; ödenen tutar bildirimden itibaren 14 gün içinde aynı ödeme aracıyla iade edilir.</p>
+<p>Mesafeli Sözleşmeler Yönetmeliği'nin 15. maddesi uyarınca, cayma hakkı süresi sona ermeden önce tüketicinin onayı ile ifasına başlanan hizmetlerde ve elektronik ortamda anında ifa edilen hizmetler ile tüketiciye anında teslim edilen gayrimaddi mallarda cayma hakkı kullanılamaz. Hizmetin hemen başlamasına onay verirseniz cayma hakkınız sona erer.</p>
+
+<h2>6. Şikâyet ve itirazlar</h2>
+<p>Şikâyetlerinizi yukarıdaki iletişim bilgileriyle satıcıya iletebilirsiniz. Uyuşmazlıklarda, her yıl belirlenen parasal sınırlar dahilinde yerleşim yerinizdeki veya işlemin yapıldığı yerdeki Tüketici Hakem Heyetine, bu sınırları aşan uyuşmazlıklarda Tüketici Mahkemesine başvurabilirsiniz.</p>
+
+<p>Tarih: {{ date }}<br>Sipariş: {{ session_id }}<br>Sürüm: {{ version }}</p>

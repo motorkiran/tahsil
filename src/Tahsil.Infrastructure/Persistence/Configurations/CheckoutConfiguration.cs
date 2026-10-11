@@ -6,6 +6,17 @@ using Tahsil.Infrastructure.Persistence.Conventions;
 
 namespace Tahsil.Infrastructure.Persistence.Configurations;
 
+internal sealed class LegalDocumentVersionConfiguration : IEntityTypeConfiguration<LegalDocumentVersion>
+{
+    public void Configure(EntityTypeBuilder<LegalDocumentVersion> builder)
+    {
+        builder.HasKey(version => new { version.Key, version.Version, version.Locale });
+        builder.Property(version => version.Key).HasMaxLength(64);
+        builder.Property(version => version.Version).HasMaxLength(32);
+        builder.Property(version => version.Locale).HasMaxLength(8);
+    }
+}
+
 internal sealed class CheckoutSessionConfiguration : IEntityTypeConfiguration<CheckoutSession>
 {
     public void Configure(EntityTypeBuilder<CheckoutSession> builder)
@@ -23,6 +34,10 @@ internal sealed class CheckoutSessionConfiguration : IEntityTypeConfiguration<Ch
         builder.Property(session => session.Quote)
             .HasColumnType("jsonb")
             .HasConversion(new JsonValueConverter<CheckoutQuote>(), JsonValueConverter<CheckoutQuote>.Comparer);
+        builder.Property(session => session.Documents)
+            .HasColumnName("consents")
+            .HasColumnType("jsonb")
+            .HasConversion(new JsonValueConverter<List<CheckoutDocument>>(), JsonValueConverter<List<CheckoutDocument>>.Comparer);
         builder.Property(session => session.BillingDetailsCollection).HasMaxLength(16);
         builder.Property(session => session.Locale).HasMaxLength(8);
         builder.Property(session => session.SuccessUrl).HasMaxLength(CheckoutSession.UrlMaxLength);

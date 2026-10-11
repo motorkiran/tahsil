@@ -17,6 +17,9 @@ public enum ConsentType
     Custom,
 }
 
+/// <summary>A legal document as the customer was shown it.</summary>
+public sealed record DocumentShown(string Key, string Version, string Html);
+
 /// <summary>
 /// The append-only evidence of what a customer was shown and accepted, such as the consent to future charges of a
 /// saved card (CUS-11). Never updated or deleted before its retention ends, also when the customer is anonymized (DOM-20).
@@ -61,6 +64,60 @@ public sealed class ConsentRecord
     public string? UserAgent { get; private init; }
 
     public DateTimeOffset AcceptedAt { get; private init; }
+
+    /// <summary>
+    /// The acceptance of a legal document (CHK-16): the rendered HTML as the customer saw it, compressed, with its hash
+    /// and the exact checkbox text.
+    /// </summary>
+    public static ConsentRecord ForDocument(
+        Guid customerId,
+        ConsentType type,
+        DocumentShown document,
+        string textShown,
+        IReadOnlyDictionary<string, string> context,
+        Guid? checkoutSessionId,
+        IPAddress? ipAddress,
+        string? userAgent,
+        DateTimeOffset acceptedAt)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(document.Html);
+        using var compressed = new MemoryStream();
+        using (var gzip = new System.IO.Compression.GZipStream(compressed, System.IO.Compression.CompressionLevel.SmallestSize))
+        {
+            gzip.Write(bytes);
+        }
+
+        var record = Create(customerId, type, textShown, context, ipAddress, userAgent, acceptedAt);
+        return new ConsentRecord
+        {
+            Id = record.Id,
+            CustomerId = record.CustomerId,
+            Type = record.Type,
+            DocumentKey = document.Key,
+            DocumentVersion = document.Version,
+            DocumentHash = System.Security.Cryptography.SHA256.HashData(bytes),
+            RenderedDocument = compressed.ToArray(),
+            TextShown = record.TextShown,
+            Context = record.Context,
+            CheckoutSessionId = checkoutSessionId,
+            IpAddress = record.IpAddress,
+            UserAgent = record.UserAgent,
+            AcceptedAt = record.AcceptedAt,
+        };
+    }
+
+    /// <summary>The rendered document of a document consent, as the customer saw it.</summary>
+    public string? ReadDocument()
+    {
+        if (RenderedDocument is null)
+        {
+            return null;
+        }
+
+        using var gzip = new System.IO.Compression.GZipStream(new MemoryStream(RenderedDocument), System.IO.Compression.CompressionMode.Decompress);
+        using var reader = new StreamReader(gzip, System.Text.Encoding.UTF8);
+        return reader.ReadToEnd();
+    }
 
     public static ConsentRecord Create(
         Guid customerId, ConsentType type, string textShown, IReadOnlyDictionary<string, string> context, IPAddress? ipAddress, string? userAgent, DateTimeOffset acceptedAt)

@@ -1,4 +1,4 @@
-using Tahsil.Server.Ui;
+using Tahsil.Application.Common;
 
 namespace Tahsil.Server.Tests.HostedPages;
 

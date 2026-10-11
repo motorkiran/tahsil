@@ -560,6 +560,11 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("customer_id");
 
+                    b.Property<string>("Documents")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("consents");
+
                     b.Property<DateTimeOffset?>("ExpiredAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expired_at");
@@ -663,6 +668,38 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_checkout_sessions_customer_id_id");
 
                     b.ToTable("checkout_sessions", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Checkout.LegalDocumentVersion", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("version");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("locale");
+
+                    b.Property<byte[]>("ContentHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content_hash");
+
+                    b.Property<DateTimeOffset>("RegisteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("registered_at");
+
+                    b.HasKey("Key", "Version", "Locale")
+                        .HasName("pk_legal_document_versions");
+
+                    b.ToTable("legal_document_versions", "tahsil");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Clock.TestClock", b =>

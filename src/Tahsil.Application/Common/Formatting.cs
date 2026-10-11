@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 
-namespace Tahsil.Server.Ui;
+namespace Tahsil.Application.Common;
 
 /// <summary>
 /// Money and dates as people read them, in the patterns of <c>tr-TR</c> and <c>en-US</c>. Presentation only:
 /// formatted values are never parsed back.
 /// </summary>
-internal static class Formatting
+public static class Formatting
 {
     private static readonly ConcurrentDictionary<string, string> CurrencySymbols = new(StringComparer.Ordinal);
 

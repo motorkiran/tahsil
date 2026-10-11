@@ -1,0 +1,47 @@
+{% comment %}DRAFT: This starter text ships with Tahsil and must be reviewed by the merchant's lawyer before use. It is not legal advice.{% endcomment %}
+<h1>{{ title }}</h1>
+<p>This form informs the buyer before the contract is made, under Turkish Consumer Protection Law No. 6502 and the Regulation on Distance Contracts.</p>
+
+<h2>1. Seller</h2>
+<p>
+  Name: {{ merchant.legal_name }}{% if merchant.trade_name %} ({{ merchant.trade_name }}){% endif %}<br>
+  {% if merchant.mersis_number %}MERSIS number: {{ merchant.mersis_number }}<br>{% endif %}
+  {% if merchant.tax_number %}Tax office and number: {{ merchant.tax_office }} {{ merchant.tax_number }}<br>{% endif %}
+  Address: {{ merchant.address }}<br>
+  Phone: {{ merchant.phone }}<br>
+  Email: {{ merchant.email }}{% if merchant.kep_address %}<br>
+  Registered email (KEP): {{ merchant.kep_address }}{% endif %}
+</p>
+
+<h2>2. Buyer</h2>
+<p>
+  Name: {{ customer.name }}<br>
+  Email: {{ customer.email }}{% if customer.phone %}<br>
+  Phone: {{ customer.phone }}{% endif %}{% if customer.address %}<br>
+  Address: {{ customer.address }}{% endif %}
+</p>
+
+<h2>3. Main features and price</h2>
+<table>
+  <thead><tr><th>Product or service</th><th>Quantity</th><th>Amount (taxes included)</th></tr></thead>
+  <tbody>
+    {% for item in items %}<tr><td>{{ item.description }}</td><td>{{ item.quantity }}</td><td>{{ item.amount }}{% if item.tax_rate %} (VAT {{ item.tax_rate }}%){% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>Total price including taxes: <strong>{{ totals.total }}</strong>{% if totals.tax %} (of which {{ totals.tax }} is tax){% endif %}.</p>
+{% if subscription %}
+<p>This is a subscription: the service runs for an indefinite term and {{ subscription.renewal_amount }} is charged every {{ subscription.period }}. The first automatic charge is on {{ subscription.first_charge_date }}. You can cancel at any time; cancellation takes effect at the end of the paid period.</p>
+{% endif %}
+
+<h2>4. Payment and performance</h2>
+<p>Payment is taken by credit or debit card when ordering, with 3D Secure. Card details are not passed to the seller; the payment institution processes them. The service or digital content is provided as soon as the payment is confirmed.</p>
+
+<h2>5. Right of withdrawal</h2>
+<p>The buyer may withdraw from the contract within 14 days of its conclusion without giving a reason and without penalty, by notice to {{ merchant.email }}{% if merchant.kep_address %} or {{ merchant.kep_address }}{% endif %}; the amount paid is refunded with the same payment method within 14 days of the notice.</p>
+<p>Under Article 15 of the Regulation on Distance Contracts, the right of withdrawal does not apply to services whose performance started with the consumer's approval before the withdrawal period ended, to services performed instantly online, or to intangible goods delivered instantly. If you agree that the service starts at once, your right of withdrawal ends.</p>
+
+<h2>6. Complaints</h2>
+<p>You can send complaints to the seller using the contact details above. Disputes within the monetary limits set each year can be brought to the Consumer Arbitration Committee where you live or where the purchase was made, and others to the Consumer Court.</p>
+
+<p>Date: {{ date }}<br>Order: {{ session_id }}<br>Version: {{ version }}</p>

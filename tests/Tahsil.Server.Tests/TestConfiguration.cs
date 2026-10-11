@@ -19,5 +19,13 @@ internal static class TestConfiguration
         ["Tahsil:Server:PublicUrl"] = PublicUrl,
         ["Tahsil:Server:RequireHttps"] = "false",
         ["Tahsil:Security:MasterKey"] = MasterKey,
+        ["Tahsil:Merchant:TradeName"] = "Acme",
+        ["Tahsil:Merchant:LegalName"] = "Acme Yazılım A.Ş.",
+        ["Tahsil:Merchant:MersisNumber"] = "0123456789012345",
+        ["Tahsil:Merchant:TaxOffice"] = "Kadıköy",
+        ["Tahsil:Merchant:TaxNumber"] = "1234567890",
+        ["Tahsil:Merchant:Address"] = "Caferağa Mah. Moda Cad. No:1, 34710 Kadıköy/İstanbul",
+        ["Tahsil:Merchant:Phone"] = "+90 216 000 00 00",
+        ["Tahsil:Merchant:Email"] = "destek@acme.example",
     };
 }

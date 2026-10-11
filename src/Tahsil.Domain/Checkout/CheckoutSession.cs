@@ -28,6 +28,9 @@ public enum BillingDetailsCollectionMode
     Required,
 }
 
+/// <summary>A legal document the session shows, resolved from configuration when it is created (CHK-11).</summary>
+public sealed record CheckoutDocument(string Key, string Version, string Type, bool RequiresAcceptance, IReadOnlyList<CustomerType> CustomerTypes);
+
 /// <summary>An item the session sells.</summary>
 public sealed record CheckoutItem(Guid PriceId, int Quantity);
 
@@ -80,6 +83,9 @@ public sealed class CheckoutSession : AggregateRoot
 
     public CheckoutQuote Quote { get; private set; } = CheckoutQuote.Empty;
 
+    /// <summary>The legal documents of the page, with the versions in force when the session was created.</summary>
+    public List<CheckoutDocument> Documents { get; private init; } = [];
+
     /// <summary>Overrides the customer's language on the page.</summary>
     public string? Locale { get; private init; }
 
@@ -119,6 +125,7 @@ public sealed class CheckoutSession : AggregateRoot
     /// <param name="currency">The currency of the items, or of the card to save.</param>
     /// <param name="items">What is sold; empty in setup mode.</param>
     /// <param name="quote">The computed first invoice.</param>
+    /// <param name="documents">The legal documents of the page.</param>
     /// <param name="terms">The page's terms and the application's references.</param>
     /// <param name="now">The time.</param>
     public static Result<CheckoutSession> Create(
@@ -130,6 +137,7 @@ public sealed class CheckoutSession : AggregateRoot
         string currency,
         IReadOnlyList<CheckoutItem> items,
         CheckoutQuote quote,
+        IReadOnlyList<CheckoutDocument> documents,
         CheckoutTerms terms,
         DateTimeOffset now)
     {
@@ -174,6 +182,7 @@ public sealed class CheckoutSession : AggregateRoot
             AllowPromotionCodes = terms.AllowPromotionCodes,
             BillingDetailsCollection = terms.BillingDetailsCollection,
             Quote = quote,
+            Documents = [.. documents],
             Locale = terms.Locale,
             SuccessUrl = terms.SuccessUrl,
             CancelUrl = terms.CancelUrl,

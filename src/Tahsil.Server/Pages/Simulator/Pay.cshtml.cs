@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Tahsil.Application.Common;
 using Tahsil.Providers.Abstractions;
 using Tahsil.Providers.Simulator;
 using Tahsil.Server.Ui;

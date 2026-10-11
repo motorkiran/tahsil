@@ -1,0 +1,34 @@
+{% comment %}TASLAK: Bu başlangıç metni Tahsil ile gelir ve kullanılmadan önce satıcının avukatı tarafından incelenmelidir. Hukuki tavsiye değildir.{% endcomment %}
+<h1>{{ title }}</h1>
+
+<h2>Madde 1 – Taraflar</h2>
+<p><strong>Satıcı:</strong> {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSİS No: {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}{% if merchant.kep_address %}, KEP: {{ merchant.kep_address }}{% endif %}</p>
+<p><strong>Alıcı:</strong> {{ customer.name }}, {{ customer.email }}{% if customer.address %}, {{ customer.address }}{% endif %}{% if customer.phone %}, {{ customer.phone }}{% endif %}</p>
+
+<h2>Madde 2 – Konu</h2>
+<p>Bu sözleşmenin konusu, alıcının satıcının internet sitesi üzerinden elektronik ortamda siparişini verdiği aşağıdaki ürün veya hizmetlerin satışı ve ifasına ilişkin olarak 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümleri uyarınca tarafların hak ve yükümlülüklerinin belirlenmesidir.</p>
+<table>
+  <thead><tr><th>Ürün / hizmet</th><th>Adet</th><th>Tutar (vergiler dahil)</th></tr></thead>
+  <tbody>
+    {% for item in items %}<tr><td>{{ item.description }}</td><td>{{ item.quantity }}</td><td>{{ item.amount }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>Vergiler dahil toplam bedel: <strong>{{ totals.total }}</strong>.</p>
+{% if subscription %}
+<h2>Madde 3 – Süre ve yenileme</h2>
+<p>Abonelik belirsiz sürelidir ve her {{ subscription.period }} kendiliğinden yenilenir; her dönem için {{ subscription.renewal_amount }} alıcının kayıtlı kartından tahsil edilir. İlk otomatik tahsilat {{ subscription.first_charge_date }} tarihindedir. Alıcı aboneliğini dilediği zaman iptal edebilir; iptal, ödenmiş dönemin sonunda geçerli olur.</p>
+{% endif %}
+
+<h2>Ödeme ve ifa</h2>
+<p>Bedel, sipariş sırasında kredi veya banka kartıyla ödenir. Satıcı, ödemenin onaylanmasının ardından hizmeti veya dijital içeriği derhal alıcının kullanımına sunar.</p>
+
+<h2>Cayma hakkı</h2>
+<p>Alıcı, sözleşmenin kurulduğu tarihten itibaren 14 gün içinde gerekçe göstermeksizin cayma hakkını kullanabilir; bildirim satıcının e-posta{% if merchant.kep_address %} veya KEP{% endif %} adresine yapılır ve ödenen bedel 14 gün içinde iade edilir. Alıcının onayıyla cayma süresi dolmadan ifasına başlanan hizmetlerde ve elektronik ortamda anında ifa edilen hizmetlerde cayma hakkı kullanılamaz (Mesafeli Sözleşmeler Yönetmeliği md. 15).</p>
+
+<h2>Uyuşmazlıklar</h2>
+<p>Bu sözleşmeden doğan uyuşmazlıklarda, Ticaret Bakanlığınca her yıl belirlenen parasal sınırlar dahilinde Tüketici Hakem Heyetleri, bu sınırları aşan uyuşmazlıklarda Tüketici Mahkemeleri yetkilidir.</p>
+
+<h2>Yürürlük</h2>
+<p>Alıcı, bu sözleşmeyi ve Ön Bilgilendirme Formu'nu okuduğunu ve kabul ettiğini ödeme sayfasında elektronik ortamda onaylamıştır. Sözleşme bu onay ile kurulur.</p>
+<p>Tarih: {{ date }}<br>Sipariş: {{ session_id }}<br>Sürüm: {{ version }}</p>

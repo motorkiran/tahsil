@@ -31,6 +31,7 @@ public sealed class CreateCheckoutSessionHandler(
     ProviderRegistry registry,
     CustomerMapper customers,
     CheckoutMapper mapper,
+    IOptions<CheckoutOptions> checkout,
     IOptions<ServerOptions> server,
     BillingClock clock)
 {
@@ -89,6 +90,7 @@ public sealed class CreateCheckoutSessionHandler(
             currency,
             items,
             quote,
+            Documents(request.Mode),
             new Model.CheckoutTerms(
                 request.SuccessUrl,
                 request.CancelUrl,
@@ -116,6 +118,20 @@ public sealed class CreateCheckoutSessionHandler(
         await context.SaveChangesAsync(cancellationToken);
         return mapper.ToResponse(session);
     }
+
+    /// <summary>The legal documents configured for the mode, with their current versions (CHK-11, CHK-26).</summary>
+    private List<Model.CheckoutDocument> Documents(CheckoutMode mode) =>
+    [
+        .. checkout.Value.Documents
+            .Where(document => document.AppliesTo(mode.ToString().ToLowerInvariant()))
+            .Select(document => new Model.CheckoutDocument(
+                document.Key,
+                document.Version,
+                document.Type,
+                document.RequiresAcceptance,
+                [.. (document.CustomerTypes.Count == 0 ? LegalDocumentOptions.AllCustomerTypes : document.CustomerTypes)
+                    .Select(type => type == "company" ? ModelCustomers.CustomerType.Company : ModelCustomers.CustomerType.Individual)])),
+    ];
 
     /// <summary>The existing customer, or the details of one to create on submission (CHK-2).</summary>
     private async Task<Result<(ModelCustomers.Customer? Customer, Model.CheckoutCustomer? Details)>> BuyerAsync(

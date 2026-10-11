@@ -174,6 +174,7 @@ public static class DependencyInjection
         AddHostedSingleton<ProviderNotificationCleanup>(services);
         AddHostedSingleton<PaymentMethodExpiryWorker>(services);
         AddHostedSingleton<CheckoutExpiryWorker>(services);
+        services.AddSingleton<Application.Checkout.ILegalDocumentRenderer, LegalDocuments.FluidLegalDocumentRenderer>();
         AddHostedSingleton<OutboxCleanup>(services);
     }
 

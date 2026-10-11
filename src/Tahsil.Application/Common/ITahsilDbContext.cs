@@ -30,6 +30,8 @@ public interface ITahsilDbContext
 
     DbSet<Domain.Checkout.CheckoutSession> CheckoutSessions { get; }
 
+    DbSet<Domain.Checkout.LegalDocumentVersion> LegalDocumentVersions { get; }
+
     DbSet<ConnectionCurrency> ConnectionCurrencies { get; }
 
     DbSet<ProviderCustomer> ProviderCustomers { get; }

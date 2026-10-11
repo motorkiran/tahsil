@@ -1,0 +1,34 @@
+{% comment %}DRAFT: This starter text ships with Tahsil and must be reviewed by the merchant's lawyer before use. It is not legal advice.{% endcomment %}
+<h1>{{ title }}</h1>
+
+<h2>Article 1 – Parties</h2>
+<p><strong>Seller:</strong> {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSIS number {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}{% if merchant.kep_address %}, registered email (KEP) {{ merchant.kep_address }}{% endif %}</p>
+<p><strong>Buyer:</strong> {{ customer.name }}, {{ customer.email }}{% if customer.address %}, {{ customer.address }}{% endif %}{% if customer.phone %}, {{ customer.phone }}{% endif %}</p>
+
+<h2>Article 2 – Subject</h2>
+<p>This contract sets out the rights and obligations of the parties, under Turkish Consumer Protection Law No. 6502 and the Regulation on Distance Contracts, for the sale and performance of the following products or services, ordered online on the seller's website.</p>
+<table>
+  <thead><tr><th>Product or service</th><th>Quantity</th><th>Amount (taxes included)</th></tr></thead>
+  <tbody>
+    {% for item in items %}<tr><td>{{ item.description }}</td><td>{{ item.quantity }}</td><td>{{ item.amount }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>Total price including taxes: <strong>{{ totals.total }}</strong>.</p>
+{% if subscription %}
+<h2>Article 3 – Term and renewal</h2>
+<p>The subscription runs for an indefinite term and renews by itself every {{ subscription.period }}; {{ subscription.renewal_amount }} is charged to the buyer's saved card for each period. The first automatic charge is on {{ subscription.first_charge_date }}. The buyer may cancel at any time; cancellation takes effect at the end of the paid period.</p>
+{% endif %}
+
+<h2>Payment and performance</h2>
+<p>The price is paid by credit or debit card when ordering. The seller makes the service or digital content available to the buyer as soon as the payment is confirmed.</p>
+
+<h2>Right of withdrawal</h2>
+<p>The buyer may withdraw within 14 days of the contract without giving a reason, by notice to the seller's email{% if merchant.kep_address %} or registered email{% endif %} address; the price paid is refunded within 14 days. The right does not apply to services whose performance started with the buyer's approval before the withdrawal period ended, or to services performed instantly online (Regulation on Distance Contracts, Article 15).</p>
+
+<h2>Disputes</h2>
+<p>Consumer Arbitration Committees decide disputes within the monetary limits the Ministry of Trade sets each year, and Consumer Courts decide the others.</p>
+
+<h2>Entry into force</h2>
+<p>On the payment page, the buyer confirmed online that they have read and accept this contract and the Pre-information Form. The contract is made with that confirmation.</p>
+<p>Date: {{ date }}<br>Order: {{ session_id }}<br>Version: {{ version }}</p>
