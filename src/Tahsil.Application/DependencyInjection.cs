@@ -91,6 +91,8 @@ public static class DependencyInjection
         services.AddScoped<UpdateSubscriptionHandler>();
         services.AddScoped<PreviewSubscriptionChangeHandler>();
         services.AddScoped<UpcomingInvoiceHandler>();
+        services.AddScoped<CancelSubscriptionHandler>();
+        services.AddScoped<ResumeSubscriptionHandler>();
         services.AddScoped<GetProductHandler>();
         services.AddScoped<ListProductsHandler>();
         services.AddScoped<CreatePriceHandler>();

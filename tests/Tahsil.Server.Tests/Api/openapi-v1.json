@@ -5989,6 +5989,198 @@
         ]
       }
     },
+    "/api/v1/subscriptions/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Cancel a subscription",
+        "description": "`at: period_end` (the default) or a time within the current period schedules the end, which `resume` takes back; `at: now` ends it at once, bills its pending items on a final invoice unless `invoiceNow` is false, and may refund the unused share of the period (`prorated`) or the last payment in full (`last_payment`). A refund that fails does not undo the cancellation; it becomes an attention item or a `refund.failed` event.\n\nRequires the `tahsil.subscriptions:write` permission.",
+        "operationId": "CancelSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/subscriptions/{id}/resume": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Take back a scheduled cancellation",
+        "description": "Requires the `tahsil.subscriptions:write` permission.",
+        "operationId": "ResumeSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/subscriptions/{id}/preview": {
       "post": {
         "tags": [
@@ -6776,6 +6968,51 @@
           "trial_without_payment_method",
           null
         ]
+      },
+      "CancellationRefund": {
+        "enum": [
+          "none",
+          "prorated",
+          "last_payment"
+        ]
+      },
+      "CancelSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "description": "`period_end` (the default), `now`, or an RFC 3339 timestamp within the current period."
+          },
+          "reason": {
+            "description": "`requested_by_customer` or `requested_by_merchant` (the default).",
+            "$ref": "#/components/schemas/CancellationReason"
+          },
+          "feedback": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CancellationFeedback"
+              }
+            ]
+          },
+          "comment": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "At most 500 characters."
+          },
+          "refund": {
+            "description": "Only with `at: now`; anything but `none` also needs `tahsil.refunds:write`.",
+            "$ref": "#/components/schemas/CancellationRefund"
+          },
+          "invoiceNow": {
+            "type": "boolean",
+            "description": "With `at: now`: bills the subscription's pending items on a final invoice (the default), or deletes them."
+          }
+        }
       },
       "ChangeTiming": {
         "enum": [

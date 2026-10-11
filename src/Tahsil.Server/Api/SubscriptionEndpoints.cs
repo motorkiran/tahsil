@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Common;
 using Tahsil.Application.Subscriptions;
 using Tahsil.Contracts;
@@ -52,6 +51,26 @@ internal static class SubscriptionEndpoints
                 """)
             .ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status412PreconditionFailed)
+            .RequirePermission(TahsilPermissions.SubscriptionsWrite);
+
+        subscriptions.MapPost("{id:guid}/cancel", async (Guid id, CancelSubscriptionRequest request, CancelSubscriptionHandler handler, HttpContext http, CancellationToken cancellationToken) =>
+            http.Request.ReadIfMatch() is { IsFailure: true } ifMatch
+                ? ApiResults.Problem(ifMatch.Error)
+                : (await handler.HandleAsync(id, request, http.Request.ReadIfMatch().Value, cancellationToken)).ToOk(http.Response))
+            .WithName("CancelSubscription").WithSummary("Cancel a subscription")
+            .WithDescription("""
+                `at: period_end` (the default) or a time within the current period schedules the end, which `resume` takes back; `at: now` ends it at once, bills its pending items on a final invoice unless `invoiceNow` is false, and may refund the unused share of the period (`prorated`) or the last payment in full (`last_payment`). A refund that fails does not undo the cancellation; it becomes an attention item or a `refund.failed` event.
+                """)
+            .ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed)
+            .RequirePermission(TahsilPermissions.SubscriptionsWrite);
+
+        subscriptions.MapPost("{id:guid}/resume", async (Guid id, ResumeSubscriptionHandler handler, HttpContext http, CancellationToken cancellationToken) =>
+            http.Request.ReadIfMatch() is { IsFailure: true } ifMatch
+                ? ApiResults.Problem(ifMatch.Error)
+                : (await handler.HandleAsync(id, http.Request.ReadIfMatch().Value, cancellationToken)).ToOk(http.Response))
+            .WithName("ResumeSubscription").WithSummary("Take back a scheduled cancellation")
+            .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict).ProducesProblem(StatusCodes.Status412PreconditionFailed)
             .RequirePermission(TahsilPermissions.SubscriptionsWrite);
 
         subscriptions.MapPost("{id:guid}/preview", async (Guid id, UpdateSubscriptionRequest request, PreviewSubscriptionChangeHandler handler, CancellationToken cancellationToken) =>

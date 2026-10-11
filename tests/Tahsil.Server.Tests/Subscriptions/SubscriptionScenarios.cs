@@ -15,7 +15,7 @@ internal static class SubscriptionScenarios
     [
         TahsilPermissions.SubscriptionsWrite, TahsilPermissions.SubscriptionsRead, TahsilPermissions.ProvisioningWrite, TahsilPermissions.CatalogWrite,
         TahsilPermissions.CustomersWrite, TahsilPermissions.CustomersRead, TahsilPermissions.InvoicesRead, TahsilPermissions.InvoicesWrite,
-        TahsilPermissions.PaymentsRead, TahsilPermissions.TestWrite,
+        TahsilPermissions.PaymentsRead, TahsilPermissions.RefundsWrite, TahsilPermissions.TestWrite,
     ];
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;

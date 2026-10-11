@@ -29,7 +29,6 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     private static readonly Dictionary<string, string> EmittedLater = new(StringComparer.Ordinal)
     {
         [TahsilEventTypes.PaymentMethodWillExpire] = "M5: card expiry reminders for running subscriptions (CUS-15)",
-        [TahsilEventTypes.SubscriptionCanceled] = "M4-T8: cancellation through the API (SUB-28 to SUB-31)",
         [TahsilEventTypes.InvoiceActionRequired] = "M5: dunning asks the customer to authenticate (DUN-4)",
         [TahsilEventTypes.InvoiceOverdue] = "M5: overdue invoices (INV-13)",
     };
@@ -63,6 +62,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.SubscriptionCreated, ["status", "items", "currentPeriodEnd", "trialEnd"] },
         { TahsilEventTypes.SubscriptionUpdated, ["changed", "status", "previousStatus"] },
         { TahsilEventTypes.SubscriptionRenewed, ["periodStart", "periodEnd", "invoiceId"] },
+        { TahsilEventTypes.SubscriptionCanceled, ["reason", "endedAt"] },
         { TahsilEventTypes.InvoiceCreated, ["billingReason", "subscriptionId", "finalizeAt"] },
     };
 
@@ -104,7 +104,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         }
     }
 
-    private static async Task SubscribeAsync(HttpClient client, Guid customer, Guid card)
+    private static async Task<Guid> SubscribeAsync(HttpClient client, Guid customer, Guid card)
     {
         (await SendAsync(client, HttpMethod.Post, "/api/v1/provisioning", new ProvisioningDocument
         {
@@ -132,6 +132,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
             DefaultPaymentMethod = card,
         });
         subscribed.StatusCode.ShouldBe(HttpStatusCode.Created, await subscribed.Content.ReadAsStringAsync(CancellationToken));
+        return (await subscribed.ReadAsync<SubscriptionResponse>()).Id;
     }
 
     private async Task<IReadOnlyList<WebhookEvent>> TellAsync()
@@ -151,7 +152,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
 
         // The card pays a subscription's first invoice.
         var card = paid.PaymentMethodId!.Value;
-        await SubscribeAsync(client, customer, card);
+        var subscription = await SubscribeAsync(client, customer, card);
 
         // The card declines a renewal; the invoice is given up on, then voided.
         (await SendAsync(client, HttpMethod.Patch, $"/api/v1/test/simulator/payment-methods/{card}", new UpdateSimulatorPaymentMethodRequest { Behavior = "card_declined" })).Dispose();
@@ -198,9 +199,11 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         // A customer without history, deleted.
         (await SendAsync(client, HttpMethod.Delete, $"/api/v1/customers/{await CustomerAsync(client)}")).Dispose();
 
-        // A month later, the subscription renews.
+        // A month later, the subscription renews, and is then canceled.
         await host.RunWorkersUntilIdleAsync();
         _time.Advance(TimeSpan.FromDays(32));
+        await host.RunWorkersUntilIdleAsync();
+        (await SendAsync(client, HttpMethod.Post, $"/api/v1/subscriptions/{subscription}/cancel", new { at = "now" })).Dispose();
         await host.RunWorkersUntilIdleAsync();
         return [.. _receiver.ReceivedBy(url).Where(webhook => webhook.Answer == HttpStatusCode.OK).Select(webhook => JsonSerializer.Deserialize<WebhookEvent>(webhook.Body, ApiClients.Json)!)];
     }

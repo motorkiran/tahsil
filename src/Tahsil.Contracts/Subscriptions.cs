@@ -223,6 +223,37 @@ public sealed record SubscriptionPreviewResponse
     public required UpcomingRenewalResponse? NextRenewal { get; init; }
 }
 
+public enum CancellationRefund
+{
+    None,
+
+    /// <summary>The unused share of the current period, computed like a proration credit and capped at what its payments can still refund.</summary>
+    Prorated,
+
+    /// <summary>The latest paid invoice's payments, in full, such as within a withdrawal period.</summary>
+    LastPayment,
+}
+
+public sealed record CancelSubscriptionRequest
+{
+    /// <summary><c>period_end</c> (the default), <c>now</c>, or an RFC 3339 timestamp within the current period.</summary>
+    public string At { get; init; } = "period_end";
+
+    /// <summary><c>requested_by_customer</c> or <c>requested_by_merchant</c> (the default).</summary>
+    public CancellationReason Reason { get; init; } = CancellationReason.RequestedByMerchant;
+
+    public CancellationFeedback? Feedback { get; init; }
+
+    /// <summary>At most 500 characters.</summary>
+    public string? Comment { get; init; }
+
+    /// <summary>Only with <c>at: now</c>; anything but <c>none</c> also needs <c>tahsil.refunds:write</c>.</summary>
+    public CancellationRefund Refund { get; init; } = CancellationRefund.None;
+
+    /// <summary>With <c>at: now</c>: bills the subscription's pending items on a final invoice (the default), or deletes them.</summary>
+    public bool InvoiceNow { get; init; } = true;
+}
+
 public sealed record SubscriptionPriceResponse(Guid Id, string? Key, string? Name, ProductSummary Product);
 
 public sealed record SubscriptionItemResponse(Guid Id, SubscriptionPriceResponse Price, int? Quantity);
