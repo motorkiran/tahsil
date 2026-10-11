@@ -57,6 +57,10 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<PendingInvoiceItem> PendingInvoiceItems => Set<PendingInvoiceItem>();
 
+    public DbSet<Domain.Subscriptions.Subscription> Subscriptions => Set<Domain.Subscriptions.Subscription>();
+
+    public DbSet<Domain.Subscriptions.SubscriptionItem> SubscriptionItems => Set<Domain.Subscriptions.SubscriptionItem>();
+
     public DbSet<Payment> Payments => Set<Payment>();
 
     public DbSet<Refund> Refunds => Set<Refund>();

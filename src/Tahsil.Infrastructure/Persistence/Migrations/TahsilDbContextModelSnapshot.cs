@@ -933,6 +933,9 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.HasIndex("CheckoutSessionId")
                         .HasDatabaseName("ix_consent_records_checkout_session_id");
 
+                    b.HasIndex("SubscriptionId")
+                        .HasDatabaseName("ix_consent_records_subscription_id");
+
                     b.HasIndex("CustomerId", "Id")
                         .HasDatabaseName("ix_consent_records_customer_id_id");
 
@@ -1628,6 +1631,9 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.HasIndex("PriceId")
                         .HasDatabaseName("ix_pending_invoice_items_price_id");
 
+                    b.HasIndex("SubscriptionId")
+                        .HasDatabaseName("ix_pending_invoice_items_subscription_id");
+
                     b.HasIndex("TaxRateId")
                         .HasDatabaseName("ix_pending_invoice_items_tax_rate_id");
 
@@ -2253,6 +2259,218 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("BillingCycleAnchor")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("billing_cycle_anchor");
+
+                    b.Property<DateTimeOffset?>("CancelAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancel_at");
+
+                    b.Property<bool>("CancelAtPeriodEnd")
+                        .HasColumnType("boolean")
+                        .HasColumnName("cancel_at_period_end");
+
+                    b.Property<DateTimeOffset?>("CanceledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("canceled_at");
+
+                    b.Property<string>("CancellationComment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancellation_comment");
+
+                    b.Property<string>("CancellationFeedback")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("cancellation_feedback");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<Guid?>("CheckoutSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checkout_session_id");
+
+                    b.Property<string>("CollectionMethod")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("collection_method");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTimeOffset>("CurrentPeriodEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("current_period_end");
+
+                    b.Property<DateTimeOffset>("CurrentPeriodStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("current_period_start");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<short?>("DaysUntilDue")
+                        .HasColumnType("smallint")
+                        .HasColumnName("days_until_due");
+
+                    b.Property<Guid?>("DefaultPaymentMethodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_payment_method_id");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<DateTimeOffset?>("IncompleteExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("incomplete_expires_at");
+
+                    b.Property<string>("Interval")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("interval");
+
+                    b.Property<short>("IntervalCount")
+                        .HasColumnType("smallint")
+                        .HasColumnName("interval_count");
+
+                    b.Property<Guid?>("LatestInvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("latest_invoice_id");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<DateTimeOffset?>("NextCycleAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_cycle_at");
+
+                    b.Property<DateTimeOffset?>("PastDueSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("past_due_since");
+
+                    b.Property<string>("ScheduledChange")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("scheduled_change");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("TrialEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("trial_end");
+
+                    b.Property<string>("TrialEndBehavior")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("trial_end_behavior");
+
+                    b.Property<DateTimeOffset?>("TrialStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("trial_start");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_subscriptions");
+
+                    b.HasIndex("CheckoutSessionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_subscriptions_checkout_session_id")
+                        .HasFilter("checkout_session_id IS NOT NULL");
+
+                    b.HasIndex("DefaultPaymentMethodId")
+                        .HasDatabaseName("ix_subscriptions_default_payment_method_id");
+
+                    b.HasIndex("NextCycleAt")
+                        .HasDatabaseName("ix_subscriptions_next_cycle_at")
+                        .HasFilter("next_cycle_at IS NOT NULL");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_subscriptions_customer_id_id");
+
+                    b.ToTable("subscriptions", "tahsil");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.SubscriptionItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("PriceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("price_id");
+
+                    b.Property<int?>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTimeOffset?>("UsageBilledUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usage_billed_until");
+
+                    b.HasKey("Id")
+                        .HasName("pk_subscription_items");
+
+                    b.HasIndex("PriceId")
+                        .HasDatabaseName("ix_subscription_items_price_id");
+
+                    b.HasIndex("SubscriptionId", "PriceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_subscription_items_subscription_id_price_id");
+
+                    b.ToTable("subscription_items", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Webhooks.WebhookDelivery", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2715,6 +2933,12 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_consent_records_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_consent_records_subscriptions_subscription_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Customers.Customer", b =>
@@ -2768,6 +2992,12 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_invoices_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_invoices_subscriptions_subscription_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Invoices.InvoiceLine", b =>
@@ -2818,6 +3048,12 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PriceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_pending_invoice_items_prices_price_id");
+
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pending_invoice_items_subscriptions_subscription_id");
 
                     b.HasOne("Tahsil.Domain.Catalog.TaxRate", null)
                         .WithMany()
@@ -2913,6 +3149,45 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_refunds_payments_payment_id");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Checkout.CheckoutSession", null)
+                        .WithMany()
+                        .HasForeignKey("CheckoutSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_subscriptions_checkout_sessions_checkout_session_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_subscriptions_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.PaymentMethod", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultPaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_subscriptions_payment_methods_default_payment_method_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.SubscriptionItem", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Catalog.Price", null)
+                        .WithMany()
+                        .HasForeignKey("PriceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_subscription_items_prices_price_id");
+
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithMany("Items")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_subscription_items_subscriptions_subscription_id");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Webhooks.WebhookDelivery", b =>
                 {
                     b.HasOne("Tahsil.Domain.Webhooks.WebhookEndpoint", null)
@@ -2936,6 +3211,11 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Tahsil.Domain.Invoices.Invoice", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

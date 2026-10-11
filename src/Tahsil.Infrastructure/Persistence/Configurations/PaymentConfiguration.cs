@@ -102,6 +102,7 @@ internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<Cons
         // Legal evidence outlives the customer's anonymization (DOM-20), so the customer cannot be deleted under it.
         builder.HasOne<Customer>().WithMany().HasForeignKey(record => record.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Domain.Checkout.CheckoutSession>().WithMany().HasForeignKey(record => record.CheckoutSessionId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Domain.Subscriptions.Subscription>().WithMany().HasForeignKey(record => record.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(record => new { record.CustomerId, record.Id });
     }
 }

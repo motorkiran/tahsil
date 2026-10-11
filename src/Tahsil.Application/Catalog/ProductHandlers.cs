@@ -89,7 +89,6 @@ public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer a
 
 /// <summary>
 /// Deletes a product and its prices while none of them was ever used (DOM-3); a used product is archived instead.
-/// Checkout sessions, subscriptions and invoices add their usage checks when they arrive.
 /// </summary>
 public sealed class DeleteProductHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IEnumerable<IPriceUsage> usages)
 {

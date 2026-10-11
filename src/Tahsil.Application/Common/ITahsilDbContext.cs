@@ -48,6 +48,10 @@ public interface ITahsilDbContext
 
     DbSet<PendingInvoiceItem> PendingInvoiceItems { get; }
 
+    DbSet<Domain.Subscriptions.Subscription> Subscriptions { get; }
+
+    DbSet<Domain.Subscriptions.SubscriptionItem> SubscriptionItems { get; }
+
     DbSet<Payment> Payments { get; }
 
     DbSet<Refund> Refunds { get; }

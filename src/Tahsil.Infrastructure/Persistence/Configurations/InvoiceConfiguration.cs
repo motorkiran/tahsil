@@ -41,6 +41,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasMany(invoice => invoice.Lines).WithOne().HasForeignKey(line => line.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(invoice => invoice.Lines).HasField("_lines").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasOne<Customer>().WithMany().HasForeignKey(invoice => invoice.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Domain.Subscriptions.Subscription>().WithMany().HasForeignKey(invoice => invoice.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(invoice => invoice.Number).IsUnique().HasFilter("number IS NOT NULL");
         builder.HasIndex(invoice => new { invoice.CustomerId, invoice.Id });
@@ -85,6 +86,7 @@ internal sealed class PendingInvoiceItemConfiguration : IEntityTypeConfiguration
         builder.HasOne<Price>().WithMany().HasForeignKey(item => item.PriceId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<TaxRate>().WithMany().HasForeignKey(item => item.TaxRateId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Invoice>().WithMany().HasForeignKey(item => item.InvoiceId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<Domain.Subscriptions.Subscription>().WithMany().HasForeignKey(item => item.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(item => new { item.CustomerId, item.Currency }).HasFilter("invoice_id IS NULL");
     }
 }

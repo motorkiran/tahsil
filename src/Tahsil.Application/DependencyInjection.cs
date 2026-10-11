@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<CreateProductHandler>();
         services.AddScoped<UpdateProductHandler>();
         services.AddScoped<DeleteProductHandler>();
+        services.AddScoped<IPriceUsage, BillingPriceUsage>();
         services.AddScoped<GetProductHandler>();
         services.AddScoped<ListProductsHandler>();
         services.AddScoped<CreatePriceHandler>();
