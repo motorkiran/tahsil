@@ -115,6 +115,43 @@ public sealed class Coupon : AggregateRoot
         return Result.Success();
     }
 
+    /// <summary>
+    /// Counts a redemption when the coupon may still be redeemed (CPN-7, CPN-9); the caller holds the coupon's lock, so
+    /// the limit holds under concurrency.
+    /// </summary>
+    public Result Redeem(DateTimeOffset now)
+    {
+        if (CanRedeem(now) is { IsFailure: true } refused)
+        {
+            return refused;
+        }
+
+        TimesRedeemed++;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    /// <summary>Whether the coupon may still be redeemed: not archived, before its redeem-by time and under its limit (CPN-7).</summary>
+    public Result CanRedeem(DateTimeOffset now) =>
+        IsArchived ? CouponErrors.Archived
+        : RedeemBy <= now ? CouponErrors.Expired
+        : TimesRedeemed >= MaxRedemptions ? CouponErrors.MaxRedemptionsReached
+        : Result.Success();
+
+    /// <summary>
+    /// Whether the coupon applies to what is bought (CPN-8): an amount only in its currency, and a coupon for some
+    /// products only when one of them is bought.
+    /// </summary>
+    public Result AppliesTo(string currency, IEnumerable<Guid> productIds)
+    {
+        if (AmountOff is not null && Currency != currency)
+        {
+            return CouponErrors.CurrencyMismatch;
+        }
+
+        return ProductIds is { } products && !productIds.Any(products.Contains) ? CouponErrors.NotApplicable : Result.Success();
+    }
+
     /// <summary>The rules of CPN-1 for what a coupon takes off and for how long.</summary>
     private static Error? ValidateDiscount(CouponDraft draft)
     {

@@ -129,6 +129,7 @@ public sealed class SubscriptionLines(ITahsilDbContext context, IOptions<Billing
             amount,
             UnitAmountDecimal: unitAmount,
             PriceId: price.Id,
+            ProductId: price.ProductId,
             TaxRateId: rate?.Id,
             Tax: rate is null ? null : new TaxRateSnapshot(rate.Percentage, rate.IsInclusive),
             PeriodStart: period.Start,

@@ -118,6 +118,15 @@ public sealed record UpdateCouponRequest
     public bool HasMetadata { get; private init; }
 }
 
+/// <summary>
+/// A coupon applied to a subscription: through which code, since when, and for <c>repeating</c> coupons how many
+/// renewal invoices it still applies to.
+/// </summary>
+public sealed record DiscountResponse(Guid Id, CouponResponse Coupon, Guid? PromotionCodeId, int? CyclesRemaining, DateTimeOffset StartedAt, DateTimeOffset? EndedAt);
+
+/// <summary>A discount on an invoice, with what it took off in total.</summary>
+public sealed record InvoiceDiscountResponse(Guid CouponId, Guid? PromotionCodeId, string Name, long Amount);
+
 public sealed record PromotionCodeResponse(
     Guid Id,
     string Code,

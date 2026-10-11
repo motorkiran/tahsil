@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Application.Invoices;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
@@ -13,7 +14,7 @@ namespace Tahsil.Application.Subscriptions;
 
 /// <summary>The invoices of a subscription's periods (INV-1, INV-5).</summary>
 public sealed class SubscriptionInvoices(
-    ITahsilDbContext context, IAuditLog audit, SubscriptionLines lines, InvoiceLines invoiceLines, IOptions<BillingOptions> billing)
+    ITahsilDbContext context, IAuditLog audit, SubscriptionLines lines, InvoiceLines invoiceLines, Redemptions redemptions, IOptions<BillingOptions> billing)
 {
     /// <summary>
     /// A new period's cycle invoice (INV-1): the licensed items for the period, then the subscription's pending items;
@@ -45,7 +46,8 @@ public sealed class SubscriptionInvoices(
             now,
             subscription.Id,
             period,
-            finalizeAt: now + billing.Value.DraftPeriod).Value;
+            finalizeAt: now + billing.Value.DraftPeriod,
+            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(drafts, customer.IsTaxExempt, now);
         foreach (var item in pending)
         {

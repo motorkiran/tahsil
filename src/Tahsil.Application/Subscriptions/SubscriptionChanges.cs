@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Application.Invoices;
 using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Common;
@@ -16,7 +17,12 @@ public sealed record ItemChangePlan(IReadOnlyList<InvoiceLineDraft> Lines, Billi
 
 /// <summary>Changes of a subscription's items (SUB-18 to SUB-23, SUB-34), applied or previewed the same way.</summary>
 public sealed class SubscriptionChanges(
-    ITahsilDbContext context, SubscriptionLines lines, InvoiceFinalizer finalizer, IOptions<BillingOptions> billing, IOptions<SubscriptionOptions> options)
+    ITahsilDbContext context,
+    SubscriptionLines lines,
+    InvoiceFinalizer finalizer,
+    Redemptions redemptions,
+    IOptions<BillingOptions> billing,
+    IOptions<SubscriptionOptions> options)
 {
     /// <summary>
     /// The lines of a change now (SUB-20 to SUB-22): none during a trial; with a new interval, credits for the unused
@@ -88,7 +94,8 @@ public sealed class SubscriptionChanges(
             Metadata.Empty,
             now,
             subscription.Id,
-            plan.Period).Value;
+            plan.Period,
+            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(plan.Lines, customer.IsTaxExempt, now);
         context.Invoices.Add(invoice);
         subscription.SetLatestInvoice(invoice.Id, now);

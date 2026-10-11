@@ -125,6 +125,7 @@ public static class DependencyInjection
         services.AddScoped<UpcomingInvoiceHandler>();
         services.AddScoped<CancelSubscriptionHandler>();
         services.AddScoped<ResumeSubscriptionHandler>();
+        services.AddScoped<RemoveSubscriptionDiscountHandler>();
         services.AddScoped<GetProductHandler>();
         services.AddScoped<ListProductsHandler>();
         services.AddScoped<CreatePriceHandler>();
@@ -170,6 +171,7 @@ public static class DependencyInjection
         services.AddSingleton<InvoiceMapper>();
         services.AddScoped<InvoiceLines>();
         services.AddScoped<InvoiceFinalizer>();
+        services.AddScoped<Redemptions>();
         services.AddScoped<CreateInvoiceHandler>();
         services.AddScoped<AddInvoiceLinesHandler>();
         services.AddScoped<RemoveInvoiceLineHandler>();

@@ -98,6 +98,12 @@ public sealed record CreateSubscriptionRequest
     /// </summary>
     public DateTimeOffset? BillingCycleAnchor { get; init; }
 
+    /// <summary>A coupon's ID or key to discount the subscription by; or give <see cref="PromotionCode"/>.</summary>
+    public string? Coupon { get; init; }
+
+    /// <summary>A promotion code the customer gave, ignoring case.</summary>
+    public string? PromotionCode { get; init; }
+
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 }
 
@@ -123,7 +129,8 @@ public enum ChangeTiming
 
 /// <summary>
 /// JSON Merge Patch. <c>items</c> replaces the item set (omitted items are removed), now or at a renewal;
-/// <c>scheduledChange: null</c> drops a scheduled change.
+/// <c>scheduledChange: null</c> drops a scheduled change; <c>coupon</c> or <c>promotionCode</c> replaces the discount,
+/// and <c>coupon: null</c> removes it.
 /// </summary>
 public sealed record UpdateSubscriptionRequest
 {
@@ -171,7 +178,24 @@ public sealed record UpdateSubscriptionRequest
         }
     }
 
+    /// <summary>A coupon's ID or key that replaces the discount; <c>null</c> removes it.</summary>
+    public string? Coupon
+    {
+        get;
+        init
+        {
+            field = value;
+            HasCoupon = true;
+        }
+    }
+
+    /// <summary>A promotion code that replaces the discount.</summary>
+    public string? PromotionCode { get; init; }
+
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
+    [JsonIgnore]
+    public bool HasCoupon { get; private init; }
 
     [JsonIgnore]
     public bool HasDefaultPaymentMethod { get; private init; }
@@ -311,6 +335,9 @@ public sealed record SubscriptionResponse
     public required ScheduledChangeResponse? ScheduledChange { get; init; }
 
     public required LatestInvoiceResponse? LatestInvoice { get; init; }
+
+    /// <summary>The discount its invoices get while it lasts.</summary>
+    public required DiscountResponse? Discount { get; init; }
 
     /// <summary>When an incomplete subscription expires unless its first invoice is paid.</summary>
     public required DateTimeOffset? IncompleteExpiresAt { get; init; }

@@ -23,6 +23,7 @@ public sealed class InvoiceMapper(ISecretEncryption encryption, InvoiceLinks lin
         PeriodEnd = invoice.PeriodEnd,
         Subtotal = invoice.Subtotal,
         DiscountTotal = invoice.DiscountTotal,
+        Discounts = invoice.Discount is { } discount ? [new InvoiceDiscountResponse(discount.CouponId, discount.PromotionCodeId, discount.Name, invoice.DiscountTotal)] : [],
         TaxTotal = invoice.TaxTotal,
         TotalExcludingTax = invoice.TotalExcludingTax,
         Total = invoice.Total,

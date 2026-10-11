@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Application.Connections;
+using Tahsil.Application.Coupons;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
+using Tahsil.Domain.Coupons;
 using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Money;
 
@@ -23,6 +25,7 @@ public sealed class InvoiceFinalizer(
     ProviderRegistry providers,
     Subscriptions.SubscriptionSettlement subscriptions,
     InvoiceReminders reminders,
+    Redemptions redemptions,
     IOptions<BillingOptions> billing,
     IOptions<InvoiceOptions> invoices,
     BillingClock clock)
@@ -41,6 +44,12 @@ public sealed class InvoiceFinalizer(
 
         var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == invoice.CustomerId, cancellationToken);
         var now = clock.GetUtcNow();
+        var discount = await DiscountAsync(invoice, customer.IsTaxExempt, now, cancellationToken);
+        if (discount.IsFailure)
+        {
+            return discount.Error;
+        }
+
         invoice.Recalculate(customer.IsTaxExempt, now);
         if (invoice.CanFinalize() is { IsFailure: true } empty)
         {
@@ -80,6 +89,12 @@ public sealed class InvoiceFinalizer(
             return finalized;
         }
 
+        if (discount.Value is { } used)
+        {
+            var coupon = await context.Coupons.SingleAsync(row => row.Id == used.CouponId, cancellationToken);
+            used.RecordFinalized(coupon, invoice.BillingReason, now);
+        }
+
         var subject = AuditSubject.Of(AuditSubjects.Invoice, invoice.Id);
         audit.Record(AuditActions.InvoiceFinalized, subject, Details(invoice), customerId: invoice.CustomerId);
         if (invoice.Status == InvoiceStatus.Paid)
@@ -93,6 +108,43 @@ public sealed class InvoiceFinalizer(
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// The discount the invoice is finalized with (CPN-12 to CPN-14): a subscription's while it lasts, dropped from the
+    /// draft once it ended; a manual invoice's coupon is redeemed now, which counts it (CPN-9).
+    /// </summary>
+    private async Task<Result<Discount?>> DiscountAsync(Invoice invoice, bool taxExempt, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (invoice.Discount is not { } applied)
+        {
+            return Result.Success<Discount?>(null);
+        }
+
+        if (applied.DiscountId is { } discountId)
+        {
+            var current = await context.Discounts.SingleAsync(row => row.Id == discountId, cancellationToken);
+            if (current.IsActive)
+            {
+                return current;
+            }
+
+            invoice.SetDiscount(null, taxExempt, now);
+            return Result.Success<Discount?>(null);
+        }
+
+        var productIds = invoice.Lines.Where(line => line.ProductId is not null).Select(line => line.ProductId!.Value).Distinct().ToList();
+        var redeemed = await redemptions.RedeemAsync(
+            applied.CouponId, null, invoice.CustomerId, new RedemptionTarget(invoice.Currency, productIds, invoice.Lines.Sum(line => line.Amount)), cancellationToken);
+        if (redeemed.IsFailure)
+        {
+            return redeemed.Error;
+        }
+
+        var discount = Discount.ForInvoice(redeemed.Value.Coupon, null, invoice.CustomerId, invoice.Id, now);
+        redemptions.Add(discount, redeemed.Value);
+        invoice.SetDiscount(Redemptions.ToInvoiceDiscount(redeemed.Value.Coupon, discount.Id, null), taxExempt, now);
+        return discount;
     }
 
     /// <summary>

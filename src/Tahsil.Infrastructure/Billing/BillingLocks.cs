@@ -10,6 +10,12 @@ internal sealed class BillingLocks(TahsilDbContext context) : IBillingLocks, IIn
     public async Task LockInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken) =>
         await context.Database.ExecuteSqlAsync($"SELECT 1 FROM tahsil.invoices WHERE id = {invoiceId} FOR UPDATE", cancellationToken);
 
+    public async Task LockCouponAsync(Guid couponId, CancellationToken cancellationToken) =>
+        await context.Database.ExecuteSqlAsync($"SELECT 1 FROM tahsil.coupons WHERE id = {couponId} FOR UPDATE", cancellationToken);
+
+    public async Task LockPromotionCodeAsync(Guid promotionCodeId, CancellationToken cancellationToken) =>
+        await context.Database.ExecuteSqlAsync($"SELECT 1 FROM tahsil.promotion_codes WHERE id = {promotionCodeId} FOR UPDATE", cancellationToken);
+
     public async Task LockRefundAsync(Guid refundId, CancellationToken cancellationToken) =>
         await context.Database.ExecuteSqlAsync($"SELECT 1 FROM tahsil.refunds WHERE id = {refundId} FOR UPDATE", cancellationToken);
 

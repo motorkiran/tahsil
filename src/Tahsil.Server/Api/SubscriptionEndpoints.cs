@@ -73,6 +73,13 @@ internal static class SubscriptionEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict).ProducesProblem(StatusCodes.Status412PreconditionFailed)
             .RequirePermission(TahsilPermissions.SubscriptionsWrite);
 
+        subscriptions.MapDelete("{id:guid}/discount", async (Guid id, RemoveSubscriptionDiscountHandler handler, HttpResponse response, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(id, cancellationToken)).ToOk(response))
+            .WithName("RemoveSubscriptionDiscount").WithSummary("Remove a subscription's discount")
+            .WithDescription("Invoices created afterwards are not discounted; a draft still open drops the discount when it is finalized. The same as `PATCH` with `coupon: null`.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequirePermission(TahsilPermissions.SubscriptionsWrite);
+
         subscriptions.MapPost("{id:guid}/preview", async (Guid id, UpdateSubscriptionRequest request, PreviewSubscriptionChangeHandler handler, CancellationToken cancellationToken) =>
             (await handler.HandleAsync(id, request, cancellationToken)).ToOk())
             .WithName("PreviewSubscriptionChange").WithSummary("Preview a change of a subscription")

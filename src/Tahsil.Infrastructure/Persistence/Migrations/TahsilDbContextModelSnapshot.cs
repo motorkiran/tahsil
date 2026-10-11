@@ -897,6 +897,76 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Coupons.Discount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CheckoutSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checkout_session_id");
+
+                    b.Property<Guid>("CouponId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("coupon_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<int?>("CyclesRemaining")
+                        .HasColumnType("integer")
+                        .HasColumnName("cycles_remaining");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<Guid?>("PromotionCodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("promotion_code_id");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_discounts");
+
+                    b.HasIndex("CouponId")
+                        .HasDatabaseName("ix_discounts_coupon_id");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("ix_discounts_customer_id");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_discounts_invoice_id");
+
+                    b.HasIndex("PromotionCodeId")
+                        .HasDatabaseName("ix_discounts_promotion_code_id");
+
+                    b.HasIndex("SubscriptionId")
+                        .HasDatabaseName("ix_discounts_subscription_id");
+
+                    b.ToTable("discounts", "tahsil", t =>
+                        {
+                            t.HasCheckConstraint("ck_discounts_target", "num_nonnulls(subscription_id, invoice_id, checkout_session_id) = 1");
+                        });
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Coupons.PromotionCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1466,6 +1536,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("days_until_due");
 
+                    b.Property<string>("Discount")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("discount");
+
                     b.Property<long>("DiscountTotal")
                         .HasColumnType("bigint")
                         .HasColumnName("discount_total");
@@ -1675,6 +1749,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("PriceId")
                         .HasColumnType("uuid")
                         .HasColumnName("price_id");
+
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(28, 8)
@@ -2558,6 +2636,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("default_payment_method_id");
 
+                    b.Property<Guid?>("DiscountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("discount_id");
+
                     b.Property<DateTimeOffset?>("EndedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ended_at");
@@ -3131,6 +3213,41 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_checkout_sessions_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Coupons.Discount", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Coupons.Coupon", null)
+                        .WithMany()
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_discounts_coupons_coupon_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_discounts_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Invoices.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_discounts_invoices_invoice_id");
+
+                    b.HasOne("Tahsil.Domain.Coupons.PromotionCode", null)
+                        .WithMany()
+                        .HasForeignKey("PromotionCodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_discounts_promotion_codes_promotion_code_id");
+
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_discounts_subscriptions_subscription_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Coupons.PromotionCode", b =>

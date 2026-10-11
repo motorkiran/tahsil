@@ -33,6 +33,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<Domain.Coupons.PromotionCode> PromotionCodes => Set<Domain.Coupons.PromotionCode>();
 
+    public DbSet<Domain.Coupons.Discount> Discounts => Set<Domain.Coupons.Discount>();
+
     public DbSet<Product> Products => Set<Product>();
 
     public DbSet<Price> Prices => Set<Price>();

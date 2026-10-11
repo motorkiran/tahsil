@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Contracts;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
@@ -18,6 +19,7 @@ public sealed class CreateInvoiceHandler(
     IIdempotency idempotency,
     InvoiceLines lines,
     InvoiceMapper mapper,
+    Redemptions redemptions,
     IOptions<InvoiceOptions> options,
     BillingClock clock)
 {
@@ -52,6 +54,18 @@ public sealed class CreateInvoiceHandler(
             return drafts.Error;
         }
 
+        Model.InvoiceDiscount? discount = null;
+        if (request.Coupon is { } coupon)
+        {
+            var chosen = await redemptions.ForDraftAsync(coupon, request.Currency, cancellationToken);
+            if (chosen.IsFailure)
+            {
+                return chosen.Error;
+            }
+
+            discount = chosen.Value;
+        }
+
         var now = clock.GetUtcNow();
         var collection = request.CollectionMethod.Map<Model.CollectionMethod>();
         var created = Model.Invoice.CreateDraft(
@@ -63,7 +77,8 @@ public sealed class CreateInvoiceHandler(
             request.Memo,
             autoAdvance: false,
             metadata.Value,
-            now);
+            now,
+            discount: discount);
         if (created.IsFailure)
         {
             return created.Error;
@@ -179,7 +194,8 @@ public sealed class RemoveInvoiceLineHandler(ITahsilDbContext context, IAuthoriz
 }
 
 /// <summary>Drafts change their terms; finalized invoices only their legal invoice and metadata (INV §8, INV-23).</summary>
-public sealed class UpdateInvoiceHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, InvoiceMapper mapper, BillingClock clock)
+public sealed class UpdateInvoiceHandler(
+    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, InvoiceMapper mapper, Redemptions redemptions, BillingClock clock)
 {
     public async Task<Result<Versioned<InvoiceResponse>>> HandleAsync(
         Guid id, UpdateInvoiceRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
@@ -216,6 +232,32 @@ public sealed class UpdateInvoiceHandler(ITahsilDbContext context, IAuthorizer a
             }
         }
 
+        if (request.HasCoupon)
+        {
+            if (invoice.BillingReason != Model.BillingReason.Manual)
+            {
+                return Model.InvoiceErrors.CouponOnSubscriptionInvoice;
+            }
+
+            Model.InvoiceDiscount? discount = null;
+            if (request.Coupon is { } coupon)
+            {
+                var chosen = await redemptions.ForDraftAsync(coupon, invoice.Currency, cancellationToken);
+                if (chosen.IsFailure)
+                {
+                    return chosen.Error;
+                }
+
+                discount = chosen.Value;
+            }
+
+            var taxExempt = await context.Customers.Where(row => row.Id == invoice.CustomerId).Select(row => row.IsTaxExempt).SingleAsync(cancellationToken);
+            if (invoice.SetDiscount(discount, taxExempt, now) is { IsFailure: true } notDraft)
+            {
+                return notDraft.Error;
+            }
+        }
+
         if (request.HasLegalInvoice)
         {
             var legal = request.LegalInvoice is { } data ? new Model.LegalInvoice(data.Number ?? string.Empty, data.Date, data.Url) : null;
@@ -240,6 +282,7 @@ public sealed class UpdateInvoiceHandler(ITahsilDbContext context, IAuthorizer a
             ("collectionMethod", request.CollectionMethod is not null),
             ("daysUntilDue", request.HasDaysUntilDue),
             ("memo", request.HasMemo),
+            ("coupon", request.HasCoupon),
             ("legalInvoice", request.HasLegalInvoice),
             ("metadata", request.Metadata is not null)), customerId: invoice.CustomerId);
         return await InvoiceSaving.SaveAsync(context, invoice, mapper, cancellationToken);

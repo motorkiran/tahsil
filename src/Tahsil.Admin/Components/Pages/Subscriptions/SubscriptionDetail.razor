@@ -49,6 +49,7 @@
                         <tr><th>Customer</th><td><MudLink Href="@($"/admin/customers/{subscription.CustomerId}")">@subscription.CustomerId</MudLink></td></tr>
                         <tr><th>Collection</th><td>@Snake(subscription.CollectionMethod)@(subscription.DaysUntilDue is { } days ? $", due in {days} days" : null)</td></tr>
                         <tr><th>Card</th><td>@(subscription.DefaultPaymentMethodId?.ToString() ?? "The customer's default")</td></tr>
+                        <tr><th>Discount</th><td id="discount">@if (subscription.Discount is { } discount) { <MudLink Href="@($"/admin/coupons/{discount.Coupon.Key}")">@discount.Coupon.Name</MudLink> <span>@Coupons.CouponText.Discount(discount.Coupon)@(discount.CyclesRemaining is { } left ? $", {left} left" : null)</span> } else { <span>–</span> }</td></tr>
                         <tr><th>Created</th><td><Moment Value="subscription.CreatedAt" /></td></tr>
                         @if (subscription.CheckoutSessionId is { } session)
                         {

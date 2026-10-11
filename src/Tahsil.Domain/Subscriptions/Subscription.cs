@@ -153,6 +153,9 @@ public sealed class Subscription : AggregateRoot
 
     public Guid? LatestInvoiceId { get; private set; }
 
+    /// <summary>The discount its invoices get while it lasts (SUB-9, CPN-11).</summary>
+    public Guid? DiscountId { get; private set; }
+
     public DateTimeOffset? NextCycleAt { get; private set; }
 
     public DateTimeOffset? PastDueSince { get; private set; }
@@ -568,6 +571,13 @@ public sealed class Subscription : AggregateRoot
     {
         RenewalRemindedFor = CurrentPeriodEnd;
         UpdatedAt = now;
+    }
+
+    /// <summary>Gives the subscription a discount, which replaces the one it had (CPN-10), or takes it away.</summary>
+    public void SetDiscount(Guid? discountId, DateTimeOffset now)
+    {
+        DiscountId = discountId;
+        Touch(now);
     }
 
     public void SetLatestInvoice(Guid invoiceId, DateTimeOffset now)

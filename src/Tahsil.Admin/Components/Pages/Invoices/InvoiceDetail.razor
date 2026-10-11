@@ -72,7 +72,7 @@
                 <MudSimpleTable Dense Elevation="0" id="invoice-totals">
                     <tbody>
                         <tr><th>Subtotal</th><td>@Money(invoice.Subtotal)</td></tr>
-                        <tr><th>Discount</th><td>@Money(invoice.DiscountTotal)</td></tr>
+                        <tr><th>Discount</th><td id="discount">@Money(invoice.DiscountTotal)@(invoice.Discounts.Count > 0 ? $" ({string.Join(", ", invoice.Discounts.Select(discount => discount.Name))})" : null)</td></tr>
                         <tr><th>Tax</th><td>@Money(invoice.TaxTotal)</td></tr>
                         <tr><th>Total</th><td>@Money(invoice.Total)</td></tr>
                         <tr><th>Applied balance</th><td>@Money(invoice.AppliedBalance)</td></tr>

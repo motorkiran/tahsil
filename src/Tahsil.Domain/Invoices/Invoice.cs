@@ -23,7 +23,23 @@ public sealed record InvoiceLineDraft(
     TaxRateSnapshot? Tax = null,
     bool IsDiscountable = true,
     DateTimeOffset? PeriodStart = null,
-    DateTimeOffset? PeriodEnd = null);
+    DateTimeOffset? PeriodEnd = null,
+    Guid? ProductId = null);
+
+/// <summary>
+/// The coupon a draft is discounted by, as it was when applied: a subscription's discount (with its ID), or a coupon
+/// chosen for a manual invoice, whose discount is created and counted at finalization (CPN-9, CPN-13). Without product
+/// IDs, it applies to every discountable line.
+/// </summary>
+public sealed record InvoiceDiscount(
+    Guid? DiscountId,
+    Guid CouponId,
+    Guid? PromotionCodeId,
+    string Name,
+    decimal? PercentOff,
+    long? AmountOff,
+    string? Currency,
+    IReadOnlyList<Guid>? ProductIds);
 
 /// <summary>What finalization decided (INV-8): the number, the snapshot and what the balance did.</summary>
 /// <param name="Number">The invoice number (INV-9).</param>
@@ -75,6 +91,9 @@ public sealed class Invoice : AggregateRoot
     public long Subtotal { get; private set; }
 
     public long DiscountTotal { get; private set; }
+
+    /// <summary>The coupon the invoice is discounted by, if any.</summary>
+    public InvoiceDiscount? Discount { get; private set; }
 
     public long TaxTotal { get; private set; }
 
@@ -163,7 +182,8 @@ public sealed class Invoice : AggregateRoot
         DateTimeOffset now,
         Guid? subscriptionId = null,
         BillingPeriod? period = null,
-        DateTimeOffset? finalizeAt = null)
+        DateTimeOffset? finalizeAt = null,
+        InvoiceDiscount? discount = null)
     {
         if (ValidateTerms(memo, daysUntilDue) is { } invalid)
         {
@@ -186,9 +206,23 @@ public sealed class Invoice : AggregateRoot
             AutoAdvance = autoAdvance,
             FinalizeAt = autoAdvance ? finalizeAt : null,
             Metadata = metadata,
+            Discount = discount,
             CreatedAt = now,
             UpdatedAt = now,
         };
+    }
+
+    /// <summary>Discounts a draft by another coupon, or by none, and recalculates it (CPN-14).</summary>
+    public Result SetDiscount(InvoiceDiscount? discount, bool taxExempt, DateTimeOffset now)
+    {
+        if (!IsDraft)
+        {
+            return InvoiceErrors.NotDraft;
+        }
+
+        Discount = discount;
+        Recalculate(taxExempt, now);
+        return Result.Success();
     }
 
     /// <summary>Adds lines to a draft and recalculates it.</summary>
@@ -273,8 +307,8 @@ public sealed class Invoice : AggregateRoot
     }
 
     /// <summary>
-    /// The calculation pipeline of a draft (INV-4, steps 1 to 4): line amounts are given, discounts come with coupons,
-    /// then tax per line and the totals as sums of the rounded lines (MNY-21).
+    /// The calculation pipeline of a draft (INV-4, steps 1 to 4): line amounts are given, then the discount (MNY-18 to
+    /// MNY-20), tax per line and the totals as sums of the rounded lines (MNY-21).
     /// </summary>
     public void Recalculate(bool taxExempt, DateTimeOffset now)
     {
@@ -283,6 +317,7 @@ public sealed class Invoice : AggregateRoot
             throw new InvalidOperationException("A finalized invoice never changes its amounts (DOM-14).");
         }
 
+        ApplyDiscount();
         var amounts = _lines.Select(line => line.Calculate(taxExempt)).ToList();
         var totals = InvoiceTotals.Of(amounts);
         Subtotal = totals.Subtotal;
@@ -293,6 +328,30 @@ public sealed class Invoice : AggregateRoot
         AmountDue = Math.Max(Total, 0);
         AmountRemaining = AmountDue;
         UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// Spreads the discount over the lines it applies to: discountable lines, of its products when it names some. A
+    /// percentage applies to each line with its sign; an amount, in the invoice's currency only, is shared by the
+    /// positive lines in proportion and never exceeds them.
+    /// </summary>
+    private void ApplyDiscount()
+    {
+        var discounted = _lines
+            .Where(line => Discount is { } discount && line.IsDiscountable && (discount.ProductIds is null || (line.ProductId is { } product && discount.ProductIds.Contains(product))))
+            .ToList();
+        var amounts = Discount switch
+        {
+            { PercentOff: { } percent } => discounted.Select(line => LineArithmetic.PercentageDiscount(line.Amount, percent)).ToArray(),
+            { AmountOff: { } amount } discount when discount.Currency == Currency => LineArithmetic.FixedDiscount(amount, [.. discounted.Select(line => line.Amount)]),
+            _ => new long[discounted.Count],
+        };
+
+        foreach (var line in _lines)
+        {
+            var index = discounted.IndexOf(line);
+            line.SetDiscount(index < 0 ? 0 : amounts[index]);
+        }
     }
 
     /// <summary>Checks that a draft can be finalized: it has lines, and a manual invoice's total is not zero (INV-8).</summary>
@@ -524,6 +583,9 @@ public sealed class InvoiceLine
 
     public Guid? PriceId { get; private init; }
 
+    /// <summary>The product of <see cref="PriceId"/>, for coupons limited to products (CPN-8).</summary>
+    public Guid? ProductId { get; private init; }
+
     public Guid? PendingItemId { get; private init; }
 
     public string Description { get; private init; } = string.Empty;
@@ -564,6 +626,7 @@ public sealed class InvoiceLine
         InvoiceId = invoiceId,
         Type = draft.Type,
         PriceId = draft.PriceId,
+        ProductId = draft.ProductId,
         PendingItemId = draft.PendingItemId,
         Description = draft.Description.Trim(),
         Quantity = draft.Quantity,
@@ -578,6 +641,8 @@ public sealed class InvoiceLine
         SortOrder = sortOrder,
         CreatedAt = now,
     };
+
+    internal void SetDiscount(long amount) => DiscountAmount = amount;
 
     internal LineAmounts Calculate(bool taxExempt)
     {

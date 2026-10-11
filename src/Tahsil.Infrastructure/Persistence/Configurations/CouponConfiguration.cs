@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Coupons;
 using Tahsil.Domain.Customers;
+using Tahsil.Domain.Invoices;
+using Tahsil.Domain.Subscriptions;
 using Tahsil.Infrastructure.Persistence.Conventions;
 
 namespace Tahsil.Infrastructure.Persistence.Configurations;
@@ -26,6 +28,24 @@ internal sealed class CouponConfiguration : IEntityTypeConfiguration<Coupon>
         builder.Property(coupon => coupon.Duration).HasMaxLength(16);
         builder.Property(coupon => coupon.Metadata).HasMetadataColumn();
         builder.HasIndex(coupon => coupon.Key).IsUnique();
+    }
+}
+
+internal sealed class DiscountConfiguration : IEntityTypeConfiguration<Discount>
+{
+    public void Configure(EntityTypeBuilder<Discount> builder)
+    {
+        builder.ToTable(table => table.HasCheckConstraint("ck_discounts_target", "num_nonnulls(subscription_id, invoice_id, checkout_session_id) = 1"));
+        builder.Property(discount => discount.Id).ValueGeneratedNever();
+        builder.HasOne<Coupon>().WithMany().HasForeignKey(discount => discount.CouponId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<PromotionCode>().WithMany().HasForeignKey(discount => discount.PromotionCodeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Customer>().WithMany().HasForeignKey(discount => discount.CustomerId).OnDelete(DeleteBehavior.Restrict);
+
+        // Subscriptions point back at their discount without a foreign key, so that neither row waits for the other.
+        builder.HasOne<Subscription>().WithMany().HasForeignKey(discount => discount.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Invoice>().WithMany().HasForeignKey(discount => discount.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(discount => discount.SubscriptionId);
+        builder.HasIndex(discount => discount.InvoiceId);
     }
 }
 

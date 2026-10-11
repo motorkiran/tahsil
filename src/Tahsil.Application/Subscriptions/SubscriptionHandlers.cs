@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Application.Invoices;
 using Tahsil.Application.Payments;
 using Tahsil.Contracts;
@@ -31,6 +32,7 @@ public sealed class CreateSubscriptionHandler(
     InvoiceFinalizer finalizer,
     MerchantPayments payments,
     ChargeableCards cards,
+    Redemptions redemptions,
     IOptions<BillingOptions> billing,
     IOptions<SubscriptionOptions> options,
     BillingClock clock)
@@ -67,6 +69,18 @@ public sealed class CreateSubscriptionHandler(
         if (SubscriptionItems.Validate(items.Value, currency: null) is { } invalidItems)
         {
             return invalidItems;
+        }
+
+        (Guid CouponId, Guid? CodeId)? coupon = null;
+        if (request.Coupon is not null || request.PromotionCode is not null)
+        {
+            var named = await redemptions.FindAsync(request.Coupon, request.PromotionCode, cancellationToken);
+            if (named.IsFailure)
+            {
+                return named.Error;
+            }
+
+            coupon = named.Value;
         }
 
         var now = clock.GetUtcNow();
@@ -120,6 +134,10 @@ public sealed class CreateSubscriptionHandler(
                 ["currentPeriodEnd"] = subscription.CurrentPeriodEnd,
                 ["trialEnd"] = subscription.TrialEnd,
             }, customerId: customer.Id);
+            if (coupon is { } redeem && await redemptions.ApplyToSubscriptionAsync(subscription, redeem, items.Value, cancellationToken) is { IsFailure: true } refused)
+            {
+                return refused.Error;
+            }
 
             // Saved first, so that what follows the first invoice's payment finds it.
             await context.SaveChangesAsync(cancellationToken);
@@ -176,7 +194,8 @@ public sealed class CreateSubscriptionHandler(
             Metadata.Empty,
             now,
             subscription.Id,
-            period).Value;
+            period,
+            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(drafts, customer.IsTaxExempt, now);
         context.Invoices.Add(invoice);
         subscription.SetLatestInvoice(invoice.Id, now);
@@ -313,7 +332,21 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
         var products = await context.Products.AsNoTracking().Where(product => productIds.Contains(product.Id)).ToDictionaryAsync(product => product.Id, cancellationToken);
         var invoiceIds = subscriptions.Where(subscription => subscription.LatestInvoiceId is not null).Select(subscription => subscription.LatestInvoiceId!.Value).ToList();
         var invoices = await context.Invoices.AsNoTracking().Where(invoice => invoiceIds.Contains(invoice.Id)).ToDictionaryAsync(invoice => invoice.Id, cancellationToken);
-        return [.. subscriptions.Select(subscription => ToResponse(subscription, prices, products, invoices))];
+        var discounts = await DiscountsAsync(subscriptions, cancellationToken);
+        return [.. subscriptions.Select(subscription => ToResponse(subscription, prices, products, invoices, discounts))];
+    }
+
+    /// <summary>The subscriptions' discounts that still last, with their coupons.</summary>
+    private async Task<Dictionary<Guid, DiscountResponse>> DiscountsAsync(IReadOnlyList<Subscription> subscriptions, CancellationToken cancellationToken)
+    {
+        var discountIds = subscriptions.Where(subscription => subscription.DiscountId is not null).Select(subscription => subscription.DiscountId!.Value).ToList();
+        var discounts = await context.Discounts.AsNoTracking().Where(discount => discountIds.Contains(discount.Id) && discount.EndedAt == null).ToListAsync(cancellationToken);
+        var couponIds = discounts.Select(discount => discount.CouponId).Distinct().ToList();
+        var coupons = await context.ToResponsesAsync(await context.Coupons.AsNoTracking().Where(coupon => couponIds.Contains(coupon.Id)).ToListAsync(cancellationToken), cancellationToken);
+        return discounts.ToDictionary(
+            discount => discount.Id,
+            discount => new DiscountResponse(
+                discount.Id, coupons.Single(coupon => coupon.Id == discount.CouponId), discount.PromotionCodeId, discount.CyclesRemaining, discount.StartedAt, discount.EndedAt));
     }
 
     private static SubscriptionPriceResponse Price(Guid priceId, Dictionary<Guid, Domain.Catalog.Price> prices, Dictionary<Guid, Domain.Catalog.Product> products)
@@ -330,7 +363,8 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
         Subscription subscription,
         Dictionary<Guid, Domain.Catalog.Price> prices,
         Dictionary<Guid, Domain.Catalog.Product> products,
-        Dictionary<Guid, Invoice> invoices) => new()
+        Dictionary<Guid, Invoice> invoices,
+        Dictionary<Guid, DiscountResponse> discounts) => new()
         {
             Id = subscription.Id,
             CustomerId = subscription.CustomerId,
@@ -359,6 +393,7 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
             LatestInvoice = subscription.LatestInvoiceId is { } invoiceId && invoices.TryGetValue(invoiceId, out var invoice)
             ? new LatestInvoiceResponse(invoice.Id, invoice.Number, invoice.Status.Map<InvoiceStatus>(), invoice.AmountDue, links.UrlFor(invoice))
             : null,
+            Discount = subscription.DiscountId is { } discountId ? discounts.GetValueOrDefault(discountId) : null,
             IncompleteExpiresAt = subscription.IncompleteExpiresAt,
             PastDueSince = subscription.PastDueSince,
             CheckoutSessionId = subscription.CheckoutSessionId,

@@ -17,6 +17,8 @@ public static class InvoiceErrors
         "The card is not active, not the customer's, has no consent to future charges, or its connection is disabled or does not take the invoice's currency.",
         "paymentMethod");
     public static readonly Error LineNotFound = Error.NotFound("invoice.line_not_found", "The invoice has no such line.");
+    public static readonly Error CouponOnSubscriptionInvoice = Error.Validation(
+        "invoice.invalid", "Only manual invoices take a coupon; a subscription's invoices take the subscription's discount.", "coupon");
     public static readonly Error InvalidMemo = Error.Validation("invoice.invalid", "The memo is at most 1000 characters.", "memo");
     public static readonly Error InvalidDaysUntilDue = Error.Validation("invoice.invalid", "Days until due are between 0 and 365.", "daysUntilDue");
     public static readonly Error InvalidLegalInvoice = Error.Validation(

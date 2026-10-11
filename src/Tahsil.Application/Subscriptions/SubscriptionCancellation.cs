@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Application.Invoices;
 using Tahsil.Application.Payments;
 using Tahsil.Contracts;
@@ -30,6 +31,7 @@ public sealed class CancelSubscriptionHandler(
     SubscriptionPreviews previews,
     Refunds refunds,
     Attention attention,
+    Redemptions redemptions,
     SubscriptionMapper mapper,
     BillingClock clock)
 {
@@ -219,7 +221,8 @@ public sealed class CancelSubscriptionHandler(
         }
 
         var invoice = Invoice.CreateDraft(
-            customer.Id, subscription.Currency, ModelInvoices.BillingReason.SubscriptionCancel, subscription.CollectionMethod, subscription.DaysUntilDue, memo: null, autoAdvance: false, Metadata.Empty, now, subscription.Id).Value;
+            customer.Id, subscription.Currency, ModelInvoices.BillingReason.SubscriptionCancel, subscription.CollectionMethod, subscription.DaysUntilDue, memo: null, autoAdvance: false, Metadata.Empty, now, subscription.Id,
+            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(await invoiceLines.FromPendingItemsAsync(pending, customer.Locale, cancellationToken), customer.IsTaxExempt, now);
         foreach (var item in pending)
         {

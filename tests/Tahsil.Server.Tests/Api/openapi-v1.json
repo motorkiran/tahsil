@@ -6866,6 +6866,60 @@
         ]
       }
     },
+    "/api/v1/subscriptions/{id}/discount": {
+      "delete": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Remove a subscription's discount",
+        "description": "Invoices created afterwards are not discounted; a draft still open drops the discount when it is finalized. The same as `PATCH` with `coupon: null`.\n\nRequires the `tahsil.subscriptions:write` permission.",
+        "operationId": "RemoveSubscriptionDiscount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/subscriptions/{id}/preview": {
       "post": {
         "tags": [
@@ -8878,6 +8932,13 @@
             "type": "boolean",
             "description": "Adds the customer's pending items in the invoice's currency that belong to no subscription."
           },
+          "coupon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A coupon's ID or key for this invoice alone; redeemed when the invoice is finalized."
+          },
           "memo": {
             "type": [
               "null",
@@ -9317,6 +9378,20 @@
             "description": "A later start of the billing cycle without a trial, at most one interval away, such as the first of the next\nmonth; the time until it is billed as a shorter first period.",
             "format": "date-time"
           },
+          "coupon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A coupon's ID or key to discount the subscription by; or give string? CreateSubscriptionRequest.PromotionCode."
+          },
+          "promotionCode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A promotion code the customer gave, ignoring case."
+          },
           "metadata": {
             "type": [
               "null",
@@ -9709,6 +9784,54 @@
           "company"
         ]
       },
+      "DiscountResponse": {
+        "required": [
+          "id",
+          "coupon",
+          "promotionCodeId",
+          "cyclesRemaining",
+          "startedAt",
+          "endedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coupon": {
+            "$ref": "#/components/schemas/CouponResponse"
+          },
+          "promotionCodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "cyclesRemaining": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "A coupon applied to a subscription: through which code, since when, and for `repeating` coupons how many\nrenewal invoices it still applies to."
+      },
       "EventTypeResponse": {
         "required": [
           "type",
@@ -9770,6 +9893,40 @@
             }
           }
         }
+      },
+      "InvoiceDiscountResponse": {
+        "required": [
+          "couponId",
+          "promotionCodeId",
+          "name",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "couponId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "promotionCodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "A discount on an invoice, with what it took off in total."
       },
       "InvoiceItemResponse": {
         "required": [
@@ -10185,6 +10342,7 @@
           "periodEnd",
           "subtotal",
           "discountTotal",
+          "discounts",
           "taxTotal",
           "totalExcludingTax",
           "total",
@@ -10294,6 +10452,13 @@
               "string"
             ],
             "format": "int64"
+          },
+          "discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceDiscountResponse"
+            },
+            "description": "The discount and what it took off, by name, as the invoice shows it."
           },
           "taxTotal": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -13212,6 +13377,7 @@
           "cancellationComment",
           "scheduledChange",
           "latestInvoice",
+          "discount",
           "incompleteExpiresAt",
           "pastDueSince",
           "checkoutSessionId",
@@ -13356,6 +13522,17 @@
               },
               {
                 "$ref": "#/components/schemas/LatestInvoiceResponse"
+              }
+            ]
+          },
+          "discount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The discount its invoices get while it lasts.",
+                "$ref": "#/components/schemas/DiscountResponse"
               }
             ]
           },
@@ -13812,6 +13989,13 @@
       "UpdateInvoiceRequest": {
         "type": "object",
         "properties": {
+          "coupon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A coupon's ID or key for the draft; `null` removes it."
+          },
           "collectionMethod": {
             "oneOf": [
               {
@@ -13857,7 +14041,7 @@
             ]
           }
         },
-        "description": "JSON Merge Patch. Drafts: the collection method, days until due, memo and metadata. Finalized invoices: only the\nlegal invoice and metadata."
+        "description": "JSON Merge Patch. Drafts: the collection method, days until due, memo, coupon and metadata. Finalized invoices:\nonly the legal invoice and metadata."
       },
       "UpdateMeterRequest": {
         "type": "object",
@@ -14065,6 +14249,20 @@
               }
             ]
           },
+          "coupon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A coupon's ID or key that replaces the discount; `null` removes it."
+          },
+          "promotionCode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A promotion code that replaces the discount."
+          },
           "metadata": {
             "type": [
               "null",
@@ -14075,7 +14273,7 @@
             }
           }
         },
-        "description": "JSON Merge Patch. `items` replaces the item set (omitted items are removed), now or at a renewal;\n`scheduledChange: null` drops a scheduled change."
+        "description": "JSON Merge Patch. `items` replaces the item set (omitted items are removed), now or at a renewal;\n`scheduledChange: null` drops a scheduled change; `coupon` or `promotionCode` replaces the discount,\nand `coupon: null` removes it."
       },
       "UpdateTaxRateRequest": {
         "type": "object",

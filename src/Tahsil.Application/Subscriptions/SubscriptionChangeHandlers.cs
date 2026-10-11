@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Application.Invoices;
 using Tahsil.Application.Notifications;
 using Tahsil.Application.Payments;
@@ -34,6 +35,7 @@ public sealed class UpdateSubscriptionHandler(
     SubscriptionMapper mapper,
     MerchantPayments payments,
     ChargeableCards cards,
+    Redemptions redemptions,
     IOptions<BillingOptions> billing,
     BillingClock clock)
 {
@@ -77,6 +79,17 @@ public sealed class UpdateSubscriptionHandler(
             var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == subscription.CustomerId, cancellationToken);
             var previousStatus = subscription.Status;
             var changed = new List<string>();
+            if (request.HasCoupon || request.PromotionCode is not null)
+            {
+                // Before the items, so that an invoice of the change is discounted by the new coupon.
+                if (await ChangeDiscountAsync(subscription, request, cancellationToken) is { IsFailure: true } refused)
+                {
+                    return refused.Error;
+                }
+
+                changed.Add("discount");
+            }
+
             if (request.Items is { } requested)
             {
                 var applied = await ChangeItemsAsync(subscription, customer, requested, request, now, cancellationToken);
@@ -186,6 +199,46 @@ public sealed class UpdateSubscriptionHandler(
         }
 
         return new Versioned<SubscriptionResponse>(await mapper.ToResponseAsync(subscription, cancellationToken), subscription.Version);
+    }
+
+    /// <summary>
+    /// Replaces the discount with the coupon or code of the request, redeemed for the items it asks for or else the
+    /// current ones, or removes it with <c>coupon: null</c> (CPN-10, CPN-14).
+    /// </summary>
+    private async Task<Result> ChangeDiscountAsync(Subscription subscription, UpdateSubscriptionRequest request, CancellationToken cancellationToken)
+    {
+        if (subscription.IsTerminal)
+        {
+            return SubscriptionErrors.InvalidState(subscription.Status, "given a discount");
+        }
+
+        if (request.Coupon is null && request.PromotionCode is null)
+        {
+            await redemptions.RemoveFromSubscriptionAsync(subscription, cancellationToken);
+            return Result.Success();
+        }
+
+        var named = await redemptions.FindAsync(request.Coupon, request.PromotionCode, cancellationToken);
+        if (named.IsFailure)
+        {
+            return named.Error;
+        }
+
+        var items = await SubscriptionItemRequests.ResolveAsync(
+            context, request.Items ?? [.. subscription.Items.Select(item => new SubscriptionItemRequest { Price = item.PriceId.ToString(), Quantity = item.Quantity })], cancellationToken);
+        if (items.IsFailure)
+        {
+            return items.Error;
+        }
+
+        if (await redemptions.ApplyToSubscriptionAsync(subscription, named.Value, items.Value, cancellationToken) is { IsFailure: true } refused)
+        {
+            return refused;
+        }
+
+        // Saved now, so that an invoice of the change finds the discount.
+        await context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
     }
 
     /// <summary>Changes the items now or schedules the change; returns the invoice billed now and the card this request charges it to.</summary>
@@ -331,13 +384,14 @@ public sealed class UpcomingInvoiceHandler(ITahsilDbContext context, IAuthorizer
 
 /// <summary>Invoices built in memory, as they would be created now (SUB-24).</summary>
 public sealed class SubscriptionPreviews(
-    ITahsilDbContext context, SubscriptionLines lines, InvoiceLines invoiceLines, InvoiceFinalizer finalizer, IOptions<BillingOptions> billing)
+    ITahsilDbContext context, SubscriptionLines lines, InvoiceLines invoiceLines, InvoiceFinalizer finalizer, Redemptions redemptions, IOptions<BillingOptions> billing)
 {
     public async Task<InvoicePreviewResponse> InvoiceAsync(
         Customer customer, Subscription subscription, ModelInvoices.BillingReason reason, BillingPeriod period, IReadOnlyList<ModelInvoices.InvoiceLineDraft> drafts, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var invoice = Invoice.CreateDraft(
-            customer.Id, subscription.Currency, reason, subscription.CollectionMethod, subscription.DaysUntilDue, memo: null, autoAdvance: false, Metadata.Empty, now, subscription.Id, period).Value;
+            customer.Id, subscription.Currency, reason, subscription.CollectionMethod, subscription.DaysUntilDue, memo: null, autoAdvance: false, Metadata.Empty, now, subscription.Id, period,
+            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(drafts, customer.IsTaxExempt, now);
         return InvoiceMapper.Preview(invoice, await finalizer.PreviewBalanceAsync(customer.Id, subscription.Currency, invoice.Total, subscription.CollectionMethod, cancellationToken));
     }

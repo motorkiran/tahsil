@@ -20,6 +20,8 @@ public static class AuditActions
     public const string CouponUpdated = "coupon.updated";
     public const string PromotionCodeCreated = "promotion_code.created";
     public const string PromotionCodeUpdated = "promotion_code.updated";
+    public const string DiscountApplied = "discount.applied";
+    public const string DiscountRemoved = "discount.removed";
 
     public const string CustomerCreated = "customer.created";
     public const string CustomerUpdated = "customer.updated";

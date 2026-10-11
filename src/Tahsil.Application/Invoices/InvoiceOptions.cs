@@ -75,6 +75,12 @@ public interface IBillingLocks
     /// <summary>Locks an invoice until the transaction ends; load it after this, so it is read under the lock.</summary>
     Task LockInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken);
 
+    /// <summary>Locks a coupon until the transaction ends, so that its redemptions are counted one at a time (CPN-9).</summary>
+    Task LockCouponAsync(Guid couponId, CancellationToken cancellationToken);
+
+    /// <summary>Locks a promotion code until the transaction ends; taken after its coupon's lock.</summary>
+    Task LockPromotionCodeAsync(Guid promotionCodeId, CancellationToken cancellationToken);
+
     /// <summary>Locks a refund until the transaction ends; load it after this.</summary>
     Task LockRefundAsync(Guid refundId, CancellationToken cancellationToken);
 

@@ -85,6 +85,9 @@ public sealed record CreateInvoiceRequest
     /// <summary>Adds the customer's pending items in the invoice's currency that belong to no subscription.</summary>
     public bool IncludePendingItems { get; init; }
 
+    /// <summary>A coupon's ID or key for this invoice alone; redeemed when the invoice is finalized.</summary>
+    public string? Coupon { get; init; }
+
     public string? Memo { get; init; }
 
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
@@ -99,11 +102,25 @@ public sealed record AddInvoiceLinesRequest
 public sealed record LegalInvoiceData(string Number, DateOnly? Date = null, string? Url = null);
 
 /// <summary>
-/// JSON Merge Patch. Drafts: the collection method, days until due, memo and metadata. Finalized invoices: only the
-/// legal invoice and metadata.
+/// JSON Merge Patch. Drafts: the collection method, days until due, memo, coupon and metadata. Finalized invoices:
+/// only the legal invoice and metadata.
 /// </summary>
 public sealed record UpdateInvoiceRequest
 {
+    /// <summary>A coupon's ID or key for the draft; <c>null</c> removes it.</summary>
+    public string? Coupon
+    {
+        get;
+        init
+        {
+            field = value;
+            HasCoupon = true;
+        }
+    }
+
+    [JsonIgnore]
+    public bool HasCoupon { get; private init; }
+
     public CollectionMethod? CollectionMethod { get; init; }
 
     public int? DaysUntilDue
@@ -201,6 +218,9 @@ public sealed record InvoiceResponse
     public required long Subtotal { get; init; }
 
     public required long DiscountTotal { get; init; }
+
+    /// <summary>The discount and what it took off, by name, as the invoice shows it.</summary>
+    public required IReadOnlyList<InvoiceDiscountResponse> Discounts { get; init; }
 
     public required long TaxTotal { get; init; }
 

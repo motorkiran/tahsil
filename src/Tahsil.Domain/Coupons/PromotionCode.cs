@@ -87,6 +87,42 @@ public sealed partial class PromotionCode : AggregateRoot
         };
     }
 
+    /// <summary>
+    /// Counts a redemption by <paramref name="customerId"/> when the code allows it (CPN-5, CPN-7); the caller holds the
+    /// code's lock. <paramref name="subtotal"/> is what the discount would apply to, in <paramref name="currency"/>.
+    /// </summary>
+    public Result Redeem(Guid customerId, bool hasPaidInvoice, long subtotal, string currency, DateTimeOffset now)
+    {
+        if (!IsActive)
+        {
+            return PromotionCodeErrors.Inactive;
+        }
+
+        if (ExpiresAt <= now)
+        {
+            return PromotionCodeErrors.Expired;
+        }
+
+        if (TimesRedeemed >= MaxRedemptions)
+        {
+            return PromotionCodeErrors.MaxRedemptionsReached;
+        }
+
+        if ((CustomerId is { } only && only != customerId) || (FirstTimeOnly && hasPaidInvoice))
+        {
+            return PromotionCodeErrors.NotEligible;
+        }
+
+        if (MinimumAmount is { } minimum && (MinimumAmountCurrency != currency || subtotal < minimum))
+        {
+            return PromotionCodeErrors.MinimumNotMet(minimum, MinimumAmountCurrency!);
+        }
+
+        TimesRedeemed++;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
     public void SetActive(bool isActive, DateTimeOffset now)
     {
         IsActive = isActive;

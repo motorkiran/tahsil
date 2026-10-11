@@ -50,6 +50,7 @@ public sealed class InvoiceLines(ITahsilDbContext context)
                 price is null ? MoneyMath.Multiply(item.UnitAmount!.Value, item.Quantity) : PriceAmounts.For(price, item.Quantity),
                 UnitAmountDecimal: price is null ? item.UnitAmount : UnitAmountOf(price),
                 PriceId: price?.Id,
+                ProductId: price?.ProductId,
                 PendingItemId: item.Id,
                 TaxRateId: taxRate?.Id,
                 Tax: taxRate is null ? null : new TaxRateSnapshot(taxRate.Percentage, taxRate.IsInclusive),
@@ -72,6 +73,7 @@ public sealed class InvoiceLines(ITahsilDbContext context)
             PriceAmounts.For(price, quantity),
             UnitAmountDecimal: UnitAmountOf(price),
             PriceId: price.Id,
+            ProductId: price.ProductId,
             TaxRateId: taxRate?.Id,
             Tax: taxRate is null ? null : new TaxRateSnapshot(taxRate.Percentage, taxRate.IsInclusive));
     }

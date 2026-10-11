@@ -96,9 +96,10 @@ else if (_notTestMode)
         }
     }
 
+    /// <summary>The offset to the nearest minute: the real time that passed while traveling is not part of the trip.</summary>
     private static string Offset(long seconds)
     {
-        var offset = TimeSpan.FromSeconds(seconds);
+        var offset = TimeSpan.FromMinutes(Math.Round(seconds / 60.0));
         return offset.TotalDays >= 1 ? $"{(int)offset.TotalDays} days {offset.Hours} hours" : $"{offset.Hours} hours {offset.Minutes} minutes";
     }
 

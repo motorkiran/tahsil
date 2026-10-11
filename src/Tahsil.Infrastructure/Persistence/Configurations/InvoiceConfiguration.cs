@@ -31,6 +31,9 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(invoice => invoice.CustomerSnapshot)
             .HasColumnType("jsonb")
             .HasConversion(new JsonValueConverter<CustomerSnapshot?>(), JsonValueConverter<CustomerSnapshot?>.Comparer);
+        builder.Property(invoice => invoice.Discount)
+            .HasColumnType("jsonb")
+            .HasConversion(new JsonValueConverter<InvoiceDiscount?>(), JsonValueConverter<InvoiceDiscount?>.Comparer);
         builder.Property(invoice => invoice.LegalInvoiceNumber).HasMaxLength(64);
         builder.Property(invoice => invoice.LegalInvoiceUrl).HasMaxLength(2000);
         builder.Property(invoice => invoice.Memo).HasMaxLength(Invoice.MemoMaxLength);
