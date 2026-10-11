@@ -13,11 +13,12 @@ namespace Tahsil.Infrastructure.Email;
 /// Renders the email templates embedded in this assembly (NTF-8): a template sets three captured blocks, <c>subject</c>,
 /// <c>html</c> (wrapped in the shared layout with the branding and the merchant's identity) and <c>text</c>.
 /// </summary>
-internal sealed class FluidEmailTemplateRenderer(IOptions<BrandingOptions> branding, IOptions<MerchantOptions> merchant) : IEmailTemplateRenderer
+internal sealed class FluidEmailTemplateRenderer(IOptions<BrandingOptions> branding, IOptions<MerchantOptions> merchant, IOptions<NotificationOptions> notifications)
+    : IEmailTemplateRenderer
 {
     private static readonly FluidParser Parser = new();
     private static readonly HtmlEncoder Encoder = HtmlEncoder.Create(UnicodeRanges.All);
-    private static readonly ConcurrentDictionary<string, IFluidTemplate?> Templates = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IFluidTemplate?> _templates = new(StringComparer.Ordinal);
 
     public async Task<RenderedEmail> RenderAsync(string templateName, string locale, IReadOnlyDictionary<string, object?> model, CancellationToken cancellationToken)
     {
@@ -56,8 +57,18 @@ internal sealed class FluidEmailTemplateRenderer(IOptions<BrandingOptions> brand
             text.GetValue("text").ToStringValue().Trim());
     }
 
-    private static IFluidTemplate? Load(string name) => Templates.GetOrAdd(name, static resource =>
+    /// <summary>Parses a template, or says why it is invalid (NTF-9: overrides are checked at startup).</summary>
+    internal static IFluidTemplate Parse(string name, string source) =>
+        Parser.TryParse(source, out var template, out var error) ? template : throw new InvalidOperationException($"The email template '{name}' is invalid: {error}");
+
+    /// <summary>A template by file name: the operator's override in <c>Tahsil:Notifications:TemplatesPath</c>, else the built-in one.</summary>
+    private IFluidTemplate? Load(string name) => _templates.GetOrAdd(name, resource =>
     {
+        if (notifications.Value.TemplatesPath is { } directory && Path.Combine(directory, resource) is var file && File.Exists(file))
+        {
+            return Parse(file, File.ReadAllText(file));
+        }
+
         using var stream = typeof(FluidEmailTemplateRenderer).Assembly.GetManifestResourceStream($"Email.{resource}");
         if (stream is null)
         {
@@ -65,8 +76,6 @@ internal sealed class FluidEmailTemplateRenderer(IOptions<BrandingOptions> brand
         }
 
         using var reader = new StreamReader(stream);
-        return Parser.TryParse(reader.ReadToEnd(), out var template, out var error)
-            ? template
-            : throw new InvalidOperationException($"The email template '{resource}' is invalid: {error}");
+        return Parse(resource, reader.ReadToEnd());
     });
 }

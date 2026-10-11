@@ -228,7 +228,7 @@ public sealed class PaymentOutcomes(
 }
 
 /// <summary>Raises attention items for operators, one open item per kind and subject.</summary>
-public sealed class Attention(ITahsilDbContext context, IAuditLog audit)
+public sealed class Attention(ITahsilDbContext context, IAuditLog audit, IOutbox outbox)
 {
     public async Task RaiseAsync(
         AttentionKind kind, string subjectType, Guid subjectId, Guid? customerId, IReadOnlyDictionary<string, string> details, DateTimeOffset now, CancellationToken cancellationToken)
@@ -241,6 +241,7 @@ public sealed class Attention(ITahsilDbContext context, IAuditLog audit)
 
         var item = AttentionItem.Raise(kind, subjectType, subjectId, customerId, details, now);
         context.AttentionItems.Add(item);
+        outbox.Enqueue(new Notifications.SendOperatorEmail(item.Id, null));
         audit.Record(AuditActions.AttentionRaised, new AuditSubject(subjectType, subjectId.ToString()), new Dictionary<string, object?>
         {
             ["kind"] = System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(kind.ToString()),

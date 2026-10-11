@@ -1,0 +1,16 @@
+{%- capture subject -%}Abonelik ücretiniz değişiyor{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ merchant.name }} aboneliğinizin ({{ subscription.plan }}) dönem ücreti {{ subscription.effective_date }} tarihinden itibaren {{ subscription.old_amount }} yerine {{ subscription.new_amount }} olacak{% if subscription.new_plan != subscription.plan %} ({{ subscription.new_plan }}){% endif %}.</p>
+<p>Bu değişikliği kabul etmiyorsanız aboneliğinizi {{ subscription.effective_date }} tarihinden önce dilediğiniz zaman iptal edebilirsiniz; iptal ederseniz yeni ücret alınmaz.</p>
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ merchant.name }} aboneliğinizin ({{ subscription.plan }}) dönem ücreti {{ subscription.effective_date }} tarihinden itibaren {{ subscription.old_amount }} yerine {{ subscription.new_amount }} olacak{% if subscription.new_plan != subscription.plan %} ({{ subscription.new_plan }}){% endif %}.
+
+Bu değişikliği kabul etmiyorsanız aboneliğinizi {{ subscription.effective_date }} tarihinden önce dilediğiniz zaman iptal edebilirsiniz; iptal ederseniz yeni ücret alınmaz.
+
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}

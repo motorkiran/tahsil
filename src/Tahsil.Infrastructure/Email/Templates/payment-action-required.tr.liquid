@@ -1,0 +1,14 @@
+{%- capture subject -%}Bankanız ödemenizi onaylamanızı istiyor: {{ invoice.number }}{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ invoice.number }} numaralı faturanın {{ invoice.amount }} tutarındaki ödemesi için bankanız sizden onay (3D Secure) istiyor. Ödemeyi aşağıdaki sayfadan onaylayabilirsiniz.</p>
+{% if invoice.hosted_url %}<p><a href="{{ invoice.hosted_url }}" style="display:inline-block;padding:10px 18px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px;">Ödemeyi onayla</a></p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz veya faturanız nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ invoice.number }} numaralı faturanın {{ invoice.amount }} tutarındaki ödemesi için bankanız sizden onay (3D Secure) istiyor. Ödemeyi şu sayfadan onaylayabilirsiniz: {{ invoice.hosted_url }}
+
+Bu e-postayı {{ merchant.name }} aboneliğiniz veya faturanız nedeniyle alıyorsunuz.
+{%- endcapture -%}

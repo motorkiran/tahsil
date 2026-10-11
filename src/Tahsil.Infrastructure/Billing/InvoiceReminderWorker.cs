@@ -9,7 +9,10 @@ using Tahsil.Infrastructure.Workers;
 
 namespace Tahsil.Infrastructure.Billing;
 
-/// <summary>Reminds customers of invoices sent to them, and marks them overdue when their due date passes (INV-12, INV-13).</summary>
+/// <summary>
+/// Reminds customers of invoices sent to them and marks them overdue when their due date passes (INV-12, INV-13), and
+/// sends the last reminder before dunning's final action for invoices collected automatically (DUN §7).
+/// </summary>
 internal sealed class InvoiceReminderWorker(
     IServiceScopeFactory scopes, BillingClock clock, IOptions<WorkerOptions> options, WorkerSignals signals, ILogger<InvoiceReminderWorker> logger)
     : DueWorker(scopes, clock, options, signals, logger)
@@ -21,7 +24,7 @@ internal sealed class InvoiceReminderWorker(
     protected override async Task<Guid?> LockNextDueAsync(TahsilDbContext context, DateTimeOffset now, CancellationToken cancellationToken) =>
         (await context.Database.SqlQuery<Guid>($"""
             SELECT id AS "Value" FROM tahsil.invoices
-            WHERE status = 'open' AND collection_method = 'send_invoice' AND next_reminder_at <= {now}
+            WHERE status = 'open' AND next_reminder_at <= {now}
             ORDER BY next_reminder_at
             LIMIT 1
             FOR UPDATE SKIP LOCKED

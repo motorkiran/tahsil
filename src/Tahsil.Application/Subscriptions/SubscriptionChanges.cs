@@ -105,9 +105,14 @@ public sealed class SubscriptionChanges(
     /// recurring amount (per day, so interval changes compare too) and takes effect before the notice period ends.
     /// </summary>
     public async Task<bool> NeedsNoticeAsync(
-        Subscription subscription, Customer customer, IReadOnlyList<SubscriptionItemSpec> after, DateTimeOffset effectiveAt, DateTimeOffset now, CancellationToken cancellationToken)
+        Subscription subscription, Customer customer, IReadOnlyList<SubscriptionItemSpec> after, DateTimeOffset effectiveAt, DateTimeOffset now, CancellationToken cancellationToken) =>
+        effectiveAt < now + options.Value.PriceIncreaseNotice && await RaisesPriceForIndividualAsync(subscription, customer, after, now, cancellationToken);
+
+    /// <summary>Whether the change raises an individual customer's recurring amount, per day (PRT-6), so they are told (SUB-34).</summary>
+    public async Task<bool> RaisesPriceForIndividualAsync(
+        Subscription subscription, Customer customer, IReadOnlyList<SubscriptionItemSpec> after, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (customer.Type != CustomerType.Individual || effectiveAt >= now + options.Value.PriceIncreaseNotice)
+        if (customer.Type != CustomerType.Individual)
         {
             return false;
         }

@@ -67,6 +67,7 @@ public sealed class Dunning(
     IBillingLocks locks,
     IAuditLog audit,
     IWorkerSignals signals,
+    IOutbox outbox,
     Attention attention,
     InvoiceLinks links,
     InvoiceVoiding voiding,
@@ -116,6 +117,18 @@ public sealed class Dunning(
         }
 
         var first = invoice.RecordCustomerFailure(options.Value.Schedule, retries: payment.FailureCategory == "retry", now);
+        if (first || options.Value.EmailEveryRetry)
+        {
+            var email = payment.FailureCategory == "authenticate" ? Notifications.EmailTypes.PaymentActionRequired : Notifications.EmailTypes.PaymentFailed;
+            Notifications.CustomerEmails.Enqueue(outbox, email, payment.Id, payment.Id.ToString());
+        }
+
+        if (first && invoice.DunningDeadlineAt - options.Value.FinalReminderBefore is { } lastReminder && lastReminder > now)
+        {
+            // The customer hears once more before the final action (DUN §7).
+            invoice.ScheduleReminder(lastReminder, now);
+        }
+
         if (payment.FailureCategory == "authenticate")
         {
             audit.Record(AuditActions.InvoiceActionRequired, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), new Dictionary<string, object?>

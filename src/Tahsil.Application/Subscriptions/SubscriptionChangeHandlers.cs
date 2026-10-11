@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Application.Invoices;
+using Tahsil.Application.Notifications;
 using Tahsil.Application.Payments;
 using Tahsil.Contracts;
 using Tahsil.Domain.Auditing;
@@ -26,6 +27,7 @@ public sealed class UpdateSubscriptionHandler(
     IAuthorizer authorizer,
     IAuditLog audit,
     IBillingLocks locks,
+    IOutbox outbox,
     Dunning dunning,
     SubscriptionChanges changes,
     SubscriptionCycles cycles,
@@ -206,7 +208,18 @@ public sealed class UpdateSubscriptionHandler(
         if (scheduled)
         {
             var result = subscription.ScheduleChange(items.Value, effectiveAt, billing.Value.Zone, now);
-            return result.IsFailure ? result.Error : (null, null, "scheduledChange");
+            if (result.IsFailure)
+            {
+                return result.Error;
+            }
+
+            if (await changes.RaisesPriceForIndividualAsync(subscription, customer, items.Value, now, cancellationToken))
+            {
+                // The customer is told of the higher price, its date, and how to cancel before it (SUB-34).
+                CustomerEmails.Enqueue(outbox, EmailTypes.PriceChange, subscription.Id, $"{subscription.Id}:{effectiveAt.ToUnixTimeSeconds()}");
+            }
+
+            return (null, null, "scheduledChange");
         }
 
         var applied = await changes.ApplyNowAsync(subscription, customer, items.Value, request.ProrationBehavior, now, cancellationToken);

@@ -1,0 +1,12 @@
+{%- capture subject -%}{{ items.size }} items still need attention{%- endcapture -%}
+{%- capture html -%}
+<p>These items are still open:</p>
+<ul>{% for item in items %}<li><strong>{{ item.kind }}</strong> on {{ item.subject }}, raised {{ item.raised_at }}</li>{% endfor %}</ul>
+<p><a href="{{ admin_url }}">Open the attention list</a></p>
+{%- endcapture -%}
+{%- capture text -%}
+These items are still open:
+{% for item in items %}- {{ item.kind }} on {{ item.subject }}, raised {{ item.raised_at }}
+{% endfor %}
+Open the attention list: {{ admin_url }}
+{%- endcapture -%}

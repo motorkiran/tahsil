@@ -24,9 +24,24 @@ public sealed class InvoiceReminders(
         invoice.ScheduleReminder(Next(invoice, now), now);
     }
 
-    /// <summary>The reminders and the due date passing that are due, in the reminder worker's transaction, which holds the invoice's lock.</summary>
+    /// <summary>
+    /// The reminders and the due date passing that are due, in the reminder worker's transaction, which holds the
+    /// invoice's lock; for an invoice collected automatically, the last reminder before dunning's final action (DUN §7).
+    /// </summary>
     public async Task ProcessDueAsync(Guid invoiceId, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        if (await context.FindInvoiceAsync(invoiceId, cancellationToken) is { Status: InvoiceStatus.Open, CollectionMethod: CollectionMethod.ChargeAutomatically } charged)
+        {
+            if (charged is { DunningStartedAt: not null, DunningEndedAt: null })
+            {
+                CustomerEmails.Enqueue(outbox, EmailTypes.DunningFinalReminder, charged.Id, charged.Id.ToString());
+            }
+
+            charged.ScheduleReminder(null, now);
+            await context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
         if (await context.FindInvoiceAsync(invoiceId, cancellationToken) is not
             { Status: InvoiceStatus.Open, CollectionMethod: CollectionMethod.SendInvoice, DueDate: { } due, NextReminderAt: { } from } invoice)
         {

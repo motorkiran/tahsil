@@ -11,6 +11,14 @@ public static class FailureMessages
 
     public static string Name(FailureCode code) => JsonNamingPolicy.SnakeCaseLower.ConvertName(code.ToString());
 
+    /// <summary>The customer message for a recorded failure code, in the customer's language.</summary>
+    public static string For(string? code, string locale)
+    {
+        var known = Enum.GetValues<FailureCode>().Cast<FailureCode?>().FirstOrDefault(candidate => Name(candidate!.Value) == code);
+        var turkish = locale.StartsWith("tr", StringComparison.OrdinalIgnoreCase);
+        return known is { } failure ? turkish ? Turkish(failure) : English(failure) : turkish ? GenericTurkish : GenericEnglish;
+    }
+
     public static string Category(FailureCode code) => JsonNamingPolicy.SnakeCaseLower.ConvertName(FailureCodes.CategoryOf(code).ToString());
 
     public static string English(FailureCode code) => code switch

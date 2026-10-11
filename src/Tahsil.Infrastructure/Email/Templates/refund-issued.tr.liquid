@@ -1,0 +1,16 @@
+{%- capture subject -%}{% if refund.void %}Ödemeniz iptal edildi{% else %}İadeniz yapıldı{% endif %}: {{ refund.amount }}{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{% if refund.payment_date %}{{ refund.payment_date }} tarihli {% endif %}{{ refund.payment_amount }} tutarındaki ödemenizin {{ refund.amount }} tutarı {% if refund.void %}iptal edildi{% else %}iade edildi{% endif %}{% if refund.card %} ({{ refund.card }}){% endif %}{% if refund.invoice_number %}, fatura {{ refund.invoice_number }}{% endif %}.</p>
+<p>Tutarın kartınıza yansıması bankanıza bağlı olarak genellikle birkaç iş günü sürer.</p>
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} üzerinden yaptığınız ödeme nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{% if refund.payment_date %}{{ refund.payment_date }} tarihli {% endif %}{{ refund.payment_amount }} tutarındaki ödemenizin {{ refund.amount }} tutarı {% if refund.void %}iptal edildi{% else %}iade edildi{% endif %}{% if refund.card %} ({{ refund.card }}){% endif %}{% if refund.invoice_number %}, fatura {{ refund.invoice_number }}{% endif %}.
+
+Tutarın kartınıza yansıması bankanıza bağlı olarak genellikle birkaç iş günü sürer.
+
+Bu e-postayı {{ merchant.name }} üzerinden yaptığınız ödeme nedeniyle alıyorsunuz.
+{%- endcapture -%}

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Notifications;
 using Tahsil.Application.Webhooks;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
@@ -42,6 +43,11 @@ internal sealed class AuditLog(TahsilDbContext context, IRequestContext request,
         if (WebhookEvents.From(auditEvent, server.Value.Mode) is { } webhookEvent)
         {
             outbox.Enqueue(webhookEvent);
+        }
+
+        if (AuditEmails.From(action, subject, data) is { } email)
+        {
+            outbox.Enqueue(email);
         }
     }
 

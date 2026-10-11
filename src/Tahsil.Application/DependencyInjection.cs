@@ -89,7 +89,17 @@ public static class DependencyInjection
         services.AddScoped<InvoiceEmailModels>();
         services.AddScoped<ICustomerEmailComposer, InvoiceIssuedComposer>();
         services.AddScoped<ICustomerEmailComposer, InvoiceReminderComposer>();
+        services.AddScoped<EmailFormat>();
+        services.AddScoped<ICustomerEmailComposer, ReceiptComposer>();
+        services.AddScoped<ICustomerEmailComposer, PaymentFailedComposer>();
+        services.AddScoped<ICustomerEmailComposer, PaymentActionRequiredComposer>();
+        services.AddScoped<ICustomerEmailComposer, DunningFinalReminderComposer>();
+        services.AddScoped<ICustomerEmailComposer, SubscriptionCanceledComposer>();
+        services.AddScoped<ICustomerEmailComposer, RefundIssuedComposer>();
+        services.AddScoped<ICustomerEmailComposer, PriceChangeComposer>();
         services.AddScoped<IOutboxMessageHandler<SendCustomerEmail>, CustomerEmailSender>();
+        services.AddScoped<IOutboxMessageHandler<SendOperatorEmail>, OperatorEmailSender>();
+        services.AddScoped<OperatorDigest>();
         services.AddScoped<SubscriptionSettlement>();
         services.AddScoped<SubscriptionMapper>();
         services.AddScoped<CreateSubscriptionHandler>();

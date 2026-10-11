@@ -1,0 +1,12 @@
+{%- capture subject -%}Needs attention: {{ items[0].kind }}{%- endcapture -%}
+{%- capture html -%}
+{% for item in items %}<p><strong>{{ item.kind }}</strong> on {{ item.subject }}, raised {{ item.raised_at }}.</p>
+{% if item.details.size > 0 %}<ul>{% for detail in item.details %}<li>{{ detail }}</li>{% endfor %}</ul>{% endif %}{% endfor %}
+<p><a href="{{ admin_url }}">Open the attention list</a></p>
+{%- endcapture -%}
+{%- capture text -%}
+{% for item in items %}{{ item.kind }} on {{ item.subject }}, raised {{ item.raised_at }}.
+{% for detail in item.details %}- {{ detail }}
+{% endfor %}{% endfor %}
+Open the attention list: {{ admin_url }}
+{%- endcapture -%}

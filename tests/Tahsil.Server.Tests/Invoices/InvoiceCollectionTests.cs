@@ -51,6 +51,7 @@ public sealed class InvoiceCollectionTests(TahsilServerFixture server)
             (April.AddDays(14), $"Son ödeme günü bugün: {number}"),
             (April.AddDays(17), $"Gecikmiş fatura: {number}"),
             (April.AddDays(21), $"Gecikmiş fatura: {number}"),
+            (April.AddDays(22), "Aboneliğiniz sona erdi"),
         ]);
         var ended = await GetSubscriptionAsync(client, subscription.Id);
         (ended.Status, ended.CancellationReason, ended.EndedAt, ended.PastDueSince).ShouldBe(
@@ -71,7 +72,8 @@ public sealed class InvoiceCollectionTests(TahsilServerFixture server)
         await host.RunWorkersUntilIdleAsync();
 
         await PayOnPageAsync(host, subscription.LatestInvoice!.Id, "4242424242424242");
-        Drain();
+        await host.RunWorkersUntilIdleAsync();
+        Drain().ShouldContain(subject => subject.StartsWith("Ödemeniz alındı:", StringComparison.Ordinal), "the receipt");
         for (var day = 14; day <= 25; day++)
         {
             AdvanceTo(April.AddDays(day));

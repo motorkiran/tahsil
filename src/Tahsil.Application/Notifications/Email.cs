@@ -30,6 +30,12 @@ public sealed class NotificationOptions
     /// <summary>Email types by name, such as <c>order_confirmation</c>; every type is on unless turned off.</summary>
     public Dictionary<string, NotificationTypeOptions> Types { get; set; } = [];
 
+    /// <summary>A directory whose <c>.liquid</c> files replace the built-in templates of the same name (NTF-9).</summary>
+    public string? TemplatesPath { get; set; }
+
+    /// <summary>Where operator emails go: attention items when they appear, and a daily digest of those still open (NTF-7).</summary>
+    public string? OperatorEmail { get; set; }
+
     public bool IsEnabled(string type) => Types.GetValueOrDefault(type)?.Enabled ?? true;
 }
 
@@ -43,7 +49,14 @@ public static class EmailTypes
     public const string OrderConfirmation = "order_confirmation";
     public const string InvoiceIssued = "invoice_issued";
     public const string InvoiceReminder = "invoice_reminder";
+    public const string Receipt = "receipt";
+    public const string PaymentFailed = "payment_failed";
+    public const string PaymentActionRequired = "payment_action_required";
+    public const string DunningFinalReminder = "dunning_final_reminder";
+    public const string SubscriptionCanceled = "subscription_canceled";
+    public const string RefundIssued = "refund_issued";
+    public const string PriceChange = "price_change";
 
     /// <summary>Types that back legal duties (NTF-4): turning one off leaves the duty to the application.</summary>
-    public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation];
+    public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation, SubscriptionCanceled, PriceChange];
 }

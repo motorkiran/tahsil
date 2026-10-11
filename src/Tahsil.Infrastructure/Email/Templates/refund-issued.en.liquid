@@ -1,0 +1,16 @@
+{%- capture subject -%}{% if refund.void %}Your payment was canceled{% else %}Your refund was issued{% endif %}: {{ refund.amount }}{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ refund.amount }} of your payment of {{ refund.payment_amount }}{% if refund.payment_date %} on {{ refund.payment_date }}{% endif %} was {% if refund.void %}canceled{% else %}refunded{% endif %}{% if refund.card %} ({{ refund.card }}){% endif %}{% if refund.invoice_number %}, invoice {{ refund.invoice_number }}{% endif %}.</p>
+<p>Depending on your bank, it usually reaches your card within a few business days.</p>
+<p style="color:#6b7280;font-size:13px;">You receive this email because of a payment to {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ refund.amount }} of your payment of {{ refund.payment_amount }}{% if refund.payment_date %} on {{ refund.payment_date }}{% endif %} was {% if refund.void %}canceled{% else %}refunded{% endif %}{% if refund.card %} ({{ refund.card }}){% endif %}{% if refund.invoice_number %}, invoice {{ refund.invoice_number }}{% endif %}.
+
+Depending on your bank, it usually reaches your card within a few business days.
+
+You receive this email because of a payment to {{ merchant.name }}.
+{%- endcapture -%}

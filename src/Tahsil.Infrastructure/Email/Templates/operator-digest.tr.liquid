@@ -1,0 +1,12 @@
+{%- capture subject -%}{{ items.size }} kayıt hâlâ ilgi bekliyor{%- endcapture -%}
+{%- capture html -%}
+<p>Şu kayıtlar hâlâ açık:</p>
+<ul>{% for item in items %}<li><strong>{{ item.kind }}</strong>, {{ item.subject }}, {{ item.raised_at }}</li>{% endfor %}</ul>
+<p><a href="{{ admin_url }}">Listeyi aç</a></p>
+{%- endcapture -%}
+{%- capture text -%}
+Şu kayıtlar hâlâ açık:
+{% for item in items %}- {{ item.kind }}, {{ item.subject }}, {{ item.raised_at }}
+{% endfor %}
+Listeyi aç: {{ admin_url }}
+{%- endcapture -%}

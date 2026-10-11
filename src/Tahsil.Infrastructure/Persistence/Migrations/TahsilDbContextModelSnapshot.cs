@@ -1420,7 +1420,7 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("NextReminderAt")
                         .HasDatabaseName("ix_invoices_next_reminder_at")
-                        .HasFilter("status = 'open' AND collection_method = 'send_invoice'");
+                        .HasFilter("status = 'open'");
 
                     b.HasIndex("Number")
                         .IsUnique()

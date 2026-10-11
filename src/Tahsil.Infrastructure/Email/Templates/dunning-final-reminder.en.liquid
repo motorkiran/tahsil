@@ -1,0 +1,16 @@
+{%- capture subject -%}Last reminder: {{ invoice.number }}{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>We still have not received the payment of {{ invoice.amount }} for invoice {{ invoice.number }}.{% if cancel_date %} If it stays unpaid, your subscription ends on {{ cancel_date }}.{% endif %}</p>
+{% if invoice.hosted_url %}<p><a href="{{ invoice.hosted_url }}" style="display:inline-block;padding:10px 18px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px;">Pay the invoice</a></p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription or invoice with {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+We still have not received the payment of {{ invoice.amount }} for invoice {{ invoice.number }}.{% if cancel_date %} If it stays unpaid, your subscription ends on {{ cancel_date }}.{% endif %}
+{% if invoice.hosted_url %}
+Pay the invoice: {{ invoice.hosted_url }}
+{% endif %}
+You receive this email because of your subscription or invoice with {{ merchant.name }}.
+{%- endcapture -%}

@@ -1,0 +1,16 @@
+{%- capture subject -%}Aboneliğiniz sona erdi{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erdi.{% case subscription.reason %}{% when "payment_failed" %} Ödeme alınamadığı için sona erdi.{% when "trial_without_payment_method" %} Deneme süreniz bir ödeme yöntemi eklenmeden bittiği için sona erdi.{% when "requested_by_customer" %} İsteğiniz üzerine sona erdi.{% endcase %}</p>
+<p>Bundan sonra bu abonelik için ödeme alınmayacak.</p>
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erdi.{% case subscription.reason %}{% when "payment_failed" %} Ödeme alınamadığı için sona erdi.{% when "trial_without_payment_method" %} Deneme süreniz bir ödeme yöntemi eklenmeden bittiği için sona erdi.{% when "requested_by_customer" %} İsteğiniz üzerine sona erdi.{% endcase %}
+
+Bundan sonra bu abonelik için ödeme alınmayacak.
+
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}
