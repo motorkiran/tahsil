@@ -1,0 +1,22 @@
+{%- capture subject -%}{% if reminder.days_overdue > 0 %}Gecikmiş fatura: {{ invoice.number }}{% elsif reminder.due_today %}Son ödeme günü bugün: {{ invoice.number }}{% else %}Hatırlatma: {{ invoice.number }} {{ reminder.days_left }} gün içinde ödenmeli{% endif %}{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{% if reminder.days_overdue > 0 %}{{ invoice.number }} numaralı faturanızın son ödeme tarihi ({{ invoice.due_date }}) {{ reminder.days_overdue }} gün önce geçti ve {{ invoice.amount }} hâlâ ödenmedi.{% elsif reminder.due_today %}{{ invoice.number }} numaralı faturanızın son ödeme günü bugün. Ödenecek tutar {{ invoice.amount }}.{% else %}{{ invoice.number }} numaralı faturanızın son ödeme tarihi {{ invoice.due_date }}. Ödenecek tutar {{ invoice.amount }}.{% endif %}</p>
+{% if invoice.hosted_url %}<p><a href="{{ invoice.hosted_url }}" style="display:inline-block;padding:10px 18px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px;">Faturayı öde</a></p>{% endif %}
+{% if bank_transfer %}<p>Havale veya EFT için: {{ bank_transfer.bank }}, {{ bank_transfer.account_holder }}, IBAN {{ bank_transfer.iban }}; açıklamaya {{ invoice.number }} yazın.</p>{% endif %}
+<p>Ödemeyi yaptıysanız bu e-postayı dikkate almayın.</p>
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} ile aranızdaki fatura nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{% if reminder.days_overdue > 0 %}{{ invoice.number }} numaralı faturanızın son ödeme tarihi ({{ invoice.due_date }}) {{ reminder.days_overdue }} gün önce geçti ve {{ invoice.amount }} hâlâ ödenmedi.{% elsif reminder.due_today %}{{ invoice.number }} numaralı faturanızın son ödeme günü bugün. Ödenecek tutar {{ invoice.amount }}.{% else %}{{ invoice.number }} numaralı faturanızın son ödeme tarihi {{ invoice.due_date }}. Ödenecek tutar {{ invoice.amount }}.{% endif %}
+{% if invoice.hosted_url %}
+Faturayı öde: {{ invoice.hosted_url }}
+{% endif %}{% if bank_transfer %}
+Havale veya EFT için: {{ bank_transfer.bank }}, {{ bank_transfer.account_holder }}, IBAN {{ bank_transfer.iban }}; açıklamaya {{ invoice.number }} yazın.
+{% endif %}
+Ödemeyi yaptıysanız bu e-postayı dikkate almayın.
+
+Bu e-postayı {{ merchant.name }} ile aranızdaki fatura nedeniyle alıyorsunuz.
+{%- endcapture -%}

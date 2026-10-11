@@ -77,6 +77,13 @@ internal static class InvoiceEndpoints
             .ProducesProblem(StatusCodes.Status412PreconditionFailed)
             .RequirePermission(TahsilPermissions.InvoicesWrite);
 
+        invoices.MapPost("{id:guid}/send", async (Guid id, SendInvoiceHandler handler, HttpResponse response, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(id, cancellationToken)).ToOk(response))
+            .WithName("SendInvoice").WithSummary("Email an invoice again")
+            .WithDescription("Emails a finalized, unpaid invoice sent for payment to its customer again, with its hosted page link; at most once every ten minutes.")
+            .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict).ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .RequirePermission(TahsilPermissions.InvoicesWrite);
+
         invoices.MapDelete("{id:guid}", async (Guid id, DeleteInvoiceHandler handler, CancellationToken cancellationToken) =>
             (await handler.HandleAsync(id, cancellationToken)).ToNoContent())
             .WithName("DeleteInvoice").WithSummary("Delete a draft invoice")

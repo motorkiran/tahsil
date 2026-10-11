@@ -47,6 +47,9 @@ public static class AuditActions
 
     /// <summary>The customer must authenticate the payment on the invoice's hosted page (DUN-4).</summary>
     public const string InvoiceActionRequired = "invoice.action_required";
+
+    /// <summary>An invoice sent for payment passed its due date unpaid (INV-13).</summary>
+    public const string InvoiceOverdue = "invoice.overdue";
     public const string PaymentSucceeded = "payment.succeeded";
     public const string PaymentFailed = "payment.failed";
     public const string PaymentCanceled = "payment.canceled";

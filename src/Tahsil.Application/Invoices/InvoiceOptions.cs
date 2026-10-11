@@ -34,6 +34,16 @@ public sealed partial class InvoiceOptions
     /// <summary>The version of the hosted invoice links' key (INV-24); a new version invalidates every link.</summary>
     public int LinkKeyVersion { get; set; } = 1;
 
+    private static readonly TimeSpan[] DefaultReminders = [TimeSpan.FromDays(-3), TimeSpan.Zero, TimeSpan.FromDays(3), TimeSpan.FromDays(7)];
+
+    /// <summary>
+    /// When invoices sent to customers are reminded of, as offsets from the start of their due day (INV-12): 3 days
+    /// before, on the day, and 3 and 7 days after when not set. Starts empty, since binding adds to a list's defaults.
+    /// </summary>
+    public List<TimeSpan> Reminders { get; set; } = [];
+
+    internal IReadOnlyList<TimeSpan> ReminderOffsets => Reminders.Count > 0 ? Reminders : DefaultReminders;
+
     /// <summary>Bank accounts per currency for transfers, shown on hosted invoice pages (INV-26).</summary>
     public Dictionary<string, BankTransferOptions> BankTransfer { get; set; } = [];
 
@@ -41,6 +51,8 @@ public sealed partial class InvoiceOptions
     public Dictionary<string, Dictionary<string, string>> DocumentTitle { get; set; } = [];
 
     internal bool HasValidPrefix() => PrefixPattern().IsMatch(NumberPrefix);
+
+    internal bool HasOrderedReminders() => ReminderOffsets.SequenceEqual(ReminderOffsets.Order()) && ReminderOffsets.Distinct().Count() == ReminderOffsets.Count;
 
     // Numbers are at most 32 characters: the prefix, the year and a sequence of six or more digits.
     [GeneratedRegex("^[A-Z0-9]{1,12}$")]

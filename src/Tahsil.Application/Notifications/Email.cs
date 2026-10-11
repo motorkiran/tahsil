@@ -41,6 +41,8 @@ public sealed class NotificationTypeOptions
 public static class EmailTypes
 {
     public const string OrderConfirmation = "order_confirmation";
+    public const string InvoiceIssued = "invoice_issued";
+    public const string InvoiceReminder = "invoice_reminder";
 
     /// <summary>Types that back legal duties (NTF-4): turning one off leaves the duty to the application.</summary>
     public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation];

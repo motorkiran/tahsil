@@ -53,6 +53,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasIndex(invoice => invoice.FinalizeAt).HasFilter("status = 'draft' AND auto_advance");
         builder.HasIndex(invoice => invoice.NextPaymentAttemptAt).HasFilter("status = 'open'");
         builder.HasIndex(invoice => invoice.DunningDeadlineAt).HasFilter("status = 'open' AND dunning_ended_at IS NULL");
+        builder.HasIndex(invoice => invoice.NextReminderAt).HasFilter("status = 'open' AND collection_method = 'send_invoice'");
     }
 }
 

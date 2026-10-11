@@ -78,6 +78,24 @@ public sealed class DunningTests(TahsilServerFixture server)
     }
 
     [Fact]
+    [Trait("Requirement", "DUN-1")]
+    public async Task AConfiguredSchedule_ReplacesTheDefaultOne()
+    {
+        await using var host = Host(new Dictionary<string, string?> { ["Tahsil:Dunning:RetrySchedule:0"] = "2.00:00:00" });
+        using var client = await ClientAsync(host);
+        var (subscription, card) = await PayingAsync(client);
+        await SetBehaviorAsync(client, card, "card_declined");
+
+        await FailRenewalAsync(host);
+        var invoice = (await GetSubscriptionAsync(client, subscription.Id)).LatestInvoice!.Id;
+        (await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{invoice}")).NextPaymentAttemptAt.ShouldBe(FirstFailure.AddDays(2));
+        await AdvanceToAsync(host, FirstFailure.AddDays(2));
+
+        var canceled = await GetSubscriptionAsync(client, subscription.Id);
+        (canceled.Status, canceled.EndedAt).ShouldBe((SubscriptionStatus.Canceled, FirstFailure.AddDays(2)));
+    }
+
+    [Fact]
     [Trait("Requirement", "DUN-3")]
     [Trait("Requirement", "DUN-8")]
     public async Task ACardThatCannotBeUsed_IsNotRetried_UntilTheCustomerGivesAnother()

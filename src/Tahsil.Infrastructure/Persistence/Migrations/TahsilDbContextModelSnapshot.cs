@@ -1342,6 +1342,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_payment_attempt_at");
 
+                    b.Property<DateTimeOffset?>("NextReminderAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_reminder_at");
+
                     b.Property<string>("Number")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
@@ -1413,6 +1417,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.HasIndex("NextPaymentAttemptAt")
                         .HasDatabaseName("ix_invoices_next_payment_attempt_at")
                         .HasFilter("status = 'open'");
+
+                    b.HasIndex("NextReminderAt")
+                        .HasDatabaseName("ix_invoices_next_reminder_at")
+                        .HasFilter("status = 'open' AND collection_method = 'send_invoice'");
 
                     b.HasIndex("Number")
                         .IsUnique()

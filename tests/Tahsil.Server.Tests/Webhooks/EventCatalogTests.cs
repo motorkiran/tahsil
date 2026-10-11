@@ -29,7 +29,6 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     private static readonly Dictionary<string, string> EmittedLater = new(StringComparer.Ordinal)
     {
         [TahsilEventTypes.PaymentMethodWillExpire] = "M5: card expiry reminders for running subscriptions (CUS-15)",
-        [TahsilEventTypes.InvoiceOverdue] = "M5: overdue invoices (INV-13)",
     };
 
     private static readonly SemaphoreSlim StoryGate = new(1, 1);
@@ -64,6 +63,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.SubscriptionCanceled, ["reason", "endedAt"] },
         { TahsilEventTypes.SubscriptionPastDue, ["invoiceId", "failureCode"] },
         { TahsilEventTypes.InvoiceActionRequired, ["number", "hostedUrl"] },
+        { TahsilEventTypes.InvoiceOverdue, ["number", "dueDate", "amountRemaining"] },
         { TahsilEventTypes.InvoiceCreated, ["billingReason", "subscriptionId", "finalizeAt"] },
     };
 
@@ -204,6 +204,9 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
 
         // A customer without history, deleted.
         (await SendAsync(client, HttpMethod.Delete, $"/api/v1/customers/{await CustomerAsync(client)}")).Dispose();
+
+        // An invoice sent for payment that is never paid; a month later, it is overdue.
+        await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice);
 
         // A month later, the subscription renews, its payment fails, and it is canceled.
         (await SendAsync(client, HttpMethod.Patch, $"/api/v1/test/simulator/payment-methods/{unrefundable.PaymentMethodId}", new UpdateSimulatorPaymentMethodRequest

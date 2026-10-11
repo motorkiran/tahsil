@@ -100,14 +100,17 @@ internal static class SubscriptionScenarios
         return await response.ReadAsync<SubscriptionResponse>();
     }
 
-    /// <summary>A monthly Team subscription whose invoices are sent: active at once, without a card.</summary>
-    public static Task<SubscriptionResponse> SendingInvoicesAsync(HttpClient client, Guid customer, int quantity = 1) =>
+    /// <summary>
+    /// A monthly Team subscription whose invoices are sent: active at once, without a card. Its invoices are due in a
+    /// year by default, so that none falls overdue, and ends the subscription, in tests that run for months.
+    /// </summary>
+    public static Task<SubscriptionResponse> SendingInvoicesAsync(HttpClient client, Guid customer, int quantity = 1, int daysUntilDue = 365) =>
         CreateAsync(client, new CreateSubscriptionRequest
         {
             Customer = customer,
             Items = [new SubscriptionItemRequest { Price = "team-monthly-try", Quantity = quantity }],
             CollectionMethod = CollectionMethod.SendInvoice,
-            DaysUntilDue = 14,
+            DaysUntilDue = daysUntilDue,
         });
 
     public static async Task<T> GetAsync<T>(HttpClient client, string path)

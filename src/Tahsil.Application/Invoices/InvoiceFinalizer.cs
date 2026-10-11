@@ -22,6 +22,7 @@ public sealed class InvoiceFinalizer(
     IAuditLog audit,
     ProviderRegistry providers,
     Subscriptions.SubscriptionSettlement subscriptions,
+    InvoiceReminders reminders,
     IOptions<BillingOptions> billing,
     IOptions<InvoiceOptions> invoices,
     BillingClock clock)
@@ -85,6 +86,10 @@ public sealed class InvoiceFinalizer(
         {
             audit.Record(AuditActions.InvoicePaid, subject, Details(invoice), customerId: invoice.CustomerId);
             await subscriptions.InvoicePaidAsync(invoice, now, cancellationToken);
+        }
+        else if (invoice.CollectionMethod == CollectionMethod.SendInvoice)
+        {
+            reminders.Issued(invoice, now);
         }
 
         return Result.Success();

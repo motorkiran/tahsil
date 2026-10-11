@@ -23,8 +23,15 @@ public sealed class DunningOptions
 {
     public const string SectionName = "Tahsil:Dunning";
 
-    /// <summary>The retries, as offsets from the invoice's first customer failure (DUN-1).</summary>
-    public List<TimeSpan> RetrySchedule { get; set; } = [TimeSpan.FromDays(1), TimeSpan.FromDays(3), TimeSpan.FromDays(5), TimeSpan.FromDays(7)];
+    private static readonly TimeSpan[] DefaultRetrySchedule = [TimeSpan.FromDays(1), TimeSpan.FromDays(3), TimeSpan.FromDays(5), TimeSpan.FromDays(7)];
+
+    /// <summary>
+    /// The retries, as offsets from the invoice's first customer failure (DUN-1); 1, 3, 5 and 7 days when not set.
+    /// Starts empty: configuration binding would add to defaults instead of replacing them.
+    /// </summary>
+    public List<TimeSpan> RetrySchedule { get; set; } = [];
+
+    internal IReadOnlyList<TimeSpan> Schedule => RetrySchedule.Count > 0 ? RetrySchedule : DefaultRetrySchedule;
 
     /// <summary>Whether the final action cancels the subscription; otherwise it stays past due for the operator (DUN-6).</summary>
     public bool CancelSubscription { get; set; } = true;
@@ -47,7 +54,7 @@ public sealed class DunningOptions
 
     internal bool IsValid() =>
         InvoiceAction is "leave_open" or "mark_uncollectible" or "void"
-        && RetrySchedule.Count > 0 && RetrySchedule.All(offset => offset > TimeSpan.Zero) && RetrySchedule.SequenceEqual(RetrySchedule.Order()) && FinalReminderBefore >= TimeSpan.Zero;
+        && Schedule.All(offset => offset > TimeSpan.Zero) && Schedule.SequenceEqual(Schedule.Order()) && FinalReminderBefore >= TimeSpan.Zero;
 }
 
 /// <summary>
@@ -108,7 +115,7 @@ public sealed class Dunning(
             return;
         }
 
-        var first = invoice.RecordCustomerFailure(options.Value.RetrySchedule, retries: payment.FailureCategory == "retry", now);
+        var first = invoice.RecordCustomerFailure(options.Value.Schedule, retries: payment.FailureCategory == "retry", now);
         if (payment.FailureCategory == "authenticate")
         {
             audit.Record(AuditActions.InvoiceActionRequired, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), new Dictionary<string, object?>
@@ -120,7 +127,7 @@ public sealed class Dunning(
 
         if (first)
         {
-            await subscriptions.CustomerFailureAsync(invoice, payment, now, cancellationToken);
+            await subscriptions.CustomerFailureAsync(invoice, payment.FailureCode, now, cancellationToken);
         }
     }
 

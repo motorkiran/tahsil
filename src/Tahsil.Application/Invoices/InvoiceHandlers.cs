@@ -350,6 +350,43 @@ public sealed class VoidInvoiceHandler(
     }
 }
 
+/// <summary>Emails an invoice sent for payment again (INV-22), at most once every ten minutes.</summary>
+public sealed class SendInvoiceHandler(ITahsilDbContext context, IAuthorizer authorizer, IOutbox outbox, InvoiceMapper mapper, BillingClock clock)
+{
+    public static readonly Error TooSoon = Error.RateLimited("invoice.send_rate_limited", "The invoice was emailed in the last ten minutes; try again later.");
+
+    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
+
+    public async Task<Result<Versioned<InvoiceResponse>>> HandleAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (authorizer.Require(TahsilPermissions.InvoicesWrite) is { IsFailure: true } denied)
+        {
+            return denied.Error;
+        }
+
+        if (await context.FindInvoiceAsync(id, cancellationToken) is not { } invoice)
+        {
+            return Model.InvoiceErrors.NotFound;
+        }
+
+        if (invoice.Status is not (Model.InvoiceStatus.Open or Model.InvoiceStatus.Uncollectible) || invoice.CollectionMethod != Model.CollectionMethod.SendInvoice)
+        {
+            return Error.Conflict("invoice.invalid_state", "Only finalized, unpaid invoices sent for payment are emailed.");
+        }
+
+        var now = clock.GetUtcNow();
+        var sent = $"{Notifications.EmailTypes.InvoiceIssued}:{invoice.Id}";
+        if (await context.NotificationLogs.AnyAsync(log => log.OccurrenceKey.StartsWith(sent) && log.CreatedAt > now - Interval, cancellationToken))
+        {
+            return TooSoon;
+        }
+
+        Notifications.CustomerEmails.Enqueue(outbox, Notifications.EmailTypes.InvoiceIssued, invoice.Id, $"{invoice.Id}:{now.ToUnixTimeMilliseconds()}");
+        await context.SaveChangesAsync(cancellationToken);
+        return new Versioned<InvoiceResponse>(mapper.ToResponse(invoice), invoice.Version);
+    }
+}
+
 public sealed class MarkInvoiceUncollectibleHandler(
     ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IBillingLocks locks, InvoiceMapper mapper, BillingClock clock)
 {

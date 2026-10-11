@@ -115,6 +115,9 @@ public sealed class Invoice : AggregateRoot
     /// <summary>Since when automatic payments have failed for the merchant's or provider's reasons only (DUN-7).</summary>
     public DateTimeOffset? MerchantFailingSince { get; private set; }
 
+    /// <summary>When an invoice sent to the customer is looked at next: its next reminder, or its due date passing (INV-12, INV-13).</summary>
+    public DateTimeOffset? NextReminderAt { get; private set; }
+
     public CustomerSnapshot? CustomerSnapshot { get; private set; }
 
     /// <summary>The snapshot's tax ID, encrypted for this invoice.</summary>
@@ -446,6 +449,20 @@ public sealed class Invoice : AggregateRoot
         NextPaymentAttemptAt = now;
         UpdatedAt = now;
         return true;
+    }
+
+    public void ScheduleReminder(DateTimeOffset? at, DateTimeOffset now)
+    {
+        NextReminderAt = at;
+        UpdatedAt = now;
+    }
+
+    /// <summary>The due date passed unpaid (INV-13, DUN-11): dunning starts, and its final action comes at <paramref name="deadline"/>.</summary>
+    public void MarkOverdue(DateTimeOffset deadline, DateTimeOffset now)
+    {
+        DunningStartedAt ??= now;
+        DunningDeadlineAt ??= deadline;
+        UpdatedAt = now;
     }
 
     /// <summary>An older invoice of the subscription is collected first (DUN-9).</summary>

@@ -46,13 +46,13 @@ public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLoc
     }
 
     /// <summary>
-    /// The first customer failure of an invoice of the subscription, in the caller's transaction, which holds the
-    /// invoice's lock (DUN-5): an active subscription, or one whose trial just ended, is past due. A first invoice leaves
-    /// its subscription incomplete instead (SUB-6).
+    /// The first customer failure of an invoice of the subscription, or its due date passing, in the caller's
+    /// transaction, which holds the invoice's lock (DUN-5, INV-13): an active subscription, or one whose trial just
+    /// ended, is past due. An incomplete subscription stays incomplete (SUB-6).
     /// </summary>
-    public async Task CustomerFailureAsync(Invoice invoice, Domain.Payments.Payment payment, DateTimeOffset now, CancellationToken cancellationToken)
+    public async Task CustomerFailureAsync(Invoice invoice, string? failureCode, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (invoice.SubscriptionId is not { } subscriptionId || invoice.BillingReason == BillingReason.SubscriptionCreate)
+        if (invoice.SubscriptionId is not { } subscriptionId)
         {
             return;
         }
@@ -70,7 +70,7 @@ public sealed class SubscriptionSettlement(ITahsilDbContext context, IBillingLoc
         audit.Record(AuditActions.SubscriptionPastDue, AuditSubject.Of(AuditSubjects.Subscription, subscription.Id), new Dictionary<string, object?>
         {
             ["invoiceId"] = invoice.Id,
-            ["failureCode"] = payment.FailureCode,
+            ["failureCode"] = failureCode,
         }, customerId: subscription.CustomerId);
     }
 

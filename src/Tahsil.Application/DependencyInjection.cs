@@ -8,6 +8,7 @@ using Tahsil.Application.Common;
 using Tahsil.Application.Connections;
 using Tahsil.Application.Customers;
 using Tahsil.Application.Invoices;
+using Tahsil.Application.Notifications;
 using Tahsil.Application.PaymentMethods;
 using Tahsil.Application.Payments;
 using Tahsil.Application.Provisioning;
@@ -82,6 +83,12 @@ public static class DependencyInjection
         services.AddScoped<DraftFinalization>();
         services.AddScoped<ChargeableCards>();
         services.AddScoped<Dunning>();
+        services.AddScoped<InvoiceReminders>();
+        services.AddScoped<SendInvoiceHandler>();
+        services.AddScoped<InvoiceEmailModels>();
+        services.AddScoped<ICustomerEmailComposer, InvoiceIssuedComposer>();
+        services.AddScoped<ICustomerEmailComposer, InvoiceReminderComposer>();
+        services.AddScoped<IOutboxMessageHandler<SendCustomerEmail>, CustomerEmailSender>();
         services.AddScoped<SubscriptionSettlement>();
         services.AddScoped<SubscriptionMapper>();
         services.AddScoped<CreateSubscriptionHandler>();
@@ -130,6 +137,7 @@ public static class DependencyInjection
         services.AddOptions<InvoiceOptions>()
             .BindConfiguration(InvoiceOptions.SectionName)
             .Validate(options => options.HasValidPrefix(), $"{InvoiceOptions.SectionName}:NumberPrefix must be 1 to 12 capital letters or digits.")
+            .Validate(options => options.HasOrderedReminders(), $"{InvoiceOptions.SectionName}:Reminders lists distinct offsets in increasing order.")
             .Validate(options => options.DefaultDaysUntilDue is >= 0 and <= 365, $"{InvoiceOptions.SectionName}:DefaultDaysUntilDue must be between 0 and 365.")
             .ValidateOnStart();
         services.AddSingleton<InvoiceLinks>();
