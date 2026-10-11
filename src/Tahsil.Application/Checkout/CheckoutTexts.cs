@@ -7,6 +7,15 @@ public sealed class CheckoutPageOptions
 
     public ConsentTextOptions ImmediateStartConsent { get; set; } = new() { Enabled = true };
 
+    /// <summary>Payment attempts per session (CHK-21).</summary>
+    public int MaxPaymentAttempts { get; set; } = 5;
+
+    /// <summary>Attempts per network (an IPv4 address or an IPv6 /64) per hour, across sessions (CHK-21).</summary>
+    public int MaxAttemptsPerAddressPerHour { get; set; } = 10;
+
+    /// <summary>Failed attempts per customer per day (CHK-21).</summary>
+    public int MaxFailedAttemptsPerCustomerPerDay { get; set; } = 10;
+
     /// <summary>The pay button's text per locale and mode, such as <c>PayButtonText:tr:payment</c>; <c>{amount}</c> is the total.</summary>
     public Dictionary<string, Dictionary<string, string>> PayButtonText { get; set; } = [];
 }

@@ -1710,6 +1710,11 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("checkout_session_id");
 
+                    b.Property<string>("ClientNetwork")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_network");
+
                     b.Property<Guid?>("ConnectionId")
                         .HasColumnType("uuid")
                         .HasColumnName("connection_id");
@@ -1870,6 +1875,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_payments_reference");
 
+                    b.HasIndex("ClientNetwork", "CreatedAt")
+                        .HasDatabaseName("ix_payments_client_network_created_at")
+                        .HasFilter("client_network IS NOT NULL");
+
                     b.HasIndex("ConnectionId", "ProviderPaymentId")
                         .IsUnique()
                         .HasDatabaseName("ix_payments_connection_id_provider_payment_id")
@@ -1891,6 +1900,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("CheckoutsPausedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checkouts_paused_at");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")

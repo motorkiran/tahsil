@@ -63,6 +63,7 @@ public sealed record ConnectionResponse(
     string Name,
     ConnectionEnvironment Environment,
     bool Enabled,
+    bool CheckoutsPaused,
     IReadOnlyDictionary<string, CredentialState> Credentials,
     IReadOnlyDictionary<string, JsonElement> Settings,
     IReadOnlyList<string> Currencies,
@@ -107,4 +108,7 @@ public sealed record UpdateConnectionRequest
     public IReadOnlyDictionary<string, JsonElement>? Settings { get; init; }
 
     public bool? Enabled { get; init; }
+
+    /// <summary>Pauses or resumes new checkouts on the connection, such as during card testing (CHK-22); saved cards keep being charged.</summary>
+    public bool? CheckoutsPaused { get; init; }
 }

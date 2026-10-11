@@ -6699,6 +6699,7 @@
           "name",
           "environment",
           "enabled",
+          "checkoutsPaused",
           "credentials",
           "settings",
           "currencies",
@@ -6726,6 +6727,9 @@
             "$ref": "#/components/schemas/ConnectionEnvironment"
           },
           "enabled": {
+            "type": "boolean"
+          },
+          "checkoutsPaused": {
             "type": "boolean"
           },
           "credentials": {
@@ -10854,6 +10858,13 @@
               "null",
               "boolean"
             ]
+          },
+          "checkoutsPaused": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Pauses or resumes new checkouts on the connection, such as during card testing (CHK-22); saved cards keep being charged."
           }
         },
         "description": "Changes a connection. Credentials and settings merge: the fields given replace the current values, the others stay;\nan empty credential or a `null` setting removes an optional field. The key, provider and environment never change."

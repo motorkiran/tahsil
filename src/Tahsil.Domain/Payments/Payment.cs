@@ -64,6 +64,9 @@ public sealed class Payment : AggregateRoot
 
     public Guid? CheckoutSessionId { get; private init; }
 
+    /// <summary>The network the customer paid from (an IPv4 address, or an IPv6 /64), to limit attempts per network (CHK-21).</summary>
+    public string? ClientNetwork { get; private set; }
+
     public Guid CustomerId { get; private init; }
 
     public Guid? ConnectionId { get; private init; }
@@ -141,12 +144,14 @@ public sealed class Payment : AggregateRoot
         Guid? consentRecordId,
         DateTimeOffset expiresAt,
         Actor actor,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        string? clientNetwork = null)
     {
         var payment = New(
             customerId, invoiceId, checkoutSessionId, connectionId, null, amount, currency, purpose, PaymentInitiator.Customer, saveCard || purpose == PaymentPurpose.Setup, consentRecordId, actor, now);
         payment.ExpiresAt = expiresAt;
         payment.ReconcileAt = expiresAt;
+        payment.ClientNetwork = clientNetwork;
         return payment;
     }
 

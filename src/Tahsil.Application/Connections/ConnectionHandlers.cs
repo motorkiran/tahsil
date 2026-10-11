@@ -154,6 +154,11 @@ public sealed class UpdateConnectionHandler(
             connection.ReplaceCredentials(secrets.Encrypt(credentials.Value), now);
         }
 
+        if (request.CheckoutsPaused is { } paused)
+        {
+            connection.PauseCheckouts(paused, now);
+        }
+
         var wasEnabled = connection.IsEnabled;
         var updated = connection.Update(request.Name ?? connection.Name, settings.Value, request.Enabled ?? connection.IsEnabled, now);
         if (updated.IsFailure)
@@ -162,7 +167,7 @@ public sealed class UpdateConnectionHandler(
         }
 
         var data = new Dictionary<string, object?>(Changes.Of(
-            ("name", request.Name is not null), ("credentials", request.Credentials is { Count: > 0 }), ("settings", request.Settings is not null), ("enabled", request.Enabled is not null)));
+            ("name", request.Name is not null), ("credentials", request.Credentials is { Count: > 0 }), ("settings", request.Settings is not null), ("enabled", request.Enabled is not null), ("checkoutsPaused", request.CheckoutsPaused is not null)));
         if (request.Credentials is { Count: > 0 })
         {
             data["credentials"] = request.Credentials.Keys.Order(StringComparer.Ordinal).ToArray();
@@ -171,6 +176,11 @@ public sealed class UpdateConnectionHandler(
         if (connection.IsEnabled != wasEnabled)
         {
             data["enabled"] = connection.IsEnabled;
+        }
+
+        if (request.CheckoutsPaused is { } checkoutsPaused)
+        {
+            data["checkoutsPaused"] = checkoutsPaused;
         }
 
         audit.Record(AuditActions.ConnectionUpdated, AuditSubject.Of(AuditSubjects.Connection, connection.Id), data);

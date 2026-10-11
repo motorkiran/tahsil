@@ -253,4 +253,10 @@
   <data name="Document" xml:space="preserve">
     <value>Belge</value>
   </data>
+  <data name="Too many payment attempts. Please try again later." xml:space="preserve">
+    <value>Çok fazla ödeme denemesi yapıldı. Lütfen daha sonra tekrar deneyin.</value>
+  </data>
+  <data name="Payments are paused for now. Please try again later." xml:space="preserve">
+    <value>Ödemeler şu an için durduruldu. Lütfen daha sonra tekrar deneyin.</value>
+  </data>
 </root>

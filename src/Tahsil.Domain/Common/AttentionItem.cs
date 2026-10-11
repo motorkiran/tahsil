@@ -22,6 +22,9 @@ public enum AttentionKind
 
     /// <summary>A verified provider notification could not be applied in ten attempts (PAY-24).</summary>
     NotificationFailed,
+
+    /// <summary>More than half of a connection's checkout payments failed lately, a sign of card testing (CHK-22).</summary>
+    DeclineSpike,
 }
 
 /// <summary>Something an operator must look at and resolve, such as an amount mismatch; one open item per kind and subject.</summary>

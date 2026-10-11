@@ -11,6 +11,10 @@ public static class CheckoutErrors
     public static readonly Error InvalidLifetime = Error.Validation(
         "checkout.invalid", "expiresIn is an ISO 8601 duration from PT30M to PT24H.", "expiresIn");
 
+    public static readonly Error AttemptsExceeded = Error.RateLimited("checkout.attempts_exceeded", "Too many payment attempts; try again later.");
+
+    public static readonly Error Paused = Error.Conflict("checkout.paused", "New checkouts are paused on the connection that serves the currency.");
+
     public static readonly Error CurrencyNotRouted = Error.Validation(
         "checkout.currency_not_routed", "No enabled provider connection serves the session's currency; route it first.", "currency");
 

@@ -26,6 +26,7 @@ public sealed class ConnectionMapper(ConnectionSecrets secrets, ProviderRegistry
             connection.Name,
             connection.Environment.Map<Contracts.ConnectionEnvironment>(),
             connection.IsEnabled,
+            connection.CheckoutsPausedAt is not null,
             credentialKeys.ToDictionary(
                 key => key,
                 key => credentials.TryGetValue(key, out var value)

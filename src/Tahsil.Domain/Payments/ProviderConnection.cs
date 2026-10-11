@@ -48,6 +48,9 @@ public sealed class ProviderConnection : AggregateRoot
 
     public bool IsEnabled { get; private set; }
 
+    /// <summary>Since when an operator has paused new checkouts on the connection, such as during card testing (CHK-22).</summary>
+    public DateTimeOffset? CheckoutsPausedAt { get; private set; }
+
     public DateTimeOffset? LastTestedAt { get; private set; }
 
     public ConnectionTestStatus? LastTestStatus { get; private set; }
@@ -115,6 +118,18 @@ public sealed class ProviderConnection : AggregateRoot
         IsEnabled = isEnabled;
         UpdatedAt = now;
         return Result.Success();
+    }
+
+    /// <summary>Stops or resumes new checkout payments on the connection (CHK-22); saved cards keep being charged.</summary>
+    public void PauseCheckouts(bool paused, DateTimeOffset now)
+    {
+        if (paused == CheckoutsPausedAt is not null)
+        {
+            return;
+        }
+
+        CheckoutsPausedAt = paused ? now : null;
+        UpdatedAt = now;
     }
 
     public void ReplaceCredentials(Func<Guid, byte[]> encryptCredentials, DateTimeOffset now)

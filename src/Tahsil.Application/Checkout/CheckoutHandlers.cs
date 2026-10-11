@@ -257,6 +257,11 @@ public sealed class CreateCheckoutSessionHandler(
             return Model.CheckoutErrors.CurrencyNotRouted;
         }
 
+        if (connection.CheckoutsPausedAt is not null)
+        {
+            return Model.CheckoutErrors.Paused;
+        }
+
         if (mode == CheckoutMode.Setup)
         {
             // Verification charges (ADP-15) come with the providers that need them; until then, setup needs native support.

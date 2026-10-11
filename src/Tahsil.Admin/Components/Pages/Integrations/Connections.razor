@@ -50,10 +50,15 @@
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Disabled</MudChip>
             }
+            @if (context.CheckoutsPaused)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Checkouts paused</MudChip>
+            }
             @if (Session.Has(TahsilPermissions.ConnectionsWrite))
             {
                 <MudButton Size="Size.Small" OnClick="() => TestAsync(context)" Class="test">Test</MudButton>
                 <MudButton Size="Size.Small" OnClick="() => ToggleAsync(context)" Class="toggle">@(context.Enabled ? "Disable" : "Enable")</MudButton>
+                <MudButton Size="Size.Small" OnClick="() => PauseCheckoutsAsync(context)" Class="pause-checkouts">@(context.CheckoutsPaused ? "Resume checkouts" : "Pause checkouts")</MudButton>
             }
         </MudTd>
     </RowTemplate>
@@ -139,6 +144,23 @@
         var request = new UpdateConnectionRequest { Enabled = !connection.Enabled };
         if (await ChangeAsync<UpdateConnectionHandler, Versioned<ConnectionResponse>>(
             (handler, token) => handler.HandleAsync(connection.Id.ToString(), request, null, token), connection.Enabled ? "The connection was disabled." : "The connection was enabled.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task PauseCheckoutsAsync(ConnectionResponse connection)
+    {
+        var pause = !connection.CheckoutsPaused;
+        if (pause && !await ConfirmAsync(
+            $"Pause checkouts on {connection.Key}?", "Customers cannot start payments on checkout pages until you resume; renewals of saved cards go on.", "Pause"))
+        {
+            return;
+        }
+
+        var request = new UpdateConnectionRequest { CheckoutsPaused = pause };
+        if (await ChangeAsync<UpdateConnectionHandler, Versioned<ConnectionResponse>>(
+            (handler, token) => handler.HandleAsync(connection.Id.ToString(), request, null, token), pause ? "Checkouts are paused." : "Checkouts are resumed.") is not null)
         {
             await LoadAsync();
         }

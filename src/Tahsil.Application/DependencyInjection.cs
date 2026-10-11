@@ -183,6 +183,7 @@ public static class DependencyInjection
         services.AddScoped<Checkout.LegalDocumentVersions>();
         services.AddOptions<Checkout.CheckoutPageOptions>().BindConfiguration(Checkout.CheckoutPageOptions.SectionName);
         services.AddScoped<Checkout.CheckoutCompletion>();
+        services.AddScoped<Checkout.CheckoutProtection>();
         services.AddScoped<Checkout.CheckoutPages>();
         services.AddScoped<Checkout.CheckoutMapper>();
         services.AddScoped<Checkout.CheckoutExpiry>();

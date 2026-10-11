@@ -25,6 +25,7 @@ public sealed class PaymentOutcomes(
     Attention attention,
     SavedCards cards,
     Checkout.CheckoutCompletion checkout,
+    Checkout.CheckoutProtection protection,
     BillingClock clock)
 {
     private static readonly Counter<long> Payments = TahsilDiagnostics.Meter.CreateCounter<long>(
@@ -145,6 +146,7 @@ public sealed class PaymentOutcomes(
 
         payment.Fail(failure, outcome.ProviderPaymentId, ThreeDSecureOf(outcome), now);
         RecordFailure(payment, invoice);
+        await protection.WatchDeclinesAsync(payment, now, cancellationToken);
     }
 
     /// <summary>Counts and announces a failed payment: <c>payment.failed</c>, and <c>invoice.payment_failed</c> for automatic charges.</summary>

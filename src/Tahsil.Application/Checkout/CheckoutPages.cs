@@ -86,6 +86,7 @@ public sealed class CheckoutPages(
     ILegalDocumentRenderer renderer,
     LegalDocumentModels models,
     IAuditLog audit,
+    CheckoutProtection protection,
     IPublicUrls urls,
     IOptions<CheckoutOptions> options,
     IOptions<CheckoutPageOptions> pageOptions,
@@ -289,21 +290,32 @@ public sealed class CheckoutPages(
             return CheckoutErrors.NotOpen;
         }
 
+        if (await context.RoutedConnectionAsync(session.Currency, cancellationToken) is not { } connection)
+        {
+            return CheckoutErrors.CurrencyNotRouted;
+        }
+
+        if (connection.CheckoutsPausedAt is not null)
+        {
+            return CheckoutErrors.Paused;
+        }
+
         var customer = await CustomerAsync(session, details, now, cancellationToken);
         if (customer.IsFailure)
         {
             return customer.Error;
         }
 
+        var network = CheckoutProtection.NetworkOf(submission.IpAddress);
+        if (await protection.CheckAttemptAsync(session, customer.Value.Id, network, now, cancellationToken) is { } limited)
+        {
+            return limited;
+        }
+
         caller.Use(new CustomerCaller(customer.Value.Id, CustomerSessionKind.Checkout, session.Id));
         if (session.AttachCustomer(customer.Value.Id, customer.Value.IsTaxExempt, now) is { IsFailure: true } closed)
         {
             return closed.Error;
-        }
-
-        if (await context.RoutedConnectionAsync(session.Currency, cancellationToken) is not { } connection)
-        {
-            return CheckoutErrors.CurrencyNotRouted;
         }
 
         var shown = new LegalDocumentCustomer(details.Name, details.Email, details.Type, details.TaxId, details.TaxOffice, details.Address, details.Phone);
@@ -356,7 +368,8 @@ public sealed class CheckoutPages(
             cardStorage?.Id,
             now + paymentOptions.Value.CustomerActionTimeout,
             new CustomerCaller(customer.Value.Id, CustomerSessionKind.Checkout, session.Id).ToActor(),
-            now);
+            now,
+            network);
         context.Payments.Add(payment);
         session.RecordAttempt(now);
         await context.SaveChangesAsync(cancellationToken);

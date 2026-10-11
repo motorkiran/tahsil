@@ -100,9 +100,11 @@ public sealed class IndexModel(
                 "checkout.details_required" => localizer["Fill in the required details."],
                 "checkout.consent_required" => localizer["Tick the required boxes to continue."],
                 "checkout.not_open" => localizer["This checkout is no longer open."],
+                "checkout.attempts_exceeded" => localizer["Too many payment attempts. Please try again later."],
+                "checkout.paused" => localizer["Payments are paused for now. Please try again later."],
                 _ => started.Error.Field is null ? localizer["The payment could not be started. Please try again."] : started.Error.Message,
             };
-            Response.StatusCode = StatusCodes.Status400BadRequest;
+            Response.StatusCode = started.Error.Code == "checkout.attempts_exceeded" ? StatusCodes.Status429TooManyRequests : StatusCodes.Status400BadRequest;
             return Page();
         }
 
