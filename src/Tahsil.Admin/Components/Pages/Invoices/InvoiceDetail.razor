@@ -25,6 +25,11 @@
             else if (invoice.Status is InvoiceStatus.Open or InvoiceStatus.Uncollectible)
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PayAsync" id="pay">Pay by card</MudButton>
+                <MudButton Variant="Variant.Outlined" OnClick="RecordPaymentAsync" id="record-payment">Record a payment</MudButton>
+                @if (invoice.CollectionMethod == CollectionMethod.SendInvoice)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="SendAsync" id="send">Email again</MudButton>
+                }
                 @if (invoice.AmountPaid == 0)
                 {
                     <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="VoidAsync" id="void">Void</MudButton>
@@ -49,6 +54,11 @@
                         <tr><th>Due</th><td><Moment Value="invoice.DueDate" Empty="–" /></td></tr>
                         <tr><th>Next attempt</th><td><Moment Value="invoice.NextPaymentAttemptAt" Empty="–" /></td></tr>
                         <tr><th>Attempts</th><td>@invoice.AttemptCount</td></tr>
+                        @if (invoice.DunningStartedAt is { } dunning)
+                        {
+                            <tr><th>Dunning since</th><td id="dunning-since"><Moment Value="dunning" /></td></tr>
+                            <tr><th>Final action</th><td><Moment Value="invoice.DunningDeadlineAt" Empty="–" /></td></tr>
+                        }
                         <tr><th>Legal invoice</th><td>@(invoice.LegalInvoice?.Number ?? "–")</td></tr>
                         <tr><th>Hosted page</th><td>@if (invoice.HostedInvoiceUrl is { } hosted) { <MudLink Href="@hosted.AbsoluteUri" Target="_blank" id="hosted-link">Open</MudLink> } else { <span>–</span> }</td></tr>
                         <tr><th>Memo</th><td>@invoice.Memo</td></tr>
@@ -166,6 +176,24 @@
         {
             Navigation.NavigateTo($"/admin/customers/{_invoice!.CustomerId}");
         }
+    }
+
+    private async Task SendAsync() =>
+        await Saved(await ChangeAsync<SendInvoiceHandler, Versioned<InvoiceResponse>>((handler, token) => handler.HandleAsync(Id, token), "The invoice was emailed again."));
+
+    private async Task RecordPaymentAsync()
+    {
+        var parameters = new DialogParameters<RecordPaymentDialog> { { dialog => dialog.Invoice, _invoice! } };
+        var dialog = await Dialogs.ShowAsync<RecordPaymentDialog>("Record a payment", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is not { Canceled: false, Data: OutOfBandPaymentRequest received })
+        {
+            return;
+        }
+
+        var recorded = await Operations.RunAsync<PayInvoiceHandler, Tahsil.Domain.Common.Result<PaymentResponse>>(
+            handler => handler.HandleAsync(Id, new PayInvoiceRequest { OutOfBand = received }, Aborted));
+        Report(recorded.IsSuccess ? null : recorded.Error, "The payment was recorded.");
+        await LoadAsync();
     }
 
     private async Task PayAsync()

@@ -37,12 +37,14 @@ internal static class InvoiceEndpoints
             [Description("`draft`, `open`, `paid`, `void` or `uncollectible`.")] string? status,
             [Description("An invoice number, such as `INV-2026-000123`.")] string? number,
             [Description("Only this subscription's invoices.")] Guid? subscription,
+            [Description("Only unpaid invoices in dunning: after a failed automatic payment or a passed due date, before the final action.")] bool? dunning,
+            [Description("Only invoices sent for payment whose due date passed unpaid.")] bool? overdue,
             [Description("The `nextCursor` of the previous page.")] string? cursor,
             [Description("Page size, 50 by default and at most 200.")] int? limit,
             ListInvoicesHandler handler,
             CancellationToken cancellationToken) =>
             QueryValues.TryParseEnum<InvoiceStatus>(status, out var statusFilter)
-                ? (await handler.HandleAsync(new ListInvoicesQuery(customer, statusFilter, number, cursor, limit, subscription), cancellationToken)).ToOk()
+                ? (await handler.HandleAsync(new ListInvoicesQuery(customer, statusFilter, number, cursor, limit, subscription, dunning == true, overdue == true), cancellationToken)).ToOk()
                 : ApiResults.Problem(CommonErrors.InvalidParameter(nameof(status))))
             .WithName("ListInvoices").WithSummary("List invoices").WithDescription("Newest first.").RequirePermission(TahsilPermissions.InvoicesRead);
 

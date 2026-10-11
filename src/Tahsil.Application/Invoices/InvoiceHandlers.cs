@@ -431,10 +431,21 @@ public sealed class GetInvoiceHandler(ITahsilDbContext context, IAuthorizer auth
     }
 }
 
+/// <summary>
+/// Invoice filters; <c>InDunning</c> keeps unpaid invoices whose dunning started and has not ended, <c>Overdue</c> those
+/// sent for payment whose due date passed unpaid (INV-13).
+/// </summary>
 public sealed record ListInvoicesQuery(
-    Guid? Customer = null, InvoiceStatus? Status = null, string? Number = null, string? Cursor = null, int? Limit = null, Guid? Subscription = null);
+    Guid? Customer = null,
+    InvoiceStatus? Status = null,
+    string? Number = null,
+    string? Cursor = null,
+    int? Limit = null,
+    Guid? Subscription = null,
+    bool InDunning = false,
+    bool Overdue = false);
 
-public sealed class ListInvoicesHandler(ITahsilDbContext context, IAuthorizer authorizer, InvoiceMapper mapper)
+public sealed class ListInvoicesHandler(ITahsilDbContext context, IAuthorizer authorizer, InvoiceMapper mapper, BillingClock clock)
 {
     private static readonly Keyset<Model.Invoice, Guid> Newest = new("newest", invoice => invoice.Id, invoice => invoice.Id, Descending: true);
 
@@ -470,6 +481,18 @@ public sealed class ListInvoicesHandler(ITahsilDbContext context, IAuthorizer au
         if (Text.Normalize(query.Number) is { } number)
         {
             invoices = invoices.Where(invoice => invoice.Number == number);
+        }
+
+        if (query.InDunning)
+        {
+            invoices = invoices.Where(invoice => (invoice.Status == Model.InvoiceStatus.Open || invoice.Status == Model.InvoiceStatus.Uncollectible)
+                && invoice.DunningStartedAt != null && invoice.DunningEndedAt == null);
+        }
+
+        if (query.Overdue)
+        {
+            var now = clock.GetUtcNow();
+            invoices = invoices.Where(invoice => invoice.Status == Model.InvoiceStatus.Open && invoice.CollectionMethod == Model.CollectionMethod.SendInvoice && invoice.DueDate < now);
         }
 
         var page = await Newest.ReadAsync(invoices, query.Cursor, query.Limit ?? Paging.DefaultLimit, cancellationToken);

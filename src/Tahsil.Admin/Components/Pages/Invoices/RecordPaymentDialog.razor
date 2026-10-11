@@ -1,0 +1,61 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText>Records money received outside Tahsil; Tahsil moves none of it. Up to @Amount can be recorded.</MudText>
+            <MudSelect T="OutOfBandMethod" @bind-Value="_method" Label="Method">
+                <MudSelectItem T="OutOfBandMethod" Value="OutOfBandMethod.BankTransfer">Bank transfer</MudSelectItem>
+                <MudSelectItem T="OutOfBandMethod" Value="OutOfBandMethod.Cash">Cash</MudSelectItem>
+                <MudSelectItem T="OutOfBandMethod" Value="OutOfBandMethod.Other">Other</MudSelectItem>
+            </MudSelect>
+            <MudNumericField T="decimal?" @bind-Value="_amount" Label="Amount" HelperText="Empty records all that is left." Clearable />
+            <MudTextField @bind-Value="_reference" Label="Reference" HelperText="Such as the transfer's reference" MaxLength="100" />
+            <MudTextField @bind-Value="_note" Label="Note" Lines="2" MaxLength="500" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Record</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private OutOfBandMethod _method = OutOfBandMethod.BankTransfer;
+    private decimal? _amount;
+    private string? _reference;
+    private string? _note;
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required InvoiceResponse Invoice { get; set; }
+
+    private string Amount => AdminFormat.Money(Invoice.AmountRemaining, Invoice.Currency);
+
+    private void Submit()
+    {
+        long? amount = null;
+        if (_amount is not null)
+        {
+            amount = AdminFormat.ToMinorUnits(_amount, Invoice.Currency);
+            if (amount is not > 0 || amount > Invoice.AmountRemaining)
+            {
+                _error = $"Enter an amount up to {Amount}, with no more decimals than the currency has.";
+                return;
+            }
+        }
+
+        Dialog.Close(DialogResult.Ok(new OutOfBandPaymentRequest
+        {
+            Method = _method,
+            Amount = amount,
+            Reference = string.IsNullOrWhiteSpace(_reference) ? null : _reference.Trim(),
+            Note = string.IsNullOrWhiteSpace(_note) ? null : _note.Trim(),
+        }));
+    }
+}

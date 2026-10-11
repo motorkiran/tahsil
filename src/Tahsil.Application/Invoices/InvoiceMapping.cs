@@ -36,6 +36,8 @@ public sealed class InvoiceMapper(ISecretEncryption encryption, InvoiceLinks lin
         FinalizeAt = invoice.FinalizeAt,
         NextPaymentAttemptAt = invoice.NextPaymentAttemptAt,
         AttemptCount = invoice.AttemptCount,
+        DunningStartedAt = invoice.DunningStartedAt,
+        DunningDeadlineAt = invoice.DunningEndedAt is null ? invoice.DunningDeadlineAt : null,
         CustomerSnapshot = invoice.CustomerSnapshot is { } snapshot
             ? new CustomerSnapshotResponse(
                 snapshot.Name,

@@ -229,6 +229,12 @@ public sealed record InvoiceResponse
 
     public required int AttemptCount { get; init; }
 
+    /// <summary>When dunning started: the first failure of an automatic payment for the customer, or the due date passing.</summary>
+    public required DateTimeOffset? DunningStartedAt { get; init; }
+
+    /// <summary>When dunning's final action runs if the invoice stays unpaid.</summary>
+    public required DateTimeOffset? DunningDeadlineAt { get; init; }
+
     public required CustomerSnapshotResponse? CustomerSnapshot { get; init; }
 
     public required LegalInvoiceData? LegalInvoice { get; init; }

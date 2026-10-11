@@ -3066,6 +3066,22 @@
             }
           },
           {
+            "name": "dunning",
+            "in": "query",
+            "description": "Only unpaid invoices in dunning: after a failed automatic payment or a passed due date, before the final action.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "overdue",
+            "in": "query",
+            "description": "Only invoices sent for payment whose due date passed unpaid.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "description": "The `nextCursor` of the previous page.",
@@ -9309,6 +9325,8 @@
           "finalizeAt",
           "nextPaymentAttemptAt",
           "attemptCount",
+          "dunningStartedAt",
+          "dunningDeadlineAt",
           "customerSnapshot",
           "legalInvoice",
           "memo",
@@ -9500,6 +9518,22 @@
               "string"
             ],
             "format": "int32"
+          },
+          "dunningStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When dunning started: the first failure of an automatic payment for the customer, or the due date passing.",
+            "format": "date-time"
+          },
+          "dunningDeadlineAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When dunning's final action runs if the invoice stays unpaid.",
+            "format": "date-time"
           },
           "customerSnapshot": {
             "oneOf": [
