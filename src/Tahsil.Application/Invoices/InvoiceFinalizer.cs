@@ -25,7 +25,12 @@ public sealed class InvoiceFinalizer(
     IOptions<InvoiceOptions> invoices,
     BillingClock clock)
 {
-    public async Task<Result> FinalizeAsync(Invoice invoice, CancellationToken cancellationToken)
+    /// <param name="invoice">A draft, loaded under its lock.</param>
+    /// <param name="cancellationToken">Cancels the finalization.</param>
+    /// <param name="applyBalance">
+    /// Whether the customer's balance applies; not for a checkout's invoice, which its payment already paid in full.
+    /// </param>
+    public async Task<Result> FinalizeAsync(Invoice invoice, CancellationToken cancellationToken, bool applyBalance = true)
     {
         if (invoice.CanFinalize() is { IsFailure: true } invalid)
         {
@@ -44,14 +49,18 @@ public sealed class InvoiceFinalizer(
         var local = TimeZoneInfo.ConvertTime(now, zone);
         var number = $"{invoices.Value.NumberPrefix}-{local.Year}-{await numbers.NextAsync(local.Year, cancellationToken):D6}";
 
-        await locks.LockBalanceAsync(customer.Id, invoice.Currency, cancellationToken);
-        var balance = await context.CustomerBalances.SingleAsync(row => row.CustomerId == customer.Id && row.Currency == invoice.Currency, cancellationToken);
-        var minimum = invoice.CollectionMethod == CollectionMethod.ChargeAutomatically ? await MinimumChargeAsync(invoice.Currency, cancellationToken) : null;
-        var outcome = BalanceApplication.Apply(balance.Amount, invoice.Total, minimum);
-        var actor = request.Caller.ToActor();
-        foreach (var change in outcome.Changes)
+        var outcome = BalanceApplication.Apply(0, invoice.Total, null);
+        if (applyBalance)
         {
-            context.BalanceTransactions.Add(balance.Change(change.Amount, change.Type, invoice.Id, null, actor, now));
+            await locks.LockBalanceAsync(customer.Id, invoice.Currency, cancellationToken);
+            var balance = await context.CustomerBalances.SingleAsync(row => row.CustomerId == customer.Id && row.Currency == invoice.Currency, cancellationToken);
+            var minimum = invoice.CollectionMethod == CollectionMethod.ChargeAutomatically ? await MinimumChargeAsync(invoice.Currency, cancellationToken) : null;
+            outcome = BalanceApplication.Apply(balance.Amount, invoice.Total, minimum);
+            var actor = request.Caller.ToActor();
+            foreach (var change in outcome.Changes)
+            {
+                context.BalanceTransactions.Add(balance.Change(change.Amount, change.Type, invoice.Id, null, actor, now));
+            }
         }
 
         var snapshot = new CustomerSnapshot(customer.Name, customer.Email, customer.Type, customer.TaxOffice, customer.Address, customer.Phone, customer.Locale);

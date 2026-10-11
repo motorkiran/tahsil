@@ -142,4 +142,115 @@
   <data name="Your sign-in could not be verified. Sign in again; if it keeps failing, ask your administrator." xml:space="preserve">
     <value>Girişiniz doğrulanamadı. Yeniden giriş yapın; sorun sürerse yöneticinize başvurun.</value>
   </data>
+  <data name="Save your card" xml:space="preserve">
+    <value>Kartınızı kaydedin</value>
+  </data>
+  <data name="Checkout" xml:space="preserve">
+    <value>Ödeme</value>
+  </data>
+  <data name="Sold by {0}" xml:space="preserve">
+    <value>Satıcı: {0}</value>
+  </data>
+  <data name="Order summary" xml:space="preserve">
+    <value>Sipariş özeti</value>
+  </data>
+  <data name="Tax included" xml:space="preserve">
+    <value>Dahil olan vergi</value>
+  </data>
+  <data name="Total due now" xml:space="preserve">
+    <value>Şimdi ödenecek tutar</value>
+  </data>
+  <data name="Prices include taxes. This is a one-time payment." xml:space="preserve">
+    <value>Fiyatlara vergiler dahildir. Bu tek seferlik bir ödemedir.</value>
+  </data>
+  <data name="Your card is saved for future payments to {0}. Nothing is charged now." xml:space="preserve">
+    <value>Kartınız {0} için sonraki ödemelerinizde kullanılmak üzere kaydedilir. Şimdi bir ücret alınmaz.</value>
+  </data>
+  <data name="Card details" xml:space="preserve">
+    <value>Kart bilgileri</value>
+  </data>
+  <data name="Your details" xml:space="preserve">
+    <value>Bilgileriniz</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>E-posta</value>
+  </data>
+  <data name="Full name or company name" xml:space="preserve">
+    <value>Ad soyad veya şirket unvanı</value>
+  </data>
+  <data name="I am buying for a company" xml:space="preserve">
+    <value>Şirket adına satın alıyorum</value>
+  </data>
+  <data name="Tax number" xml:space="preserve">
+    <value>Vergi numarası</value>
+  </data>
+  <data name="Tax office" xml:space="preserve">
+    <value>Vergi dairesi</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>Adres</value>
+  </data>
+  <data name="City" xml:space="preserve">
+    <value>İl</value>
+  </data>
+  <data name="Postal code" xml:space="preserve">
+    <value>Posta kodu</value>
+  </data>
+  <data name="Phone" xml:space="preserve">
+    <value>Telefon</value>
+  </data>
+  <data name="Terms" xml:space="preserve">
+    <value>Koşullar</value>
+  </data>
+  <data name="Open {0} in full" xml:space="preserve">
+    <value>{0} metninin tamamını aç</value>
+  </data>
+  <data name="Read how we process your personal data in the {0}." xml:space="preserve">
+    <value>Kişisel verilerinizin nasıl işlendiğini {0} metninde okuyabilirsiniz.</value>
+  </data>
+  <data name="Before you pay" xml:space="preserve">
+    <value>Ödemeden önce</value>
+  </data>
+  <data name="Nothing is charged now. The card is charged only for payments you make to {0}." xml:space="preserve">
+    <value>Şimdi bir ücret alınmaz. Kartınızdan yalnızca {0} için yaptığınız ödemeler tahsil edilir.</value>
+  </data>
+  <data name="You pay {0} once, including taxes, by card." xml:space="preserve">
+    <value>Vergiler dahil {0} tutarını kartınızla bir kez ödersiniz.</value>
+  </data>
+  <data name="You can withdraw within 14 days unless you agree that the service starts at once." xml:space="preserve">
+    <value>Hizmetin hemen başlamasını onaylamadığınız sürece 14 gün içinde cayma hakkınızı kullanabilirsiniz.</value>
+  </data>
+  <data name="Cancel and return to {0}" xml:space="preserve">
+    <value>Vazgeç ve {0} sitesine dön</value>
+  </data>
+  <data name="Fill in the required details." xml:space="preserve">
+    <value>Gerekli bilgileri doldurun.</value>
+  </data>
+  <data name="Tick the required boxes to continue." xml:space="preserve">
+    <value>Devam etmek için gerekli kutuları işaretleyin.</value>
+  </data>
+  <data name="This checkout is no longer open." xml:space="preserve">
+    <value>Bu ödeme sayfası artık geçerli değil.</value>
+  </data>
+  <data name="The payment could not be started. Please try again." xml:space="preserve">
+    <value>Ödeme başlatılamadı. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="The card was not saved. Please try again." xml:space="preserve">
+    <value>Kart kaydedilmedi. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="Payment complete" xml:space="preserve">
+    <value>Ödeme tamamlandı</value>
+  </data>
+  <data name="Confirming your payment" xml:space="preserve">
+    <value>Ödemeniz doğrulanıyor</value>
+  </data>
+  <data name="This can take a minute. Please keep this page open." xml:space="preserve">
+    <value>Bu bir dakika sürebilir. Lütfen bu sayfayı kapatmayın.</value>
+  </data>
+  <data name="The result will be emailed to you." xml:space="preserve">
+    <value>Sonuç size e-posta ile bildirilecek.</value>
+  </data>
+  <data name="Document" xml:space="preserve">
+    <value>Belge</value>
+  </data>
 </root>

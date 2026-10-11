@@ -1,0 +1,7 @@
+@page "/checkout/{token}/documents/{key}"
+@model Tahsil.Server.Pages.Checkout.DocumentModel
+@{
+    ViewData["Title"] = L["Document"];
+}
+
+<article class="document-full" id="document">@Html.Raw(Model.Html)</article>

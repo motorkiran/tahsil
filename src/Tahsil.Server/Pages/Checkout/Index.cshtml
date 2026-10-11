@@ -1,0 +1,196 @@
+@page "/checkout/{token}"
+@using Tahsil.Domain.Customers
+@using Tahsil.Server.Ui
+@model Tahsil.Server.Pages.Checkout.IndexModel
+@{
+    var session = Model.View.Session;
+    var quote = session.Quote;
+    ViewData["Title"] = Model.IsSetup ? L["Save your card"] : L["Checkout"];
+    var requiresConsent = Model.IsSetup || Model.View.Documents.Any(document => document.Session.RequiresAcceptance);
+}
+
+<h1 id="page-title">@(Model.IsSetup ? L["Save your card"] : L["Checkout"])</h1>
+<p class="lead">@L["Sold by {0}", Model.Merchant.DisplayName ?? string.Empty]</p>
+
+@if (Model.ErrorMessage is { } error)
+{
+    <p class="alert alert-error" role="alert" id="checkout-error">@error</p>
+}
+
+@if (!Model.IsSetup)
+{
+    <section id="summary" aria-labelledby="summary-title">
+        <h2 id="summary-title">@L["Order summary"]</h2>
+        <table class="lines">
+            <tbody>
+                @foreach (var line in quote.Lines)
+                {
+                    <tr class="item">
+                        <td>@line.Description</td>
+                        <td class="amount">@Model.Money(line.Total)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                @if (quote.TaxTotal > 0)
+                {
+                    <tr><td>@L["Tax included"]</td><td class="amount" id="tax-total">@Model.Money(quote.TaxTotal)</td></tr>
+                }
+                <tr class="total"><th scope="row">@L["Total due now"]</th><td class="amount" id="total-due">@Model.Money(quote.AmountDue)</td></tr>
+            </tfoot>
+        </table>
+        <p class="hint">@L["Prices include taxes. This is a one-time payment."]</p>
+    </section>
+}
+else
+{
+    <p id="summary">@L["Your card is saved for future payments to {0}. Nothing is charged now.", Model.Merchant.DisplayName ?? string.Empty]</p>
+}
+
+@if (Model.Embed is { } embed)
+{
+    <section id="payment" aria-label="@L["Card details"]">
+        @Html.Raw(embed.Html)
+        @foreach (var script in embed.Scripts)
+        {
+            <script src="@script" nonce="@HttpContext.GetCspNonce()"></script>
+        }
+    </section>
+}
+else
+{
+    <form method="post" id="checkout-form" novalidate>
+        <fieldset>
+            <legend>@L["Your details"]</legend>
+            <div class="field">
+                <label for="email">@L["Email"]</label>
+                <input type="email" id="email" name="Form.Email" value="@Model.Form.Email" autocomplete="email" required />
+            </div>
+            <div class="field">
+                <label for="name">@L["Full name or company name"]</label>
+                <input type="text" id="name" name="Form.Name" value="@Model.Form.Name" autocomplete="name" required />
+            </div>
+            <div class="field">
+                <label class="checkbox"><input type="checkbox" id="company" name="Form.Company" value="true" checked="@Model.Form.Company" /> @L["I am buying for a company"]</label>
+            </div>
+            <div class="field-pair company-only">
+                <div class="field">
+                    <label for="tax-id">@L["Tax number"]</label>
+                    <input type="text" id="tax-id" name="Form.TaxId" inputmode="numeric" />
+                </div>
+                <div class="field">
+                    <label for="tax-office">@L["Tax office"]</label>
+                    <input type="text" id="tax-office" name="Form.TaxOffice" value="@Model.Form.TaxOffice" />
+                </div>
+            </div>
+            @if (Model.View.CollectsAddress)
+            {
+                <div class="field">
+                    <label for="address">@L["Address"]</label>
+                    <input type="text" id="address" name="Form.AddressLine1" value="@Model.Form.AddressLine1" autocomplete="street-address" required />
+                </div>
+                <div class="field-pair">
+                    <div class="field">
+                        <label for="city">@L["City"]</label>
+                        <input type="text" id="city" name="Form.City" value="@Model.Form.City" autocomplete="address-level2" required />
+                    </div>
+                    <div class="field">
+                        <label for="postal-code">@L["Postal code"]</label>
+                        <input type="text" id="postal-code" name="Form.PostalCode" value="@Model.Form.PostalCode" autocomplete="postal-code" />
+                    </div>
+                </div>
+                <input type="hidden" name="Form.Country" value="@(Model.Form.Country ?? "TR")" />
+                <div class="field">
+                    <label for="phone">@L["Phone"]</label>
+                    <input type="tel" id="phone" name="Form.Phone" value="@Model.Form.Phone" autocomplete="tel" required />
+                </div>
+            }
+        </fieldset>
+
+        @if (Model.View.Documents.Count > 0 || Model.IsSetup || Model.OffersImmediateStart)
+        {
+            <fieldset id="documents">
+                <legend>@L["Terms"]</legend>
+                @foreach (var (document, options) in Model.View.Documents)
+                {
+                    var title = Tahsil.Application.Checkout.LegalDocumentOptions.InLocale(options.Title, Model.View.Locale) ?? document.Key;
+                    var types = string.Join(' ', document.CustomerTypes.Select(type => type.ToString().ToLowerInvariant()));
+                    <div class="document" data-key="@document.Key" data-customer-types="@types">
+                        @if (options.Template is { Count: > 0 })
+                        {
+                            <div class="document-text" tabindex="0" aria-label="@title">@Html.Raw(await Model.DocumentAsync(document.Key, HttpContext.RequestAborted))</div>
+                            <a href="/checkout/@Model.Token/documents/@document.Key" target="_blank" rel="noopener">@L["Open {0} in full", title]</a>
+                        }
+                        else if (!document.RequiresAcceptance)
+                        {
+                            <p>@L["Read how we process your personal data in the {0}.", title] <a href="@Tahsil.Application.Checkout.LegalDocumentOptions.InLocale(options.Url, Model.View.Locale)" target="_blank" rel="noopener">@title</a></p>
+                        }
+                        else
+                        {
+                            <a href="@Tahsil.Application.Checkout.LegalDocumentOptions.InLocale(options.Url, Model.View.Locale)" target="_blank" rel="noopener">@title</a>
+                        }
+                        @if (document.RequiresAcceptance)
+                        {
+                            <label class="checkbox"><input type="checkbox" class="required-consent" name="Form.Documents" value="@document.Key" /> @options.CheckboxTextIn(Model.View.Locale)</label>
+                        }
+                    </div>
+                }
+                @if (Model.OffersImmediateStart)
+                {
+                    <label class="checkbox individual-only"><input type="checkbox" id="immediate-start" name="Form.ImmediateStart" value="true" /> @Model.ImmediateStartText</label>
+                }
+                @if (Model.IsSetup)
+                {
+                    <label class="checkbox"><input type="checkbox" class="required-consent" id="card-storage" name="Form.CardStorage" value="true" /> @Model.CardStorageText</label>
+                }
+            </fieldset>
+        }
+
+        <section id="final-summary" aria-label="@L["Before you pay"]">
+            @if (Model.IsSetup)
+            {
+                <p>@L["Nothing is charged now. The card is charged only for payments you make to {0}.", Model.Merchant.DisplayName ?? string.Empty]</p>
+            }
+            else
+            {
+                <p>@L["You pay {0} once, including taxes, by card.", Model.Money(quote.AmountDue)]</p>
+                <p>@L["You can withdraw within 14 days unless you agree that the service starts at once."]</p>
+            }
+            <button class="button" type="submit" id="pay" disabled="@requiresConsent">@Model.PayButtonText</button>
+        </section>
+    </form>
+}
+
+@if (session.CancelUrl is { } cancelUrl)
+{
+    <p><a href="@cancelUrl" id="cancel">@L["Cancel and return to {0}", Model.Merchant.DisplayName ?? string.Empty]</a></p>
+}
+
+<footer class="merchant" id="merchant">
+    <p>@Model.Merchant.LegalName@if (Model.Merchant.MersisNumber is { } mersis) { <span> · MERSİS @mersis</span> }</p>
+    <p>@Model.Merchant.Address</p>
+    <p>@Model.Merchant.Phone · @Model.Merchant.Email</p>
+</footer>
+
+@section Scripts {
+    <script nonce="@HttpContext.GetCspNonce()">
+        (() => {
+            const form = document.getElementById("checkout-form");
+            if (!form) return;
+            const pay = document.getElementById("pay");
+            const company = document.getElementById("company");
+            const update = () => {
+                const type = company.checked ? "company" : "individual";
+                form.querySelectorAll(".document").forEach(element => {
+                    element.hidden = !element.dataset.customerTypes.split(" ").includes(type);
+                });
+                form.querySelectorAll(".company-only").forEach(element => element.hidden = !company.checked);
+                form.querySelectorAll(".individual-only").forEach(element => element.hidden = company.checked);
+                const required = [...form.querySelectorAll(".required-consent")].filter(box => !box.closest("[hidden]"));
+                pay.disabled = required.some(box => !box.checked);
+            };
+            form.addEventListener("change", update);
+            update();
+        })();
+    </script>
+}

@@ -194,6 +194,52 @@ public sealed class CheckoutSession : AggregateRoot
         };
     }
 
+    /// <summary>The customer who submitted the form: the session's own, or one created or found for its details (CHK-2).</summary>
+    public Result AttachCustomer(Guid customerId, bool taxExempt, DateTimeOffset now)
+    {
+        if (Status != CheckoutStatus.Open)
+        {
+            return CheckoutErrors.NotOpen;
+        }
+
+        if (CustomerId is { } current && current != customerId)
+        {
+            throw new InvalidOperationException("A session's customer never changes.");
+        }
+
+        CustomerId = customerId;
+        Quote = Quote.ForTaxExemption(taxExempt);
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    /// <summary>A payment attempt starts on the page; attempts are limited against card testing (CHK-21).</summary>
+    public void RecordAttempt(DateTimeOffset now)
+    {
+        PaymentAttempts++;
+        UpdatedAt = now;
+    }
+
+    /// <summary>A verified successful payment completed the session (DOM-10, CHK-23), in the transaction that created what it sold.</summary>
+    public Result Complete(Guid paymentId, Guid? invoiceId, Guid? paymentMethodId, DateTimeOffset now)
+    {
+        if (Status != CheckoutStatus.Open)
+        {
+            return CheckoutErrors.NotOpen;
+        }
+
+        Status = CheckoutStatus.Complete;
+        PaymentId = paymentId;
+        InvoiceId = invoiceId;
+        PaymentMethodId = paymentMethodId;
+        CompletedAt = now;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    /// <summary>The page's address for the customer after paying: the success URL with the session's ID (CHK-5).</summary>
+    public string SuccessUrlFor() => SuccessUrl.Replace(SessionIdPlaceholder, Id.ToString(), StringComparison.Ordinal);
+
     /// <summary>Ends an open session that was not paid (DOM-10); the caller reconciled any payment in flight first.</summary>
     public Result Expire(DateTimeOffset now)
     {

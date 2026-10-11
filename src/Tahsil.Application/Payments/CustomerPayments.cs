@@ -45,6 +45,16 @@ public sealed class CustomerPayments(
         }
 
         var (payment, connection) = written.Value;
+        return await StartWrittenAsync(payment, connection, start.ReturnUrl, start.CancelUrl, start.IpAddress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Step 2 of PAY-8 for a payment written ahead, of an invoice or a checkout: the provider's <em>start</em>, and the
+    /// payment waits for the customer.
+    /// </summary>
+    public async Task<Result<StartedPayment>> StartWrittenAsync(
+        Payment payment, ProviderConnection connection, Uri returnUrl, Uri cancelUrl, string? ipAddress, CancellationToken cancellationToken)
+    {
         if (providers.For(connection) is not { } call)
         {
             await outcomes.ApplyAsync(payment.Id, PaymentOutcome.Failure(FailureCode.ProviderUnavailable), CancellationToken.None);
@@ -56,12 +66,12 @@ public sealed class CustomerPayments(
             PaymentId = payment.Id,
             Reference = payment.Reference,
             Amount = PaymentRequests.AmountOf(payment.Amount, payment.Currency),
-            Purpose = Providers.Abstractions.PaymentPurpose.Charge,
+            Purpose = payment.Purpose == PaymentPurpose.Setup ? Providers.Abstractions.PaymentPurpose.Setup : Providers.Abstractions.PaymentPurpose.Charge,
             SaveCard = payment.SaveCard,
             ProviderCustomer = await requests.ProviderCustomerAsync(payment.CustomerId, connection.Id, cancellationToken),
-            Customer = await requests.CustomerAsync(payment.CustomerId, start.IpAddress, cancellationToken),
-            ReturnUrl = start.ReturnUrl,
-            CancelUrl = start.CancelUrl,
+            Customer = await requests.CustomerAsync(payment.CustomerId, ipAddress, cancellationToken),
+            ReturnUrl = returnUrl,
+            CancelUrl = cancelUrl,
         }, CancellationToken.None);
 
         await using (var transaction = await context.BeginTransactionAsync(CancellationToken.None))

@@ -16,7 +16,8 @@ internal sealed class CheckoutExpiryWorker(
 {
     public override string Name => "checkout-expiry";
 
-    protected override bool CallsOtherServices => false;
+    // Expiring reconciles a payment in flight with its provider first (ENG-18).
+    protected override bool CallsOtherServices => true;
 
     protected override async Task<Guid?> LockNextDueAsync(TahsilDbContext context, DateTimeOffset now, CancellationToken cancellationToken) =>
         (await context.Database.SqlQuery<Guid>($"""

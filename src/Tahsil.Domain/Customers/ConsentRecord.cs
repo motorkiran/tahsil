@@ -87,7 +87,7 @@ public sealed class ConsentRecord
             gzip.Write(bytes);
         }
 
-        var record = Create(customerId, type, textShown, context, ipAddress, userAgent, acceptedAt);
+        var record = Create(customerId, type, textShown, context, ipAddress, userAgent, acceptedAt, checkoutSessionId);
         return new ConsentRecord
         {
             Id = record.Id,
@@ -120,7 +120,14 @@ public sealed class ConsentRecord
     }
 
     public static ConsentRecord Create(
-        Guid customerId, ConsentType type, string textShown, IReadOnlyDictionary<string, string> context, IPAddress? ipAddress, string? userAgent, DateTimeOffset acceptedAt)
+        Guid customerId,
+        ConsentType type,
+        string textShown,
+        IReadOnlyDictionary<string, string> context,
+        IPAddress? ipAddress,
+        string? userAgent,
+        DateTimeOffset acceptedAt,
+        Guid? checkoutSessionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(textShown);
         return new ConsentRecord
@@ -130,6 +137,7 @@ public sealed class ConsentRecord
             Type = type,
             TextShown = textShown.Length > TextMaxLength ? textShown[..TextMaxLength] : textShown,
             Context = context,
+            CheckoutSessionId = checkoutSessionId,
             IpAddress = ipAddress,
             UserAgent = userAgent is { Length: > UserAgentMaxLength } ? userAgent[..UserAgentMaxLength] : userAgent,
             AcceptedAt = acceptedAt,

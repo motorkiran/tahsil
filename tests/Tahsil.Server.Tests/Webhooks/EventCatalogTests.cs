@@ -58,6 +58,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.RefundSucceeded, ["paymentId", "invoiceId", "amount", "currency", "reason"] },
         { TahsilEventTypes.RefundFailed, ["paymentId", "amount", "currency", "failureCode"] },
         { TahsilEventTypes.CheckoutExpired, ["mode", "clientReferenceId"] },
+        { TahsilEventTypes.CheckoutCompleted, ["mode", "clientReferenceId", "subscriptionId", "invoiceId", "paymentMethodId"] },
     };
 
     [Fact]
@@ -137,6 +138,23 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         {
             var session = await checkout.ReadAsync<CheckoutSessionResponse>();
             (await SendAsync(client, HttpMethod.Post, $"/api/v1/checkout-sessions/{session.Id}/expire")).Dispose();
+        }
+
+        // A purchase on the checkout page.
+        using (var purchase = await SendAsync(client, HttpMethod.Post, "/api/v1/checkout-sessions", new CreateCheckoutSessionRequest
+        {
+            Mode = CheckoutMode.Setup,
+            Currency = "TRY",
+            SuccessUrl = "https://app.example.com/billing",
+            ClientReferenceId = "order-2",
+        }))
+        {
+            var session = await purchase.ReadAsync<CheckoutSessionResponse>();
+            using var browser = Checkout.CheckoutBrowser.Open(host);
+            var form = Checkout.CheckoutBrowser.Form("ada@example.com", "Ada", []);
+            form["Form.CardStorage"] = "true";
+            using var submitted = await Checkout.CheckoutBrowser.SubmitAsync(browser, session.Url!, form);
+            (await Checkout.CheckoutBrowser.PayOnTheEmbedAsync(host, browser, submitted, "4242424242424242")).Dispose();
         }
 
         // A customer without history, deleted.

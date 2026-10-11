@@ -1,0 +1,39 @@
+@page "/checkout/{token}/return/{paymentId:guid}"
+@using Tahsil.Application.Checkout
+@using Tahsil.Server.Ui
+@model Tahsil.Server.Pages.Checkout.ReturnModel
+@{
+    var complete = Model.Result.State == CheckoutReturnState.Complete;
+    ViewData["Title"] = complete ? L["Payment complete"] : L["Confirming your payment"];
+}
+
+@if (complete)
+{
+    <h1 id="page-title">@L["Payment complete"]</h1>
+    <p>@L["Returning to the merchant…"]</p>
+    <a class="button" id="continue" href="@Model.Result.RedirectUrl" target="_top">@L["Continue"]</a>
+    <script nonce="@HttpContext.GetCspNonce()">window.top.location.href = document.getElementById("continue").href;</script>
+}
+else
+{
+    <h1 id="page-title">@L["Confirming your payment"]</h1>
+    <p id="pending" data-status-url="/checkout/@Model.Token/status">@L["This can take a minute. Please keep this page open."]</p>
+    <p id="pending-timeout" hidden>@L["The result will be emailed to you."]</p>
+    <script nonce="@HttpContext.GetCspNonce()">
+        (() => {
+            const pending = document.getElementById("pending");
+            const started = Date.now();
+            const poll = async () => {
+                const response = await fetch(pending.dataset.statusUrl, { cache: "no-store" });
+                if (response.ok) {
+                    const status = await response.json();
+                    if (status.state === "complete") { window.top.location.href = status.redirectUrl; return; }
+                    if (status.state === "failed") { window.top.location.href = status.retryUrl; return; }
+                }
+                if (Date.now() - started < 120000) { setTimeout(poll, 3000); }
+                else { document.getElementById("pending-timeout").hidden = false; }
+            };
+            setTimeout(poll, 3000);
+        })();
+    </script>
+}

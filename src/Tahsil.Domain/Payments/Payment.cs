@@ -59,7 +59,8 @@ public sealed class Payment : AggregateRoot
     /// <summary>The ID in 32 lowercase hexadecimal digits, unique across payments and refunds.</summary>
     public string Reference { get; private init; } = string.Empty;
 
-    public Guid? InvoiceId { get; private init; }
+    /// <summary>The invoice it pays; a checkout's payment gets the invoice the checkout creates when it completes.</summary>
+    public Guid? InvoiceId { get; private set; }
 
     public Guid? CheckoutSessionId { get; private init; }
 
@@ -248,6 +249,18 @@ public sealed class Payment : AggregateRoot
     public void AddRefunded(long amount, DateTimeOffset now)
     {
         AmountRefunded = checked(AmountRefunded + amount);
+        UpdatedAt = now;
+    }
+
+    /// <summary>Links a checkout's payment to the invoice its completion created (CHK-23).</summary>
+    public void AttachInvoice(Guid invoiceId, DateTimeOffset now)
+    {
+        if (InvoiceId is not null)
+        {
+            throw new InvalidOperationException("The payment already pays an invoice.");
+        }
+
+        InvoiceId = invoiceId;
         UpdatedAt = now;
     }
 

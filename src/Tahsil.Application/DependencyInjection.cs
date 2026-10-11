@@ -179,6 +179,9 @@ public static class DependencyInjection
         services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<Checkout.CheckoutOptions>, Checkout.CheckoutOptionsValidation>();
         services.AddScoped<Checkout.LegalDocumentModels>();
         services.AddScoped<Checkout.LegalDocumentVersions>();
+        services.AddOptions<Checkout.CheckoutPageOptions>().BindConfiguration(Checkout.CheckoutPageOptions.SectionName);
+        services.AddScoped<Checkout.CheckoutCompletion>();
+        services.AddScoped<Checkout.CheckoutPages>();
         services.AddScoped<Checkout.CheckoutMapper>();
         services.AddScoped<Checkout.CheckoutExpiry>();
         services.AddScoped<Checkout.CreateCheckoutSessionHandler>();

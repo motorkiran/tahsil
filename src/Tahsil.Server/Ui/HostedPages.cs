@@ -134,6 +134,7 @@ internal static class HostedPages
             [
                 new QueryStringRequestCultureProvider { QueryStringKey = LocaleParameter, UIQueryStringKey = LocaleParameter },
                 new CookieRequestCultureProvider(),
+                new CheckoutCultureProvider(),
                 new AcceptLanguageHeaderRequestCultureProvider(),
             ];
         }

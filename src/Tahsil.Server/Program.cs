@@ -20,6 +20,7 @@ builder.Services.AddInfrastructure();
 builder.Services.AddErrorHandling();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<HttpRequestContext>();
+builder.Services.AddScoped<Tahsil.Application.Checkout.IPageCaller, PageCaller>();
 builder.Services.AddScoped<IRequestContext>(services =>
     services.GetRequiredService<RequestContextOverride>().Context ?? services.GetRequiredService<HttpRequestContext>());
 builder.Services.AddTahsilAdmin(builder.Configuration);
@@ -82,6 +83,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 app.MapCultureSwitch();
+app.MapCheckoutStatus();
 app.MapBrandingStylesheet();
 app.MapTahsilApi();
 app.MapProviderNotifications();

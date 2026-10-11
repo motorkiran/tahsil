@@ -26,6 +26,23 @@ public sealed record CheckoutQuote(
 {
     public static CheckoutQuote Empty { get; } = new([], 0, 0, 0, 0, 0, 0);
 
+    /// <summary>The same lines for a customer who is, or is not, tax exempt (CHK-7).</summary>
+    public CheckoutQuote ForTaxExemption(bool taxExempt) => Of(Drafts(), taxExempt);
+
+    /// <summary>The invoice lines of the quote, as the checkout's invoice gets them when it completes (CHK-23).</summary>
+    public IReadOnlyList<InvoiceLineDraft> Drafts() =>
+    [
+        .. Lines.Select(line => new InvoiceLineDraft(
+            InvoiceLineType.OneTime,
+            line.Description,
+            line.Quantity,
+            line.Amount,
+            line.UnitAmountDecimal,
+            line.PriceId,
+            TaxRateId: line.TaxRateId,
+            Tax: line.TaxPercentage is { } percentage ? new TaxRateSnapshot(percentage, line.TaxInclusive == true) : null)),
+    ];
+
     /// <summary>The quote of lines from prices, tax computed per line as invoices do (MNY-21).</summary>
     public static CheckoutQuote Of(IReadOnlyList<InvoiceLineDraft> drafts, bool taxExempt)
     {

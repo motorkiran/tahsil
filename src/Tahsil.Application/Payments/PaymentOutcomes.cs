@@ -18,7 +18,14 @@ namespace Tahsil.Application.Payments;
 /// once, and repeating an outcome changes nothing.
 /// </summary>
 public sealed class PaymentOutcomes(
-    ITahsilDbContext context, IBillingLocks locks, IAuditLog audit, IOutbox outbox, Attention attention, SavedCards cards, BillingClock clock)
+    ITahsilDbContext context,
+    IBillingLocks locks,
+    IAuditLog audit,
+    IOutbox outbox,
+    Attention attention,
+    SavedCards cards,
+    Checkout.CheckoutCompletion checkout,
+    BillingClock clock)
 {
     private static readonly Counter<long> Payments = TahsilDiagnostics.Meter.CreateCounter<long>(
         "tahsil.payments", unit: "{payment}", description: "Payments that reached a final status, by connection, initiator, status and failure code.");
@@ -86,6 +93,12 @@ public sealed class PaymentOutcomes(
                 ["expected"] = $"{payment.Amount} {payment.Currency}",
                 ["charged"] = $"{charged.MinorUnits} {charged.Currency}",
             }, now, cancellationToken);
+            return;
+        }
+
+        if (payment.CheckoutSessionId is not null)
+        {
+            await checkout.CompleteAsync(payment, now, cancellationToken);
             return;
         }
 

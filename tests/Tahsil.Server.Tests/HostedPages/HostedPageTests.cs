@@ -74,7 +74,7 @@ public sealed class HostedPageTests
         using var host = new TestHost();
         using var client = host.CreateClient();
 
-        using var page = await client.GetAsync(new Uri("/checkout/unknown-token?locale=tr", UriKind.Relative), CancellationToken);
+        using var page = await client.GetAsync(new Uri("/no-such-page?locale=tr", UriKind.Relative), CancellationToken);
         using var api = await client.GetAsync(new Uri("/api/v1/unknown", UriKind.Relative), CancellationToken);
 
         page.StatusCode.ShouldBe(HttpStatusCode.NotFound);

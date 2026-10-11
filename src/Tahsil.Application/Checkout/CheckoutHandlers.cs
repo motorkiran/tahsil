@@ -259,7 +259,11 @@ public sealed class CreateCheckoutSessionHandler(
 
         if (mode == CheckoutMode.Setup)
         {
-            return provider.CapabilitiesFor(connection.Settings).SavesCards == CardSaving.None ? Model.CheckoutErrors.NotSupportedByConnection("save cards") : null;
+            // Verification charges (ADP-15) come with the providers that need them; until then, setup needs native support.
+            var capabilities = provider.CapabilitiesFor(connection.Settings);
+            return capabilities.SavesCards == CardSaving.None || capabilities.Setup != CardSetup.Native
+                ? Model.CheckoutErrors.NotSupportedByConnection("save cards without a payment")
+                : null;
         }
 
         var minimum = Math.Max(1, provider.Descriptor.MinimumAmounts.GetValueOrDefault(currency));
@@ -343,11 +347,25 @@ public sealed class ExpireCheckoutSessionHandler(IAuthorizer authorizer, Checkou
     }
 }
 
-/// <summary>Ends open sessions, when they run out of time or the application asks (DOM-10), with <c>checkout.expired</c>.</summary>
-public sealed class CheckoutExpiry(ITahsilDbContext context, IBillingLocks locks, IAuditLog audit, BillingClock clock)
+/// <summary>
+/// Ends open sessions, when they run out of time or the application asks (DOM-10), with <c>checkout.expired</c>. A
+/// payment in flight is reconciled once first (ENG-18): a success found then completes the session instead, and one
+/// that arrives later is refunded (PAY-14).
+/// </summary>
+public sealed class CheckoutExpiry(ITahsilDbContext context, IBillingLocks locks, IAuditLog audit, Payments.PaymentReconciliation reconciliation, BillingClock clock)
 {
     public async Task<Result> ExpireAsync(Guid id, CancellationToken cancellationToken)
     {
+        var inFlight = await context.Payments.AsNoTracking()
+            .Where(payment => payment.CheckoutSessionId == id
+                && (payment.Status == Domain.Payments.PaymentStatus.Processing || payment.Status == Domain.Payments.PaymentStatus.RequiresAction))
+            .Select(payment => payment.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var paymentId in inFlight)
+        {
+            await reconciliation.ReconcileAsync(paymentId, cancellationToken);
+        }
+
         await using var transaction = await context.BeginTransactionAsync(cancellationToken);
         await locks.LockCheckoutSessionAsync(id, cancellationToken);
         if (await context.CheckoutSessions.SingleOrDefaultAsync(session => session.Id == id, cancellationToken) is not { } session)
