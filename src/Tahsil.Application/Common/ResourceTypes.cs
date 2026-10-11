@@ -7,6 +7,8 @@ public static class ResourceTypes
     public const string Meter = "meter";
     public const string Product = "product";
     public const string Price = "price";
+    public const string Coupon = "coupon";
+    public const string PromotionCode = "promotion_code";
     public const string Customer = "customer";
     public const string Connection = "provider_connection";
     public const string Invoice = "invoice";

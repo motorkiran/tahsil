@@ -1,0 +1,74 @@
+@page "/admin/coupons"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Catalog
+@using Tahsil.Application.Coupons
+@inherits AdminPageBase
+
+<PageTitle>Coupons · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Coupons</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.CouponsWrite))
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-coupon">Create coupon</MudButton>
+    }
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">A coupon's discount, duration and products never change: create a new coupon and archive the old one. Customers redeem coupons through their promotion codes.</MudText>
+
+<MudTable T="CouponResponse" Items="_coupons" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" id="coupons">
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Discount</MudTh>
+        <MudTh>Redemptions</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key"><MudLink Href="@Link(context)"><code>@context.Key</code></MudLink></MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Discount">@CouponText.Discount(context)</MudTd>
+        <MudTd DataLabel="Redemptions">@CouponText.Redemptions(context.TimesRedeemed, context.MaxRedemptions)</MudTd>
+        <MudTd>
+            @if (context.IsArchived)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No coupons yet.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    private readonly List<CouponResponse> _coupons = [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string Link(CouponResponse coupon) => $"/admin/coupons/{coupon.Key}";
+
+    private async Task LoadAsync()
+    {
+        _coupons.Clear();
+        string? cursor = null;
+        do
+        {
+            var page = await ReadAsync<ListCouponsHandler, Page<CouponResponse>>((handler, token) => handler.HandleAsync(new ListCatalogQuery(Cursor: cursor), token));
+            _coupons.AddRange(page?.Items ?? []);
+            cursor = page?.NextCursor;
+        }
+        while (cursor is not null);
+    }
+
+    private async Task CreateAsync()
+    {
+        var products = await ReadAsync<ListProductsHandler, Page<ProductResponse>>(
+            (handler, token) => handler.HandleAsync(new ListProductsQuery(Archived: false, Limit: Paging.MaxLimit), token));
+        var parameters = new DialogParameters<CouponDialog> { { dialog => dialog.Products, products?.Items ?? [] } };
+        var dialog = await Dialogs.ShowAsync<CouponDialog>("Create a coupon", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreateCouponRequest request }
+            && await ChangeAsync<CreateCouponHandler, Versioned<CouponResponse>>((handler, token) => handler.HandleAsync(request, token), "The coupon was created.") is { } created)
+        {
+            Navigation.NavigateTo(Link(created.Value));
+        }
+    }
+}

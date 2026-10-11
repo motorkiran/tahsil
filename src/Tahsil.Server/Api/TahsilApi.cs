@@ -26,6 +26,7 @@ internal static class TahsilApi
         services.AddScoped<IdempotencyFilter>();
         services.AddApiRateLimiting();
         services.AddCatalogResourceReaders();
+        services.AddCouponResourceReaders();
         services.AddCustomerResourceReaders();
         services.AddConnectionResourceReaders();
         services.AddInvoiceResourceReaders();
@@ -71,6 +72,7 @@ internal static class TahsilApi
             .RequireRateLimiting(ApiRateLimiting.PolicyName)
             .MapApiKeyEndpoints()
             .MapCatalogEndpoints()
+            .MapCouponEndpoints()
             .MapCustomerEndpoints()
             .MapConnectionEndpoints()
             .MapInvoiceEndpoints()

@@ -1463,6 +1463,580 @@
         ]
       }
     },
+    "/api/v1/coupons": {
+      "get": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "List coupons",
+        "description": "Requires the `tahsil.coupons:read` permission.",
+        "operationId": "ListCoupons",
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Only archived (true) or current (false) coupons.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfCouponResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "Create a coupon",
+        "description": "A percentage or an amount off, once, for a number of cycles or forever. The discount, duration and products never change.\n\nRequires the `tahsil.coupons:write` permission.",
+        "operationId": "CreateCoupon",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCouponRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/coupons/{idOrKey}": {
+      "get": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "Get a coupon",
+        "description": "Requires the `tahsil.coupons:read` permission.",
+        "operationId": "GetCoupon",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "Update a coupon",
+        "description": "JSON Merge Patch of the name, limits, archive flag and metadata. Archived coupons and their codes redeem no more; existing discounts continue.\n\nRequires the `tahsil.coupons:write` permission.",
+        "operationId": "UpdateCoupon",
+        "parameters": [
+          {
+            "name": "idOrKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCouponRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/promotion-codes": {
+      "get": {
+        "tags": [
+          "Promotion codes"
+        ],
+        "summary": "List promotion codes",
+        "description": "Requires the `tahsil.coupons:read` permission.",
+        "operationId": "ListPromotionCodes",
+        "parameters": [
+          {
+            "name": "coupon",
+            "in": "query",
+            "description": "The coupon's ID or key.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Only active (true) or inactive (false) codes.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "A code, ignoring case.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfPromotionCodeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Promotion codes"
+        ],
+        "summary": "Create a promotion code",
+        "description": "Codes are stored in uppercase and unique ignoring case across all coupons. Restrictions never change; deactivate a code and create another.\n\nRequires the `tahsil.coupons:write` permission.",
+        "operationId": "CreatePromotionCode",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePromotionCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionCodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/promotion-codes/{id}": {
+      "get": {
+        "tags": [
+          "Promotion codes"
+        ],
+        "summary": "Get a promotion code",
+        "description": "Requires the `tahsil.coupons:read` permission.",
+        "operationId": "GetPromotionCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionCodeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Promotion codes"
+        ],
+        "summary": "Activate or deactivate a promotion code",
+        "description": "Requires the `tahsil.coupons:write` permission.",
+        "operationId": "UpdatePromotionCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromotionCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionCodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.coupons:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/customers": {
       "get": {
         "tags": [
@@ -7647,6 +8221,152 @@
           "failed"
         ]
       },
+      "CouponDuration": {
+        "enum": [
+          "once",
+          "repeating",
+          "forever"
+        ]
+      },
+      "CouponResponse": {
+        "required": [
+          "id",
+          "key",
+          "name",
+          "percentOff",
+          "amountOff",
+          "currency",
+          "duration",
+          "durationInCycles",
+          "products",
+          "maxRedemptions",
+          "redeemBy",
+          "timesRedeemed",
+          "isArchived",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "amountOff": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duration": {
+            "$ref": "#/components/schemas/CouponDuration"
+          },
+          "durationInCycles": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "products": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProductSummary"
+            }
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "redeemBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "timesRedeemed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CouponSummary": {
+        "required": [
+          "id",
+          "key",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "CreateApiKeyRequest": {
         "required": [
           "name",
@@ -7836,6 +8556,98 @@
           },
           "enabled": {
             "type": "boolean"
+          }
+        }
+      },
+      "CreateCouponRequest": {
+        "required": [
+          "key",
+          "name",
+          "duration"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Shown to customers, such as `Launch discount`."
+          },
+          "percentOff": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Above 0 and at most 100, with up to two decimals; or give long? CreateCouponRequest.AmountOff.",
+            "format": "double"
+          },
+          "amountOff": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "In minor units of string? CreateCouponRequest.Currency; or give decimal? CreateCouponRequest.PercentOff.",
+            "format": "int64"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duration": {
+            "$ref": "#/components/schemas/CouponDuration"
+          },
+          "durationInCycles": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "For `repeating`: the number of cycle invoices, 1 to 120.",
+            "format": "int32"
+          },
+          "products": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "IDs or keys of the products it applies to; every product when left out."
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "redeemBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "No redemptions after this time.",
+            "format": "date-time"
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         }
       },
@@ -8304,6 +9116,67 @@
             "additionalProperties": {
               "type": "string"
             }
+          }
+        }
+      },
+      "CreatePromotionCodeRequest": {
+        "required": [
+          "coupon",
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "coupon": {
+            "type": "string",
+            "description": "The coupon's ID or key."
+          },
+          "code": {
+            "type": "string",
+            "description": "3 to 40 letters, digits, `_` or `-`; stored in uppercase and matched ignoring case."
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "firstTimeOnly": {
+            "type": "boolean",
+            "description": "Only customers without a paid invoice may redeem it."
+          },
+          "minimumAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "The smallest invoice subtotal, in minor units of string? CreatePromotionCodeRequest.MinimumAmountCurrency.",
+            "format": "int64"
+          },
+          "minimumAmountCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customer": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The only customer who may redeem it.",
+            "format": "uuid"
           }
         }
       },
@@ -9972,6 +10845,28 @@
         },
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
+      "PageOfCouponResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CouponResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
       "PageOfCustomerResponse": {
         "required": [
           "items",
@@ -10159,6 +11054,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ProductResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfPromotionCodeResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PromotionCodeResponse"
             }
           },
           "nextCursor": {
@@ -11041,6 +11958,96 @@
           }
         }
       },
+      "PromotionCodeResponse": {
+        "required": [
+          "id",
+          "code",
+          "coupon",
+          "isActive",
+          "expiresAt",
+          "maxRedemptions",
+          "timesRedeemed",
+          "firstTimeOnly",
+          "minimumAmount",
+          "minimumAmountCurrency",
+          "customerId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "coupon": {
+            "$ref": "#/components/schemas/CouponSummary"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "timesRedeemed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "firstTimeOnly": {
+            "type": "boolean"
+          },
+          "minimumAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "minimumAmountCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ProrationBehavior": {
         "enum": [
           "always_invoice",
@@ -11270,6 +12277,112 @@
         },
         "additionalProperties": false,
         "description": "A payment provider connection and the currencies it serves. In a startup file, credentials are configuration\nreferences such as `${Iyzico:ApiKey}`, so secrets never live in version control."
+      },
+      "ProvisionedCoupon": {
+        "required": [
+          "key",
+          "name",
+          "duration"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Fixed once created; or give long? ProvisionedCoupon.AmountOff.",
+            "format": "double"
+          },
+          "amountOff": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Fixed once created, in minor units of string? ProvisionedCoupon.Currency.",
+            "format": "int64"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Fixed once created."
+          },
+          "duration": {
+            "description": "Fixed once created.",
+            "$ref": "#/components/schemas/CouponDuration"
+          },
+          "durationInCycles": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Fixed once created.",
+            "format": "int32"
+          },
+          "products": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys of the products it applies to; every product when left out. Fixed once created."
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "redeemBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "promotionCodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedPromotionCode"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "A coupon and its promotion codes. The discount, duration and products are fixed once created."
       },
       "ProvisionedItem": {
         "required": [
@@ -11520,6 +12633,56 @@
         },
         "additionalProperties": false
       },
+      "ProvisionedPromotionCode": {
+        "required": [
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "firstTimeOnly": {
+            "type": "boolean"
+          },
+          "minimumAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "minimumAmountCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "description": "A promotion code, matched by its code ignoring case. Only bool ProvisionedPromotionCode.Active can change once created."
+      },
       "ProvisionedTaxRate": {
         "required": [
           "key",
@@ -11644,6 +12807,15 @@
             ],
             "items": {
               "$ref": "#/components/schemas/ProvisionedProduct"
+            }
+          },
+          "coupons": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedCoupon"
             }
           },
           "providerConnections": {
@@ -12504,6 +13676,52 @@
         },
         "description": "Changes a connection. Credentials and settings merge: the fields given replace the current values, the others stay;\nan empty credential or a `null` setting removes an optional field. The key, provider and environment never change."
       },
+      "UpdateCouponRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "maxRedemptions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Not below the redemptions so far; `null` removes the limit.",
+            "format": "int32"
+          },
+          "redeemBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "isArchived": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Archived coupons and their codes redeem no more; existing discounts continue."
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Replaces the metadata; `null` clears it."
+          }
+        },
+        "description": "JSON Merge Patch: omitted fields stay, `null` clears. The discount, duration and products never change."
+      },
       "UpdateCustomerRequest": {
         "type": "object",
         "properties": {
@@ -12744,6 +13962,18 @@
           }
         },
         "description": "JSON Merge Patch: omitted fields stay as they are, `null` clears."
+      },
+      "UpdatePromotionCodeRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "description": "Only the active flag changes: deactivate a code to stop it, reactivate it to allow it again."
       },
       "UpdateSimulatorPaymentMethodRequest": {
         "required": [
@@ -13114,6 +14344,12 @@
     },
     {
       "name": "Prices"
+    },
+    {
+      "name": "Coupons"
+    },
+    {
+      "name": "Promotion codes"
     },
     {
       "name": "Customers"

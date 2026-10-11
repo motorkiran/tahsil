@@ -795,6 +795,192 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("attention_items", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Coupons.Coupon", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long?>("AmountOff")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_off");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("Duration")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("duration");
+
+                    b.Property<int?>("DurationInCycles")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_in_cycles");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<int?>("MaxRedemptions")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_redemptions");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal?>("PercentOff")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("percent_off");
+
+                    b.PrimitiveCollection<Guid[]>("ProductIds")
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("product_ids");
+
+                    b.Property<DateTimeOffset?>("RedeemBy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redeem_by");
+
+                    b.Property<int>("TimesRedeemed")
+                        .HasColumnType("integer")
+                        .HasColumnName("times_redeemed");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_coupons");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_coupons_key");
+
+                    b.ToTable("coupons", "tahsil", t =>
+                        {
+                            t.HasCheckConstraint("ck_coupons_amount_off", "amount_off > 0");
+
+                            t.HasCheckConstraint("ck_coupons_discount", "(percent_off IS NULL) <> (amount_off IS NULL) AND (amount_off IS NULL) = (currency IS NULL)");
+
+                            t.HasCheckConstraint("ck_coupons_percent_off", "percent_off > 0 AND percent_off <= 100");
+
+                            t.HasCheckConstraint("ck_coupons_redemptions", "times_redeemed >= 0 AND (max_redemptions IS NULL OR times_redeemed <= max_redemptions)");
+                        });
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Coupons.PromotionCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<Guid>("CouponId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("coupon_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("FirstTimeOnly")
+                        .HasColumnType("boolean")
+                        .HasColumnName("first_time_only");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<int?>("MaxRedemptions")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_redemptions");
+
+                    b.Property<long?>("MinimumAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("minimum_amount");
+
+                    b.Property<string>("MinimumAmountCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("minimum_amount_currency");
+
+                    b.Property<int>("TimesRedeemed")
+                        .HasColumnType("integer")
+                        .HasColumnName("times_redeemed");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_promotion_codes");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_promotion_codes_code");
+
+                    b.HasIndex("CouponId")
+                        .HasDatabaseName("ix_promotion_codes_coupon_id");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("ix_promotion_codes_customer_id");
+
+                    b.ToTable("promotion_codes", "tahsil", t =>
+                        {
+                            t.HasCheckConstraint("ck_promotion_codes_code", "code ~ '^[A-Z0-9_-]{3,40}$'");
+
+                            t.HasCheckConstraint("ck_promotion_codes_redemptions", "times_redeemed >= 0 AND (max_redemptions IS NULL OR times_redeemed <= max_redemptions)");
+                        });
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Customers.BalanceTransaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2945,6 +3131,22 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_checkout_sessions_customers_customer_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Coupons.PromotionCode", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Coupons.Coupon", null)
+                        .WithMany()
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_promotion_codes_coupons_coupon_id");
+
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_promotion_codes_customers_customer_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Customers.BalanceTransaction", b =>

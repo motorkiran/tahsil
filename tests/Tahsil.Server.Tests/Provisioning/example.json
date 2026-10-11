@@ -17,4 +17,11 @@
       "prices": [{ "key": "legacy-monthly-try", "currency": "TRY", "type": "recurring", "interval": "month", "unitAmount": 9900, "isArchived": true }],
     },
   ],
+  "coupons": [
+    { "key": "launch", "name": "Launch discount", "percentOff": 50, "duration": "repeating", "durationInCycles": 3, "promotionCodes": [{ "code": "LAUNCH50", "maxRedemptions": 500 }] },
+    {
+      "key": "pro-welcome", "name": "Pro welcome", "amountOff": 10000, "currency": "TRY", "duration": "once", "products": ["pro"],
+      "promotionCodes": [{ "code": "welcome", "active": false, "firstTimeOnly": true, "minimumAmount": 29900, "minimumAmountCurrency": "TRY" }],
+    },
+  ],
 }

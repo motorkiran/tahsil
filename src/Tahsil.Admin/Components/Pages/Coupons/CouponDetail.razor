@@ -1,0 +1,133 @@
+@page "/admin/coupons/{Key}"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Coupons
+@inherits AdminPageBase
+
+<PageTitle>@(_coupon?.Name ?? Key) · Tahsil</PageTitle>
+
+@if (_coupon is { } coupon)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@coupon.Name</MudText>
+        @if (coupon.IsArchived)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip>
+        }
+        <MudSpacer />
+        @if (CanWrite)
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="ToggleArchiveAsync" id="archive-coupon">@(coupon.IsArchived ? "Restore" : "Archive")</MudButton>
+        }
+    </MudStack>
+    <MudSimpleTable Dense Elevation="0" Class="mb-6" id="coupon-details">
+        <tbody>
+            <tr><th>Key</th><td><code>@coupon.Key</code></td></tr>
+            <tr><th>Discount</th><td id="discount">@CouponText.Discount(coupon)</td></tr>
+            <tr><th>Products</th><td>@(coupon.Products is { } products ? string.Join(", ", products.Select(product => product.Name)) : "All")</td></tr>
+            <tr><th>Redemptions</th><td id="redemptions">@CouponText.Redemptions(coupon.TimesRedeemed, coupon.MaxRedemptions)</td></tr>
+            <tr><th>Redeem by</th><td>@if (coupon.RedeemBy is { } redeemBy) { <Moment Value="redeemBy" /> } else { <span>–</span> }</td></tr>
+        </tbody>
+    </MudSimpleTable>
+
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h6" HtmlTag="h2">Promotion codes</MudText>
+        <MudSpacer />
+        @if (CanWrite && !coupon.IsArchived)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateCodeAsync" id="create-code">Add code</MudButton>
+        }
+    </MudStack>
+    <MudTable T="PromotionCodeResponse" Items="_codes" Dense id="codes">
+        <HeaderContent>
+            <MudTh>Code</MudTh>
+            <MudTh>Redemptions</MudTh>
+            <MudTh>Restrictions</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Code"><code>@context.Code</code></MudTd>
+            <MudTd DataLabel="Redemptions">@CouponText.Redemptions(context.TimesRedeemed, context.MaxRedemptions)</MudTd>
+            <MudTd DataLabel="Restrictions">@CouponText.Restrictions(context)</MudTd>
+            <MudTd>
+                @if (!context.IsActive)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Inactive</MudChip>
+                }
+                @if (CanWrite)
+                {
+                    <MudButton Size="Size.Small" OnClick="() => ToggleCodeAsync(context)" Class="toggle-code">@(context.IsActive ? "Deactivate" : "Activate")</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>No codes yet; the API can still apply the coupon directly.</MudText></NoRecordsContent>
+    </MudTable>
+}
+else if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">There is no coupon <code>@Key</code>.</MudAlert>
+}
+
+@code {
+    private CouponResponse? _coupon;
+    private readonly List<PromotionCodeResponse> _codes = [];
+    private bool _notFound;
+
+    [Parameter]
+    public required string Key { get; set; }
+
+    private bool CanWrite => Session.Has(TahsilPermissions.CouponsWrite);
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _coupon = (await ReadAsync<GetCouponHandler, Versioned<CouponResponse>>((handler, token) => handler.HandleAsync(Key, token)))?.Value;
+        _notFound = _coupon is null;
+        _codes.Clear();
+        if (_coupon is null)
+        {
+            return;
+        }
+
+        string? cursor = null;
+        do
+        {
+            var page = await ReadAsync<ListPromotionCodesHandler, Page<PromotionCodeResponse>>(
+                (handler, token) => handler.HandleAsync(new ListPromotionCodesQuery(Coupon: _coupon.Id.ToString(), Cursor: cursor), token));
+            _codes.AddRange(page?.Items ?? []);
+            cursor = page?.NextCursor;
+        }
+        while (cursor is not null);
+    }
+
+    private async Task ToggleArchiveAsync()
+    {
+        var request = new UpdateCouponRequest { IsArchived = !_coupon!.IsArchived };
+        if (await ChangeAsync<UpdateCouponHandler, Versioned<CouponResponse>>(
+            (handler, token) => handler.HandleAsync(_coupon.Id.ToString(), request, null, token), _coupon.IsArchived ? "The coupon was restored." : "The coupon was archived.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task CreateCodeAsync()
+    {
+        var parameters = new DialogParameters<PromotionCodeDialog> { { dialog => dialog.Coupon, _coupon!.Key }, { dialog => dialog.Currency, _coupon.Currency } };
+        var dialog = await Dialogs.ShowAsync<PromotionCodeDialog>("Add a promotion code", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CreatePromotionCodeRequest request }
+            && await ChangeAsync<CreatePromotionCodeHandler, Versioned<PromotionCodeResponse>>((handler, token) => handler.HandleAsync(request, token), "The code was created.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task ToggleCodeAsync(PromotionCodeResponse code)
+    {
+        var request = new UpdatePromotionCodeRequest { IsActive = !code.IsActive };
+        if (await ChangeAsync<UpdatePromotionCodeHandler, Versioned<PromotionCodeResponse>>(
+            (handler, token) => handler.HandleAsync(code.Id, request, null, token), code.IsActive ? "The code was deactivated." : "The code was activated.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

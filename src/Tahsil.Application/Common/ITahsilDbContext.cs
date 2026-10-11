@@ -24,6 +24,10 @@ public interface ITahsilDbContext
 
     DbSet<Price> Prices { get; }
 
+    DbSet<Domain.Coupons.Coupon> Coupons { get; }
+
+    DbSet<Domain.Coupons.PromotionCode> PromotionCodes { get; }
+
     DbSet<Customer> Customers { get; }
 
     DbSet<ProviderConnection> ProviderConnections { get; }

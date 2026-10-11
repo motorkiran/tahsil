@@ -11,7 +11,7 @@ namespace Tahsil.Application.Provisioning;
 /// The current catalog and wiring as a provisioning document, ordered by key, so it can be committed and applied
 /// elsewhere (PRV-11). Secrets are never exported: each credential that is set, and each endpoint's secret, appears as
 /// a configuration reference to define where the document is applied, such as <c>${Connections:iyzico-main:apiKey}</c>.
-/// Prices and webhook endpoints without a key cannot be provisioned and are left out.
+/// Prices and webhook endpoints without a key cannot be provisioned and are left out, and so are codes for one customer.
 /// </summary>
 public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthorizer authorizer, ConnectionSecrets secrets, ProviderRegistry registry)
 {
@@ -26,6 +26,8 @@ public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthori
         var meters = await context.Meters.AsNoTracking().OrderBy(meter => meter.Key).ToListAsync(cancellationToken);
         var products = await context.Products.AsNoTracking().OrderBy(product => product.Key).ToListAsync(cancellationToken);
         var prices = await context.Prices.AsNoTracking().Where(price => price.Key != null).OrderBy(price => price.Key).ToListAsync(cancellationToken);
+        var coupons = await context.Coupons.AsNoTracking().OrderBy(coupon => coupon.Key).ToListAsync(cancellationToken);
+        var promotionCodes = await context.PromotionCodes.AsNoTracking().Where(code => code.CustomerId == null).OrderBy(code => code.Code).ToListAsync(cancellationToken);
         var connections = await context.ProviderConnections.AsNoTracking().OrderBy(connection => connection.Key).ToListAsync(cancellationToken);
         var routing = await context.ReadRoutingAsync(cancellationToken);
         var endpoints = await context.WebhookEndpoints.AsNoTracking().Where(endpoint => endpoint.Key != null).OrderBy(endpoint => endpoint.Key).ToListAsync(cancellationToken);
@@ -62,6 +64,31 @@ public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthori
                 IsArchived = product.IsArchived,
                 Metadata = product.Metadata.Count == 0 ? null : product.Metadata,
                 Prices = [.. prices.Where(price => price.ProductId == product.Id).Select(price => ToProvisioned(price, taxRateKeys, meterKeys))],
+            })],
+            Coupons = [.. coupons.Select(coupon => new ProvisionedCoupon
+            {
+                Key = coupon.Key,
+                Name = coupon.Name,
+                PercentOff = coupon.PercentOff,
+                AmountOff = coupon.AmountOff,
+                Currency = coupon.Currency,
+                Duration = coupon.Duration.Map<CouponDuration>(),
+                DurationInCycles = coupon.DurationInCycles,
+                Products = coupon.ProductIds?.Select(id => products.Single(product => product.Id == id).Key).Order(StringComparer.Ordinal).ToList(),
+                MaxRedemptions = coupon.MaxRedemptions,
+                RedeemBy = coupon.RedeemBy,
+                IsArchived = coupon.IsArchived,
+                Metadata = coupon.Metadata.Count == 0 ? null : coupon.Metadata,
+                PromotionCodes = [.. promotionCodes.Where(code => code.CouponId == coupon.Id).Select(code => new ProvisionedPromotionCode
+                {
+                    Code = code.Code,
+                    Active = code.IsActive,
+                    ExpiresAt = code.ExpiresAt,
+                    MaxRedemptions = code.MaxRedemptions,
+                    FirstTimeOnly = code.FirstTimeOnly,
+                    MinimumAmount = code.MinimumAmount,
+                    MinimumAmountCurrency = code.MinimumAmountCurrency,
+                })],
             })],
             ProviderConnections = [.. connections.Select(connection => ToProvisioned(connection, routing))],
             WebhookEndpoints = [.. endpoints.Select(endpoint => new ProvisionedWebhookEndpoint

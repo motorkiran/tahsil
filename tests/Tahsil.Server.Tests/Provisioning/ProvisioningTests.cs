@@ -35,9 +35,9 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
             Products = [document.Products![0] with { Name = "Pro Plus" }, document.Products[1]],
         });
 
-        (first.Created, first.Updated, first.Unchanged).ShouldBe((8, 0, 0));
-        (again.Created, again.Updated, again.Unchanged).ShouldBe((0, 0, 8));
-        (renamed.Updated, renamed.Unchanged).ShouldBe((1, 7));
+        (first.Created, first.Updated, first.Unchanged).ShouldBe((12, 0, 0));
+        (again.Created, again.Updated, again.Unchanged).ShouldBe((0, 0, 12));
+        (renamed.Updated, renamed.Unchanged).ShouldBe((1, 11));
         renamed.Items.Single(item => item.Result == ProvisioningItemResult.Updated).Path.ShouldBe("products[0]");
         var legacy = await (await client.GetPathAsync("/api/v1/products/legacy")).ReadAsync<ProductResponse>();
         legacy.IsArchived.ShouldBeTrue();
@@ -70,6 +70,36 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
     }
 
     [Fact]
+    [Trait("Requirement", "PRV-5")]
+    [Trait("Requirement", "CPN-2")]
+    [Trait("Requirement", "CPN-6")]
+    public async Task Coupons_AreProvisionedWithTheirCodes_WhoseDiscountAndRestrictionsAreFixed()
+    {
+        await using var host = Host();
+        using var client = await ClientAsync(host);
+        var document = await ExampleAsync();
+        await ApplyAsync(client, document);
+        var welcome = document.Coupons![1];
+
+        var reactivated = await ApplyAsync(client, document with
+        {
+            Coupons = [document.Coupons[0] with { MaxRedemptions = 1000 }, welcome with { PromotionCodes = [welcome.PromotionCodes![0] with { Active = true }] }],
+        });
+        using var discount = await client.PostJsonAsync("/api/v1/provisioning", document with { Coupons = [document.Coupons[0] with { PercentOff = 40 }, welcome] });
+        using var restriction = await client.PostJsonAsync("/api/v1/provisioning", document with
+        {
+            Coupons = [document.Coupons[0], welcome with { PromotionCodes = [welcome.PromotionCodes[0] with { MinimumAmount = 9900 }] }],
+        });
+
+        reactivated.Items.Where(item => item.Result == ProvisioningItemResult.Updated).Select(item => item.Path).ShouldBe(["coupons[0]", "coupons[1].promotionCodes[0]"]);
+        var code = (await (await client.GetPathAsync("/api/v1/promotion-codes?code=WELCOME")).ReadAsync<Page<PromotionCodeResponse>>()).Items.ShouldHaveSingleItem();
+        (code.Code, code.IsActive, code.Coupon.Key).ShouldBe(("WELCOME", true, "pro-welcome"));
+        (await (await client.GetPathAsync("/api/v1/coupons/pro-welcome")).ReadAsync<CouponResponse>()).Products!.ShouldHaveSingleItem().Key.ShouldBe("pro");
+        (await discount.ReadAsync<JsonNode>())["detail"]!.GetValue<string>().ShouldStartWith("coupons[0] 'launch': 'percentOff' cannot change");
+        (await restriction.ReadAsync<JsonNode>())["detail"]!.GetValue<string>().ShouldStartWith("coupons[1].promotionCodes[0] 'welcome': 'minimumAmount' cannot change");
+    }
+
+    [Fact]
     [Trait("Requirement", "PRV-9")]
     public async Task ADryRun_ReportsTheChanges_AndKeepsNone()
     {
@@ -79,7 +109,7 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
         using var response = await client.PostJsonAsync("/api/v1/provisioning?dryRun=true", await ExampleAsync());
         var result = await response.ReadAsync<ProvisioningResult>();
 
-        result.Created.ShouldBe(8);
+        result.Created.ShouldBe(12);
         (await (await client.GetPathAsync("/api/v1/products")).ReadAsync<Page<ProductResponse>>()).Items.ShouldBeEmpty();
         (await host.QueryAsync<int>($"SELECT count(*)::int AS \"Value\" FROM tahsil.audit_events WHERE action NOT IN ('api_key.created', 'connection.created')")).ShouldBe([0]);
     }
@@ -100,6 +130,7 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
 
         exported.Products!.Select(product => product.Key).ShouldBe(["legacy", "pro"]);
         exported.Products![1].Prices!.Select(price => price.Key).ShouldBe(["api-calls-try", "pro-monthly-try", "pro-yearly-try"]);
+        exported.Coupons!.SelectMany(coupon => coupon.PromotionCodes!).Select(code => (code.Code, code.Active)).ShouldBe([("LAUNCH50", true), ("WELCOME", false)]);
         JsonSerializer.Serialize(again, ApiClients.Json).ShouldBe(JsonSerializer.Serialize(exported, ApiClients.Json));
     }
 
@@ -126,7 +157,7 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
             CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProvisioningDocument>("""{ "coupons": [] }""", ProvisioningFile.SerializerOptions));
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProvisioningDocument>("""{ "discounts": [] }""", ProvisioningFile.SerializerOptions));
     }
 
     [Fact]
@@ -159,7 +190,8 @@ public sealed class ProvisioningTests(TahsilServerFixture server)
     }
 
     private static Task<HttpClient> ClientAsync(WebApplicationFactory<Program> host) => host.CreateClientWithAsync(
-        TahsilPermissions.ProvisioningRead, TahsilPermissions.ProvisioningWrite, TahsilPermissions.CatalogRead, TahsilPermissions.CatalogWrite);
+        TahsilPermissions.ProvisioningRead, TahsilPermissions.ProvisioningWrite, TahsilPermissions.CatalogRead, TahsilPermissions.CatalogWrite,
+        TahsilPermissions.CouponsRead, TahsilPermissions.CouponsWrite);
 
     private WebApplicationFactory<Program> Host(Dictionary<string, string?>? settings = null)
     {

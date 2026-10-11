@@ -1,0 +1,97 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_key" Label="Key" Placeholder="launch" Required />
+            <MudTextField @bind-Value="_name" Label="Name shown to customers" Placeholder="Launch discount" Required MaxLength="100" />
+            <MudRadioGroup T="bool" @bind-Value="_byPercent">
+                <MudRadio T="bool" Value="true">Percentage off</MudRadio>
+                <MudRadio T="bool" Value="false">Amount off</MudRadio>
+            </MudRadioGroup>
+            @if (_byPercent)
+            {
+                <MudNumericField T="decimal?" @bind-Value="_percentOff" Label="Percentage" Min="0" Max="100" />
+            }
+            else
+            {
+                <MudStack Row>
+                    <MudNumericField T="decimal?" @bind-Value="_amountOff" Label="Amount" Min="0" />
+                    <MudTextField @bind-Value="_currency" Label="Currency" MaxLength="3" Style="max-width: 6rem" />
+                </MudStack>
+            }
+            <MudSelect T="CouponDuration" @bind-Value="_duration" Label="Duration">
+                <MudSelectItem T="CouponDuration" Value="CouponDuration.Once">Once</MudSelectItem>
+                <MudSelectItem T="CouponDuration" Value="CouponDuration.Repeating">For a number of cycles</MudSelectItem>
+                <MudSelectItem T="CouponDuration" Value="CouponDuration.Forever">Forever</MudSelectItem>
+            </MudSelect>
+            @if (_duration == CouponDuration.Repeating)
+            {
+                <MudNumericField T="int?" @bind-Value="_durationInCycles" Label="Cycles" Min="1" Max="120" HelperText="Renewal invoices the discount applies to, the first one included." />
+            }
+            <MudSelect T="Guid" @bind-SelectedValues="_products" MultiSelection Label="Products" HelperText="Leave empty to apply to every product."
+                       ToStringFunc="id => Products.FirstOrDefault(product => product.Id == id)?.Name ?? string.Empty">
+                @foreach (var product in Products)
+                {
+                    <MudSelectItem T="Guid" Value="product.Id">@product.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int?" @bind-Value="_maxRedemptions" Label="Maximum redemptions" Min="1" HelperText="Empty for no limit." Clearable />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _key = string.Empty;
+    private string _name = string.Empty;
+    private bool _byPercent = true;
+    private decimal? _percentOff;
+    private decimal? _amountOff;
+    private string _currency = "TRY";
+    private CouponDuration _duration = CouponDuration.Once;
+    private int? _durationInCycles;
+    private IReadOnlyCollection<Guid> _products = [];
+    private int? _maxRedemptions;
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<ProductResponse> Products { get; set; }
+
+    private void Submit()
+    {
+        long? amountOff = null;
+        var currency = _currency.Trim().ToUpperInvariant();
+        if (!_byPercent)
+        {
+            amountOff = AdminFormat.ToMinorUnits(_amountOff, currency);
+            if (amountOff is null)
+            {
+                _error = "Enter the amount in a supported currency, with no more decimals than the currency has.";
+                return;
+            }
+        }
+
+        var products = _products.ToList();
+        Dialog.Close(DialogResult.Ok(new CreateCouponRequest
+        {
+            Key = _key.Trim(),
+            Name = _name,
+            PercentOff = _byPercent ? _percentOff : null,
+            AmountOff = amountOff,
+            Currency = _byPercent ? null : currency,
+            Duration = _duration,
+            DurationInCycles = _duration == CouponDuration.Repeating ? _durationInCycles : null,
+            Products = products.Count == 0 ? null : [.. products.Select(id => id.ToString())],
+            MaxRedemptions = _maxRedemptions,
+        }));
+    }
+}

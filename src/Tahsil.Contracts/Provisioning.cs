@@ -24,6 +24,8 @@ public sealed record ProvisioningDocument
 
     public IReadOnlyList<ProvisionedProduct>? Products { get; init; }
 
+    public IReadOnlyList<ProvisionedCoupon>? Coupons { get; init; }
+
     public IReadOnlyList<ProvisionedConnection>? ProviderConnections { get; init; }
 
     public IReadOnlyList<ProvisionedWebhookEndpoint>? WebhookEndpoints { get; init; }
@@ -137,6 +139,65 @@ public sealed record ProvisionedPrice
     public bool IsArchived { get; init; }
 
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>A coupon and its promotion codes. The discount, duration and products are fixed once created.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProvisionedCoupon
+{
+    [Required]
+    public required string Key { get; init; }
+
+    [Required]
+    public required string Name { get; init; }
+
+    /// <summary>Fixed once created; or give <see cref="AmountOff"/>.</summary>
+    public decimal? PercentOff { get; init; }
+
+    /// <summary>Fixed once created, in minor units of <see cref="Currency"/>.</summary>
+    public long? AmountOff { get; init; }
+
+    /// <summary>Fixed once created.</summary>
+    public string? Currency { get; init; }
+
+    /// <summary>Fixed once created.</summary>
+    public required CouponDuration Duration { get; init; }
+
+    /// <summary>Fixed once created.</summary>
+    public int? DurationInCycles { get; init; }
+
+    /// <summary>Keys of the products it applies to; every product when left out. Fixed once created.</summary>
+    public IReadOnlyList<string>? Products { get; init; }
+
+    public int? MaxRedemptions { get; init; }
+
+    public DateTimeOffset? RedeemBy { get; init; }
+
+    public bool IsArchived { get; init; }
+
+    public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
+    public IReadOnlyList<ProvisionedPromotionCode>? PromotionCodes { get; init; }
+}
+
+/// <summary>A promotion code, matched by its code ignoring case. Only <see cref="Active"/> can change once created.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProvisionedPromotionCode
+{
+    [Required]
+    public required string Code { get; init; }
+
+    public bool Active { get; init; } = true;
+
+    public DateTimeOffset? ExpiresAt { get; init; }
+
+    public int? MaxRedemptions { get; init; }
+
+    public bool FirstTimeOnly { get; init; }
+
+    public long? MinimumAmount { get; init; }
+
+    public string? MinimumAmountCurrency { get; init; }
 }
 
 /// <summary>

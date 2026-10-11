@@ -330,6 +330,155 @@
         "additionalProperties": false
       }
     },
+    "coupons": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ],
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$"
+          },
+          "amountOff": {
+            "type": [
+              "string",
+              "integer",
+              "null"
+            ],
+            "pattern": "^-?(?:0|[1-9]\\d*)$"
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duration": {
+            "enum": [
+              "once",
+              "repeating",
+              "forever"
+            ]
+          },
+          "durationInCycles": {
+            "type": [
+              "string",
+              "integer",
+              "null"
+            ],
+            "pattern": "^-?(?:0|[1-9]\\d*)$"
+          },
+          "products": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxRedemptions": {
+            "type": [
+              "string",
+              "integer",
+              "null"
+            ],
+            "pattern": "^-?(?:0|[1-9]\\d*)$"
+          },
+          "redeemBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "promotionCodes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "expiresAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "maxRedemptions": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)$"
+                },
+                "firstTimeOnly": {
+                  "type": "boolean"
+                },
+                "minimumAmount": {
+                  "type": [
+                    "string",
+                    "integer",
+                    "null"
+                  ],
+                  "pattern": "^-?(?:0|[1-9]\\d*)$"
+                },
+                "minimumAmountCurrency": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "duration"
+        ],
+        "additionalProperties": false
+      }
+    },
     "providerConnections": {
       "type": [
         "array",

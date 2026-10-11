@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Catalog;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Contracts;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
@@ -10,7 +11,7 @@ namespace Tahsil.Application.Provisioning;
 
 /// <summary>
 /// Applies a provisioning document in one transaction, all of it or nothing, in dependency order (tax rates, meters,
-/// products and their prices, provider connections and their currencies, webhook endpoints). Each item goes through the
+/// products and their prices, coupons and their codes, provider connections and their currencies, webhook endpoints). Each item goes through the
 /// regular create and update handlers, so validation, immutability, audit and the caller's permissions are those of the
 /// API. A dry run reports the changes and keeps none.
 /// </summary>
@@ -27,6 +28,10 @@ public sealed class ApplyProvisioningHandler(
     UpdateProductHandler updateProduct,
     CreatePriceHandler createPrice,
     UpdatePriceHandler updatePrice,
+    CreateCouponHandler createCoupon,
+    UpdateCouponHandler updateCoupon,
+    CreatePromotionCodeHandler createPromotionCode,
+    UpdatePromotionCodeHandler updatePromotionCode,
     IntegrationProvisioning integrations)
 {
     public async Task<Result<ProvisioningResult>> HandleAsync(ProvisioningDocument document, bool dryRun, CancellationToken cancellationToken)
@@ -91,6 +96,23 @@ public sealed class ApplyProvisioningHandler(
             if (archived.Value && items[productItem].Result == ProvisioningItemResult.Unchanged)
             {
                 items[productItem] = items[productItem] with { Result = ProvisioningItemResult.Updated };
+            }
+        }
+
+        foreach (var (index, coupon) in (document.Coupons ?? []).Index())
+        {
+            var path = $"coupons[{index}]";
+            if (await Record(items, path, coupon.Key, ApplyCouponAsync(coupon, cancellationToken)) is { } error)
+            {
+                return error;
+            }
+
+            foreach (var (codeIndex, code) in (coupon.PromotionCodes ?? []).Index())
+            {
+                if (await Record(items, $"{path}.promotionCodes[{codeIndex}]", code.Code, ApplyPromotionCodeAsync(coupon.Key, code, cancellationToken)) is { } codeError)
+                {
+                    return codeError;
+                }
             }
         }
 
@@ -402,6 +424,127 @@ public sealed class ApplyProvisioningHandler(
             : taxRateKey != declared.TaxRate ? "taxRate"
             : null;
     }
+
+    private async Task<Result<ProvisioningItemResult>> ApplyCouponAsync(ProvisionedCoupon declared, CancellationToken cancellationToken)
+    {
+        var existing = await context.Coupons.AsNoTracking().SingleOrDefaultAsync(coupon => coupon.Key == declared.Key, cancellationToken);
+        if (existing is null)
+        {
+            var created = await createCoupon.HandleAsync(
+                new CreateCouponRequest
+                {
+                    Key = declared.Key,
+                    Name = declared.Name,
+                    PercentOff = declared.PercentOff,
+                    AmountOff = declared.AmountOff,
+                    Currency = declared.Currency,
+                    Duration = declared.Duration,
+                    DurationInCycles = declared.DurationInCycles,
+                    Products = declared.Products,
+                    MaxRedemptions = declared.MaxRedemptions,
+                    RedeemBy = declared.RedeemBy,
+                    Metadata = declared.Metadata,
+                },
+                cancellationToken);
+            if (created.IsFailure)
+            {
+                return created.Error;
+            }
+
+            return declared.IsArchived
+                ? Outcome(await updateCoupon.HandleAsync(declared.Key, new UpdateCouponRequest { IsArchived = true }, null, cancellationToken), ProvisioningItemResult.Created)
+                : ProvisioningItemResult.Created;
+        }
+
+        var productKeys = existing.ProductIds is { } productIds
+            ? await context.Products.AsNoTracking().Where(product => productIds.Contains(product.Id)).Select(product => product.Key).ToListAsync(cancellationToken)
+            : null;
+        var changed = existing.PercentOff != declared.PercentOff ? "percentOff"
+            : existing.AmountOff != declared.AmountOff ? "amountOff"
+            : existing.Currency != declared.Currency ? "currency"
+            : existing.Duration.Map<CouponDuration>() != declared.Duration ? "duration"
+            : existing.DurationInCycles != declared.DurationInCycles ? "durationInCycles"
+            : !SameKeys(productKeys, declared.Products) ? "products"
+            : null;
+        if (changed is not null)
+        {
+            return ProvisioningErrors.FixedProperty(changed);
+        }
+
+        if (existing.Name == declared.Name.Trim()
+            && existing.MaxRedemptions == declared.MaxRedemptions
+            && existing.RedeemBy == declared.RedeemBy
+            && existing.IsArchived == declared.IsArchived
+            && Declared.SameMetadata(existing.Metadata, declared.Metadata))
+        {
+            return ProvisioningItemResult.Unchanged;
+        }
+
+        return Outcome(
+            await updateCoupon.HandleAsync(
+                declared.Key,
+                new UpdateCouponRequest
+                {
+                    Name = declared.Name,
+                    MaxRedemptions = declared.MaxRedemptions,
+                    RedeemBy = declared.RedeemBy,
+                    IsArchived = declared.IsArchived,
+                    Metadata = declared.Metadata,
+                },
+                null,
+                cancellationToken),
+            ProvisioningItemResult.Updated);
+    }
+
+    private async Task<Result<ProvisioningItemResult>> ApplyPromotionCodeAsync(string couponKey, ProvisionedPromotionCode declared, CancellationToken cancellationToken)
+    {
+        var code = Domain.Coupons.PromotionCode.Normalize(declared.Code);
+        var existing = await context.PromotionCodes.AsNoTracking().SingleOrDefaultAsync(candidate => candidate.Code == code, cancellationToken);
+        if (existing is null)
+        {
+            var created = await createPromotionCode.HandleAsync(
+                new CreatePromotionCodeRequest
+                {
+                    Coupon = couponKey,
+                    Code = declared.Code,
+                    ExpiresAt = declared.ExpiresAt,
+                    MaxRedemptions = declared.MaxRedemptions,
+                    FirstTimeOnly = declared.FirstTimeOnly,
+                    MinimumAmount = declared.MinimumAmount,
+                    MinimumAmountCurrency = declared.MinimumAmountCurrency,
+                },
+                cancellationToken);
+            if (created.IsFailure)
+            {
+                return created.Error;
+            }
+
+            return declared.Active
+                ? ProvisioningItemResult.Created
+                : Outcome(await updatePromotionCode.HandleAsync(created.Value.Value.Id, new UpdatePromotionCodeRequest { IsActive = false }, null, cancellationToken), ProvisioningItemResult.Created);
+        }
+
+        var coupon = await context.Coupons.AsNoTracking().Where(candidate => candidate.Id == existing.CouponId).Select(candidate => candidate.Key).SingleAsync(cancellationToken);
+        var changed = coupon != couponKey ? "coupon"
+            : existing.ExpiresAt != declared.ExpiresAt ? "expiresAt"
+            : existing.MaxRedemptions != declared.MaxRedemptions ? "maxRedemptions"
+            : existing.FirstTimeOnly != declared.FirstTimeOnly ? "firstTimeOnly"
+            : existing.MinimumAmount != declared.MinimumAmount ? "minimumAmount"
+            : existing.MinimumAmountCurrency != declared.MinimumAmountCurrency ? "minimumAmountCurrency"
+            : existing.CustomerId is not null ? "customer"
+            : null;
+        if (changed is not null)
+        {
+            return ProvisioningErrors.FixedProperty(changed);
+        }
+
+        return existing.IsActive == declared.Active
+            ? ProvisioningItemResult.Unchanged
+            : Outcome(await updatePromotionCode.HandleAsync(existing.Id, new UpdatePromotionCodeRequest { IsActive = declared.Active }, null, cancellationToken), ProvisioningItemResult.Updated);
+    }
+
+    private static bool SameKeys(IReadOnlyCollection<string>? stored, IReadOnlyCollection<string>? declared) =>
+        stored is null ? declared is null : declared is not null && stored.ToHashSet(StringComparer.Ordinal).SetEquals(declared);
 
     private static Result<ProvisioningItemResult> Outcome<T>(Result<T> result, ProvisioningItemResult outcome) =>
         result.IsFailure ? result.Error : outcome;

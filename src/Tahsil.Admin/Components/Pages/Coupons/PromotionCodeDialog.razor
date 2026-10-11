@@ -1,0 +1,68 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_code" Label="Code" Placeholder="LAUNCH50" HelperText="3 to 40 letters, digits, '_' or '-'; customers may type it in any case." Required MaxLength="40" />
+            <MudNumericField T="int?" @bind-Value="_maxRedemptions" Label="Maximum redemptions" Min="1" HelperText="Empty for no limit." Clearable />
+            <MudSwitch T="bool" @bind-Value="_firstTimeOnly" Label="Only for customers who have not paid an invoice yet" Color="Color.Primary" />
+            <MudStack Row>
+                <MudNumericField T="decimal?" @bind-Value="_minimum" Label="Minimum subtotal" Min="0" HelperText="Empty for none." Clearable />
+                <MudTextField @bind-Value="_currency" Label="Currency" MaxLength="3" Style="max-width: 6rem" />
+            </MudStack>
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _code = string.Empty;
+    private int? _maxRedemptions;
+    private bool _firstTimeOnly;
+    private decimal? _minimum;
+    private string _currency = "TRY";
+    private string? _error;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    /// <summary>The coupon's key.</summary>
+    [Parameter, EditorRequired]
+    public required string Coupon { get; set; }
+
+    /// <summary>The currency the minimum starts in: the coupon's, for amounts off.</summary>
+    [Parameter]
+    public string? Currency { get; set; }
+
+    protected override void OnInitialized() => _currency = Currency ?? _currency;
+
+    private void Submit()
+    {
+        long? minimum = null;
+        var currency = _currency.Trim().ToUpperInvariant();
+        if (_minimum is not null)
+        {
+            minimum = AdminFormat.ToMinorUnits(_minimum, currency);
+            if (minimum is null)
+            {
+                _error = "Enter the minimum in a supported currency, with no more decimals than the currency has.";
+                return;
+            }
+        }
+
+        Dialog.Close(DialogResult.Ok(new CreatePromotionCodeRequest
+        {
+            Coupon = Coupon,
+            Code = _code,
+            MaxRedemptions = _maxRedemptions,
+            FirstTimeOnly = _firstTimeOnly,
+            MinimumAmount = minimum,
+            MinimumAmountCurrency = minimum is null ? null : currency,
+        }));
+    }
+}
