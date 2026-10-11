@@ -17,7 +17,8 @@
 </MudStack>
 <MudText Typo="Typo.body2" Class="mb-4">
     Customers pay each currency through the connection routed for it. Saved cards stay with the connection that saved them, so a disabled
-    connection's renewals fail until it is enabled again. Credentials are stored encrypted and never shown.
+    connection's renewals fail until it is enabled again. Credentials are stored encrypted and never shown. Enter each
+    connection's notification URL in the provider's merchant panel.
 </MudText>
 
 <MudTable T="ConnectionResponse" Items="_connections" Dense id="connections">
@@ -30,7 +31,10 @@
         <MudTh></MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="Key"><code>@context.Key</code> @context.Name</MudTd>
+        <MudTd DataLabel="Key">
+            <code>@context.Key</code> @context.Name
+            <br /><MudText Typo="Typo.caption" Class="notification-url">Notifications: <code>@context.NotificationUrl</code></MudText>
+        </MudTd>
         <MudTd DataLabel="Provider">@context.Provider</MudTd>
         <MudTd DataLabel="Environment">@context.Environment.ToString().ToLowerInvariant()</MudTd>
         <MudTd DataLabel="Currencies">@string.Join(", ", context.Currencies)</MudTd>
