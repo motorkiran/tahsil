@@ -1,0 +1,41 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/iyzipos/checkoutform/initialize/auth/ecom",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000a1",
+          "price": "299.00",
+          "paidPrice": "299.00",
+          "currency": "TRY",
+          "basketId": "0199c0de-0000-7000-8000-0000000000a1",
+          "paymentGroup": "PRODUCT",
+          "callbackUrl": "https://billing.example.com/checkout/cs_1/return/0199c0de-0000-7000-8000-0000000000a1",
+          "enabledInstallments": [
+            1
+          ],
+          "buyer": "*",
+          "billingAddress": "*",
+          "basketItems": "*"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "failure",
+          "errorCode": "1001",
+          "errorMessage": "api bilgileri bulunamadı",
+          "locale": "tr",
+          "systemTime": 1791000000000,
+          "conversationId": "0199c0de0000700080000000000000a1"
+        }
+      }
+    }
+  ]
+}

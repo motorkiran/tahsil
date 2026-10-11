@@ -1,0 +1,27 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/cardstorage/card",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "conversationId": "*",
+          "cardUserKey": "cuk-1",
+          "cardToken": "ct-1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "locale": "tr"
+        }
+      }
+    }
+  ]
+}

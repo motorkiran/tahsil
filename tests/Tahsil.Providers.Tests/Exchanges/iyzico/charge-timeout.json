@@ -1,0 +1,33 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/auth",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000a1",
+          "price": "299.00",
+          "paidPrice": "299.00",
+          "currency": "TRY",
+          "basketId": "0199c0de-0000-7000-8000-0000000000a1",
+          "installment": 1,
+          "paymentChannel": "WEB",
+          "paymentGroup": "SUBSCRIPTION",
+          "paymentCard": {
+            "cardUserKey": "cuk-1",
+            "cardToken": "ct-1"
+          },
+          "buyer": "*",
+          "billingAddress": "*",
+          "basketItems": "*"
+        }
+      },
+      "failure": "timeout"
+    }
+  ]
+}

@@ -152,7 +152,7 @@ public sealed class ConnectionApiTests(TahsilServerFixture server)
         sandbox.Error!.Code.ShouldBe("connection.not_allowed_in_mode");
         simulator.Error!.Code.ShouldBe("connection.unknown_provider");
         production.IsSuccess.ShouldBeTrue();
-        scope.ServiceProvider.GetRequiredService<ListProvidersHandler>().Handle().Value.Items.Select(provider => provider.Key).ShouldBe(["fakepay"]);
+        scope.ServiceProvider.GetRequiredService<ListProvidersHandler>().Handle().Value.Items.Select(provider => provider.Key).ShouldBe(["fakepay", "iyzico"]);
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public sealed class ConnectionApiTests(TahsilServerFixture server)
 
         var providers = await (await client.GetPathAsync("/api/v1/providers")).ReadAsync<Page<ProviderResponse>>();
 
-        providers.Items.Select(provider => provider.Key).ShouldBe(["fakepay", "simulator"]);
+        providers.Items.Select(provider => provider.Key).ShouldBe(["fakepay", "iyzico", "simulator"]);
         var fake = providers.Items[0];
         fake.Currencies.ShouldBe(["TRY", "USD"]);
         fake.Credentials.Select(field => (field.Key, field.Type, field.Required)).ShouldBe([("apiKey", "secret", true), ("secretKey", "secret", true), ("webhookSecret", "secret", false)]);

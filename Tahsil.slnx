@@ -6,6 +6,7 @@
     <Project Path="src/Tahsil.Domain/Tahsil.Domain.csproj" />
     <Project Path="src/Tahsil.Infrastructure/Tahsil.Infrastructure.csproj" />
     <Project Path="src/Tahsil.Providers.Abstractions/Tahsil.Providers.Abstractions.csproj" />
+    <Project Path="src/Tahsil.Providers.Iyzico/Tahsil.Providers.Iyzico.csproj" />
     <Project Path="src/Tahsil.Providers.Simulator/Tahsil.Providers.Simulator.csproj" />
     <Project Path="src/Tahsil.Server/Tahsil.Server.csproj" />
   </Folder>

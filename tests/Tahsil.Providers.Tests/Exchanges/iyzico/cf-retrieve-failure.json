@@ -1,0 +1,32 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/iyzipos/checkoutform/auth/ecom/detail",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000a1",
+          "token": "f7a5e8a2-2f3c-4b1e-9c11-0d2b8e2c6a10"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000a1",
+          "token": "f7a5e8a2-2f3c-4b1e-9c11-0d2b8e2c6a10",
+          "paymentStatus": "FAILURE",
+          "errorCode": "10051",
+          "errorMessage": "Kart limiti yetersiz, yetersiz bakiye",
+          "errorGroup": "NOT_SUFFICIENT_FUNDS"
+        }
+      }
+    }
+  ]
+}

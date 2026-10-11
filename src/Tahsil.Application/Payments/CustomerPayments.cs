@@ -74,6 +74,13 @@ public sealed class CustomerPayments(
             CancelUrl = cancelUrl,
         }, CancellationToken.None);
 
+        if (started.Failure is { } refused)
+        {
+            await outcomes.ApplyAsync(payment.Id, refused, CancellationToken.None);
+            return Error.Unavailable("payment.start_failed", "The provider could not start the payment; nothing was charged. Please try again later.");
+        }
+
+        var presentation = started.Presentation ?? throw new InvalidOperationException($"The {connection.Provider} adapter started a payment without a presentation.");
         await using (var transaction = await context.BeginTransactionAsync(CancellationToken.None))
         {
             await locks.LockPaymentAsync(payment.Id, CancellationToken.None);
@@ -93,7 +100,7 @@ public sealed class CustomerPayments(
             payment = current;
         }
 
-        return new StartedPayment(payment, started.Presentation, started.ExpiresAt ?? payment.ExpiresAt);
+        return new StartedPayment(payment, presentation, started.ExpiresAt ?? payment.ExpiresAt);
     }
 
     /// <summary>Learns from the provider how the payment ended and applies it; a payment already over is returned as it is.</summary>

@@ -35,7 +35,7 @@ internal sealed class FaultySimulator(IPaymentProvider simulator, Faults faults)
     /// <summary>Replaces the simulator of <paramref name="services"/> with one that has <paramref name="faults"/>.</summary>
     public static void Inject(IServiceCollection services, Faults faults)
     {
-        var registration = services.Single(service => service.ServiceType == typeof(IPaymentProvider));
+        var registration = services.Single(service => service.ServiceType == typeof(IPaymentProvider) && service.ImplementationFactory is not null);
         services.Remove(registration);
         services.AddSingleton<IPaymentProvider>(provider => new FaultySimulator((IPaymentProvider)registration.ImplementationFactory!(provider), faults));
     }

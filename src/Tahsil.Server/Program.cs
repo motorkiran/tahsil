@@ -27,6 +27,7 @@ builder.Services.AddTahsilAdmin(builder.Configuration);
 builder.Services.AddTahsilApi();
 builder.Services.AddHostedPages();
 builder.Services.AddSimulator();
+builder.Services.AddPaymentProviders();
 builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));
 builder.Services.AddHealthProbes();
 

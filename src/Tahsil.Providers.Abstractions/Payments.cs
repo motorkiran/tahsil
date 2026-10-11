@@ -89,7 +89,14 @@ public abstract record Presentation
 
 public sealed record StartResult
 {
-    public required Presentation Presentation { get; init; }
+    /// <summary>How the customer pays; none when the start <see cref="Failure"/>.</summary>
+    public Presentation? Presentation { get; init; }
+
+    /// <summary>
+    /// The provider refused to start the payment, such as with wrong keys; nothing was charged. The payment fails with
+    /// this outcome.
+    /// </summary>
+    public PaymentOutcome? Failure { get; init; }
 
     /// <summary>Opaque, non-secret values Tahsil keeps with the payment and gives back, such as a provider session ID.</summary>
     public IReadOnlyDictionary<string, string> ProviderData { get; init; } = new Dictionary<string, string>();
@@ -98,6 +105,8 @@ public sealed record StartResult
     public string? ProviderCustomer { get; init; }
 
     public DateTimeOffset? ExpiresAt { get; init; }
+
+    public static StartResult Failed(PaymentOutcome failure) => new() { Failure = failure };
 }
 
 public sealed record CompleteRequest

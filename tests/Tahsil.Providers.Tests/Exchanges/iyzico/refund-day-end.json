@@ -1,0 +1,32 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/refund",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000b2",
+          "paymentTransactionId": "23938599",
+          "price": "100.00",
+          "currency": "TRY"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "failure",
+          "errorCode": "10223",
+          "errorMessage": "Gün sonu yapılmamış işlem iade edilemez",
+          "errorGroup": "REQUIRES_DAY_END",
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000b2"
+        }
+      }
+    }
+  ]
+}

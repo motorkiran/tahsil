@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The iyzico adapter: Checkout Form payments with 3D Secure, card storage, renewals without 3D Secure, refunds and V3 notifications.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tahsil.Providers.Tests" />
+  </ItemGroup>
+
+</Project>

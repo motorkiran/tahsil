@@ -1,0 +1,36 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/v2/reporting/payment/details",
+        "headers": {
+          "Authorization": "*"
+        },
+        "query": {
+          "paymentConversationId": "0199c0de0000700080000000000000a1",
+          "locale": "tr",
+          "conversationId": "*"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "locale": "tr",
+          "payments": [
+            {
+              "paymentId": 22416100,
+              "paymentStatus": 2,
+              "errorCode": "10005",
+              "errorMessage": "İşlem onaylanmadı",
+              "errorGroup": "DO_NOT_HONOUR",
+              "paymentConversationId": "0199c0de0000700080000000000000a1"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

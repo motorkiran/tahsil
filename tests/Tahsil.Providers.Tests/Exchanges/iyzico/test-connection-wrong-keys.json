@@ -1,0 +1,28 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/bin/check",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "binNumber": "552608",
+          "conversationId": "*"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "failure",
+          "errorCode": "1000",
+          "errorMessage": "Geçersiz imza",
+          "locale": "tr"
+        }
+      }
+    }
+  ]
+}

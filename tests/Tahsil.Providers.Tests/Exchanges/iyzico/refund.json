@@ -1,0 +1,34 @@
+{
+  "source": "docs.iyzico.com response samples, signed with the test secret key (no sandbox keys yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/refund",
+        "headers": {
+          "Authorization": "*"
+        },
+        "json": {
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000b2",
+          "paymentTransactionId": "23938599",
+          "price": "100.00",
+          "currency": "TRY"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "locale": "tr",
+          "conversationId": "0199c0de0000700080000000000000b2",
+          "paymentId": "22416099",
+          "paymentTransactionId": "23938599",
+          "price": 100.0,
+          "currency": "TRY",
+          "refundHostReference": "refund-host-1"
+        }
+      }
+    }
+  ]
+}
