@@ -259,4 +259,97 @@
   <data name="Payments are paused for now. Please try again later." xml:space="preserve">
     <value>Ödemeler şu an için durduruldu. Lütfen daha sonra tekrar deneyin.</value>
   </data>
+  <data name="Paid" xml:space="preserve">
+    <value>Ödendi</value>
+  </data>
+  <data name="Void" xml:space="preserve">
+    <value>İptal edildi</value>
+  </data>
+  <data name="Overdue" xml:space="preserve">
+    <value>Gecikmede</value>
+  </data>
+  <data name="Due" xml:space="preserve">
+    <value>Ödenecek</value>
+  </data>
+  <data name="Issued" xml:space="preserve">
+    <value>Düzenlenme</value>
+  </data>
+  <data name="Due date" xml:space="preserve">
+    <value>Son ödeme</value>
+  </data>
+  <data name="Paid on" xml:space="preserve">
+    <value>Ödeme tarihi</value>
+  </data>
+  <data name="Invoice number" xml:space="preserve">
+    <value>Fatura numarası</value>
+  </data>
+  <data name="Thank you, your payment was received." xml:space="preserve">
+    <value>Teşekkürler, ödemeniz alındı.</value>
+  </data>
+  <data name="Seller" xml:space="preserve">
+    <value>Satıcı</value>
+  </data>
+  <data name="Tax office and number: {0} {1}" xml:space="preserve">
+    <value>Vergi dairesi ve no: {0} {1}</value>
+  </data>
+  <data name="Billed to" xml:space="preserve">
+    <value>Alıcı</value>
+  </data>
+  <data name="Tax office: {0}" xml:space="preserve">
+    <value>Vergi dairesi: {0}</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Açıklama</value>
+  </data>
+  <data name="Quantity" xml:space="preserve">
+    <value>Miktar</value>
+  </data>
+  <data name="Discount" xml:space="preserve">
+    <value>İndirim</value>
+  </data>
+  <data name="Tax {0}% on {1}" xml:space="preserve">
+    <value>%{0} vergi ({1} üzerinden)</value>
+  </data>
+  <data name="Total" xml:space="preserve">
+    <value>Toplam</value>
+  </data>
+  <data name="Applied balance" xml:space="preserve">
+    <value>Kullanılan bakiye</value>
+  </data>
+  <data name="Amount due" xml:space="preserve">
+    <value>Ödenecek tutar</value>
+  </data>
+  <data name="Payments" xml:space="preserve">
+    <value>Ödemeler</value>
+  </data>
+  <data name="Refunded on {0}: {1}" xml:space="preserve">
+    <value>{0} tarihinde iade: {1}</value>
+  </data>
+  <data name="This document does not replace an invoice under tax law." xml:space="preserve">
+    <value>Bu belge vergi mevzuatı kapsamında fatura yerine geçmez.</value>
+  </data>
+  <data name="Pay {0} by card" xml:space="preserve">
+    <value>{0} tutarını kartla öde</value>
+  </data>
+  <data name="Pay by bank transfer" xml:space="preserve">
+    <value>Havale veya EFT ile ödeme</value>
+  </data>
+  <data name="Bank" xml:space="preserve">
+    <value>Banka</value>
+  </data>
+  <data name="Account holder" xml:space="preserve">
+    <value>Hesap sahibi</value>
+  </data>
+  <data name="Payment reference" xml:space="preserve">
+    <value>Ödeme açıklaması</value>
+  </data>
+  <data name="Print or save as PDF" xml:space="preserve">
+    <value>Yazdır veya PDF olarak kaydet</value>
+  </data>
+  <data name="A payment of this invoice is already in progress. Please wait a few minutes." xml:space="preserve">
+    <value>Bu fatura için bir ödeme zaten işleniyor. Lütfen birkaç dakika bekleyin.</value>
+  </data>
+  <data name="Amount" xml:space="preserve">
+    <value>Tutar</value>
+  </data>
 </root>

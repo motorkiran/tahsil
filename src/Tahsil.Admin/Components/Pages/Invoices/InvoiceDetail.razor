@@ -50,6 +50,7 @@
                         <tr><th>Next attempt</th><td><Moment Value="invoice.NextPaymentAttemptAt" Empty="–" /></td></tr>
                         <tr><th>Attempts</th><td>@invoice.AttemptCount</td></tr>
                         <tr><th>Legal invoice</th><td>@(invoice.LegalInvoice?.Number ?? "–")</td></tr>
+                        <tr><th>Hosted page</th><td>@if (invoice.HostedInvoiceUrl is { } hosted) { <MudLink Href="@hosted.AbsoluteUri" Target="_blank" id="hosted-link">Open</MudLink> } else { <span>–</span> }</td></tr>
                         <tr><th>Memo</th><td>@invoice.Memo</td></tr>
                         <tr><th>Created</th><td><Moment Value="invoice.CreatedAt" /></td></tr>
                     </tbody>

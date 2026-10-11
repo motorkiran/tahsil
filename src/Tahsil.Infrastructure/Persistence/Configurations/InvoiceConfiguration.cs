@@ -8,6 +8,15 @@ using Tahsil.Infrastructure.Persistence.Conventions;
 
 namespace Tahsil.Infrastructure.Persistence.Configurations;
 
+internal sealed class InvoiceLinkKeyConfiguration : IEntityTypeConfiguration<InvoiceLinkKey>
+{
+    public void Configure(EntityTypeBuilder<InvoiceLinkKey> builder)
+    {
+        builder.Property(key => key.Id).ValueGeneratedNever();
+        builder.HasIndex(key => key.Version).IsUnique();
+    }
+}
+
 internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 {
     public void Configure(EntityTypeBuilder<Invoice> builder)

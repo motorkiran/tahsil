@@ -1514,6 +1514,35 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("invoice_lines", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Invoices.InvoiceLinkKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<byte[]>("Key")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("key");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invoice_link_keys");
+
+                    b.HasIndex("Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invoice_link_keys_version");
+
+                    b.ToTable("invoice_link_keys", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Invoices.PendingInvoiceItem", b =>
                 {
                     b.Property<Guid>("Id")

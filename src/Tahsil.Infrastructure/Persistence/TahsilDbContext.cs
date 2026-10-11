@@ -43,6 +43,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<Domain.Notifications.NotificationLog> NotificationLogs => Set<Domain.Notifications.NotificationLog>();
 
+    public DbSet<Domain.Invoices.InvoiceLinkKey> InvoiceLinkKeys => Set<Domain.Invoices.InvoiceLinkKey>();
+
     public DbSet<ConnectionCurrency> ConnectionCurrencies => Set<ConnectionCurrency>();
 
     public DbSet<ProviderCustomer> ProviderCustomers => Set<ProviderCustomer>();

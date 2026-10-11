@@ -28,11 +28,30 @@ public sealed partial class InvoiceOptions
     /// <summary>Days from finalization to the due date of <c>send_invoice</c> invoices without their own.</summary>
     public int DefaultDaysUntilDue { get; set; } = 14;
 
+    /// <summary>The version of the hosted invoice links' key (INV-24); a new version invalidates every link.</summary>
+    public int LinkKeyVersion { get; set; } = 1;
+
+    /// <summary>Bank accounts per currency for transfers, shown on hosted invoice pages (INV-26).</summary>
+    public Dictionary<string, BankTransferOptions> BankTransfer { get; set; } = [];
+
+    /// <summary>The title of hosted invoice pages per locale and status (<c>open</c>, <c>paid</c>…), replacing the defaults of INV-27.</summary>
+    public Dictionary<string, Dictionary<string, string>> DocumentTitle { get; set; } = [];
+
     internal bool HasValidPrefix() => PrefixPattern().IsMatch(NumberPrefix);
 
     // Numbers are at most 32 characters: the prefix, the year and a sequence of six or more digits.
     [GeneratedRegex("^[A-Z0-9]{1,12}$")]
     private static partial Regex PrefixPattern();
+}
+
+/// <summary>A bank account customers can pay invoices to (INV-26).</summary>
+public sealed class BankTransferOptions
+{
+    public string? Bank { get; set; }
+
+    public string? AccountHolder { get; set; }
+
+    public string? Iban { get; set; }
 }
 
 /// <summary>The row locks of billing (DOM-6, INV-8), taken in the caller's transaction.</summary>

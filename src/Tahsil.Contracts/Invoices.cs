@@ -177,6 +177,9 @@ public sealed record InvoiceResponse
     /// <summary>Assigned at finalization, such as <c>INV-2026-000123</c>.</summary>
     public required string? Number { get; init; }
 
+    /// <summary>The page where the customer sees and pays the invoice (INV-24); none for drafts.</summary>
+    public required Uri? HostedInvoiceUrl { get; init; }
+
     public required Guid CustomerId { get; init; }
 
     public required Guid? SubscriptionId { get; init; }

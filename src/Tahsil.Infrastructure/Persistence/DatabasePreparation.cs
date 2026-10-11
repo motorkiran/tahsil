@@ -16,6 +16,7 @@ internal sealed partial class DatabasePreparation(
     TahsilDbContext context,
     ConnectionStartup connections,
     LegalDocumentVersions legalDocuments,
+    Application.Invoices.InvoiceLinks invoiceLinks,
     StartupProvisioning provisioning,
     IOptions<ProvisioningOptions> provisioningOptions,
     ILogger<DatabasePreparation> logger)
@@ -30,6 +31,7 @@ internal sealed partial class DatabasePreparation(
         await connections.CheckModeAsync(cancellationToken);
         await connections.EnsureSimulatorAsync(cancellationToken);
         await legalDocuments.RegisterAsync(cancellationToken);
+        await invoiceLinks.EnsureKeyAsync(context, cancellationToken);
 
         if (provisioningOptions.Value.FilePath is { Length: > 0 } path)
         {

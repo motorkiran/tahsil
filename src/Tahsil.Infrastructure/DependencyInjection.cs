@@ -102,6 +102,7 @@ public static class DependencyInjection
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("webhook_endpoints", "secret", SecretPurposes.WebhookEndpointSecret));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("webhook_endpoints", "previous_secret", SecretPurposes.WebhookEndpointSecret));
         services.AddSingleton<IEncryptedStore>(new EncryptedColumn("checkout_sessions", "token", SecretPurposes.CheckoutToken));
+        services.AddSingleton<IEncryptedStore>(new EncryptedColumn("invoice_link_keys", "key", SecretPurposes.InvoiceLinkKey, boundToRow: false));
         services.AddScoped<SecretReencryption>();
 
         // Every instance shares one key ring, stored in PostgreSQL and encrypted with the master key.

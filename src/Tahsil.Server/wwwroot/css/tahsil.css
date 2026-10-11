@@ -424,3 +424,107 @@ legend {
 .merchant p {
     margin: 0.125rem 0;
 }
+
+/* Hosted invoice */
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.invoice-number {
+    margin: 0;
+    font-weight: 600;
+}
+
+.invoice-dates {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 0.125rem 0.75rem;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.invoice-dates dd {
+    margin: 0;
+}
+
+.status {
+    display: inline-block;
+    margin: 0.25rem 0 0;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #fef3c7;
+}
+
+.status-paid {
+    background: #d1fae5;
+}
+
+.status-void {
+    background: #e5e7eb;
+}
+
+.parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.25rem 0;
+    font-size: 0.875rem;
+}
+
+.parties h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.25rem;
+}
+
+.parties p {
+    margin: 0.125rem 0;
+}
+
+.pay {
+    margin-top: 1.5rem;
+}
+
+#bank-transfer dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.125rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+#bank-transfer dd {
+    margin: 0;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 18mm;
+    }
+
+    body {
+        background: #ffffff;
+    }
+
+    .no-print,
+    .footer,
+    .test-banner,
+    .alert {
+        display: none !important;
+    }
+
+    .shell,
+    .card {
+        max-width: none;
+        box-shadow: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+    }
+}

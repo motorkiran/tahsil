@@ -10,7 +10,7 @@ namespace Tahsil.Server.Pages.Checkout;
 /// </summary>
 [IgnoreAntiforgeryToken]
 [RunsScripts]
-public sealed class ReturnModel(CheckoutPages pages) : CheckoutPageModel
+public sealed class ReturnModel(CheckoutPages pages) : HostedPageModel
 {
     public string Token { get; private set; } = string.Empty;
 

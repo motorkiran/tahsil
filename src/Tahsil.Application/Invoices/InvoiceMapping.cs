@@ -5,11 +5,12 @@ using Model = Tahsil.Domain.Invoices;
 
 namespace Tahsil.Application.Invoices;
 
-public sealed class InvoiceMapper(ISecretEncryption encryption)
+public sealed class InvoiceMapper(ISecretEncryption encryption, InvoiceLinks links)
 {
     public InvoiceResponse ToResponse(Model.Invoice invoice) => new()
     {
         Id = invoice.Id,
+        HostedInvoiceUrl = links.UrlFor(invoice),
         Number = invoice.Number,
         CustomerId = invoice.CustomerId,
         SubscriptionId = invoice.SubscriptionId,

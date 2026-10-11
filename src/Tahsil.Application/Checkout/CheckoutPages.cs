@@ -83,6 +83,7 @@ public sealed class CheckoutPages(
     CustomerMapper customers,
     CustomerPayments payments,
     ProviderRegistry registry,
+    ProviderSources sources,
     ILegalDocumentRenderer renderer,
     LegalDocumentModels models,
     IAuditLog audit,
@@ -130,14 +131,13 @@ public sealed class CheckoutPages(
             return null;
         }
 
-        var environment = connection.Environment == ConnectionEnvironment.Production ? ProviderEnvironment.Production : ProviderEnvironment.Sandbox;
         var requiredFields = provider.Descriptor.CustomerData.CustomerPresent.Where(field => field.Fallback is null).Select(field => field.Field).ToHashSet();
         return new CheckoutView(
             session,
             customer,
             locale,
             Documents(session),
-            provider.Descriptor.ContentSecurity.GetValueOrDefault(environment) ?? ContentSecuritySources.None,
+            sources.Of(connection),
             session.BillingDetailsCollection == BillingDetailsCollectionMode.Required || requiredFields.Contains(CustomerField.Address) || requiredFields.Contains(CustomerField.Phone));
     }
 

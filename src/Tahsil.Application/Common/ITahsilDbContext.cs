@@ -34,6 +34,8 @@ public interface ITahsilDbContext
 
     DbSet<Domain.Notifications.NotificationLog> NotificationLogs { get; }
 
+    DbSet<Domain.Invoices.InvoiceLinkKey> InvoiceLinkKeys { get; }
+
     DbSet<ConnectionCurrency> ConnectionCurrencies { get; }
 
     DbSet<ProviderCustomer> ProviderCustomers { get; }

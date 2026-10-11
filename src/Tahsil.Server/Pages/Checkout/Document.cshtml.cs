@@ -5,7 +5,7 @@ using Tahsil.Domain.Customers;
 namespace Tahsil.Server.Pages.Checkout;
 
 /// <summary>A legal document of the checkout in full (CHK-11), in its own tab.</summary>
-public sealed class DocumentModel(CheckoutPages pages) : CheckoutPageModel
+public sealed class DocumentModel(CheckoutPages pages) : HostedPageModel
 {
     public string Html { get; private set; } = string.Empty;
 

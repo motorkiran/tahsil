@@ -68,8 +68,8 @@ public sealed class DataProtectionTests(TahsilServerFixture server)
         }
 
         await using var after = Host(database, Key2, keyId: 2);
-        // The key ring, the simulator connection's credentials and the test secret.
-        reencrypted.ShouldBe(3);
+        // The key ring, the simulator connection's credentials, the invoice link key and the test secret.
+        reencrypted.ShouldBe(4);
         Protector(after).Unprotect(payload).ShouldBe("session");
         var stored = await ReadSecretAsync(database, owner);
         stored[1].ShouldBe((byte)2);
@@ -81,7 +81,7 @@ public sealed class DataProtectionTests(TahsilServerFixture server)
     public void EverySecretColumn_IsRegisteredForReencryption()
     {
         server.Services.GetServices<IEncryptedStore>().Select(store => store.Name)
-            .ShouldBe(["data_protection_keys.xml", "customers.tax_id", "provider_connections.credentials", "invoices.customer_tax_id", "payment_methods.token", "provider_notifications.raw_body", "webhook_endpoints.secret", "webhook_endpoints.previous_secret", "checkout_sessions.token"], ignoreOrder: true);
+            .ShouldBe(["data_protection_keys.xml", "customers.tax_id", "provider_connections.credentials", "invoices.customer_tax_id", "payment_methods.token", "provider_notifications.raw_body", "webhook_endpoints.secret", "webhook_endpoints.previous_secret", "checkout_sessions.token", "invoice_link_keys.key"], ignoreOrder: true);
     }
 
     private WebApplicationFactory<Program> Host(string database, string masterKey, int keyId = 1, string? previousKey1 = null)

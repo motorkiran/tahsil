@@ -1,0 +1,50 @@
+<article class="invoice" id="invoice">
+    <header class="invoice-header">
+        <div>
+            <h1 id="page-title">İptal Edilmiş Ödeme Talebi</h1>
+            <p class="invoice-number">INV-2026-000001</p>
+            <p class="status status-void" id="status">İptal edildi</p>
+        </div>
+        <dl class="invoice-dates">
+            <dt>Düzenlenme</dt><dd>1 Ekim 2026</dd>
+        </dl>
+    </header>
+
+
+    <section class="parties">
+        <div id="seller">
+            <h2>Satıcı</h2>
+            <p><strong>Acme Yazılım A.Ş.</strong></p>
+            <p>Caferağa Mah. Moda Cad. No:1, 34710 Kadıköy/İstanbul</p>
+                <p>Vergi dairesi ve no: Kadıköy 1234567890</p>
+                <p>MERSİS 0123456789012345</p>
+            <p>destek@acme.example · +90 216 000 00 00</p>
+        </div>
+        <div id="customer">
+            <h2>Alıcı</h2>
+            <p><strong>Ayşe Yılmaz</strong></p>
+                <p>Moda Cad. 1, Kadıköy, İstanbul, 34710, TR</p>
+            <p>ayse@example.com</p>
+        </div>
+    </section>
+
+    <table class="lines" id="lines">
+        <thead><tr><th>Açıklama</th><th class="amount">Miktar</th><th class="amount">Tutar</th></tr></thead>
+        <tbody>
+                <tr class="line">
+                    <td>
+                        Consulting
+                    </td>
+                    <td class="amount">1</td>
+                    <td class="amount">₺120,00</td>
+                </tr>
+        </tbody>
+        <tfoot>
+                <tr class="tax"><td colspan="2">%20 vergi (₺100,00 üzerinden)</td><td class="amount">₺20,00</td></tr>
+            <tr class="total"><th scope="row" colspan="2">Toplam</th><td class="amount" id="total">₺120,00</td></tr>
+        </tfoot>
+    </table>
+
+
+        <p class="hint" id="tax-note">Bu belge vergi mevzuatı kapsamında fatura yerine geçmez.</p>
+</article>

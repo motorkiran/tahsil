@@ -102,6 +102,9 @@ public static class DependencyInjection
             .Validate(options => options.HasValidPrefix(), $"{InvoiceOptions.SectionName}:NumberPrefix must be 1 to 12 capital letters or digits.")
             .Validate(options => options.DefaultDaysUntilDue is >= 0 and <= 365, $"{InvoiceOptions.SectionName}:DefaultDaysUntilDue must be between 0 and 365.")
             .ValidateOnStart();
+        services.AddSingleton<InvoiceLinks>();
+        services.AddScoped<InvoicePages>();
+        services.AddScoped<Connections.ProviderSources>();
         services.AddSingleton<InvoiceMapper>();
         services.AddScoped<InvoiceLines>();
         services.AddScoped<InvoiceFinalizer>();

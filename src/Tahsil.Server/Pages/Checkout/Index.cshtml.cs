@@ -19,7 +19,7 @@ public sealed class IndexModel(
     CheckoutPages pages,
     IOptions<CheckoutPageOptions> pageOptions,
     IOptions<MerchantOptions> merchant,
-    Microsoft.Extensions.Localization.IStringLocalizer<SharedResource> localizer) : CheckoutPageModel, IContentSecurityPolicySources
+    Microsoft.Extensions.Localization.IStringLocalizer<SharedResource> localizer) : HostedPageModel, IContentSecurityPolicySources
 {
     public CheckoutView View { get; private set; } = null!;
 

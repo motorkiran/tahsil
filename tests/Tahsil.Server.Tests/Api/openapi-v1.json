@@ -8263,6 +8263,7 @@
         "required": [
           "id",
           "number",
+          "hostedInvoiceUrl",
           "customerId",
           "subscriptionId",
           "status",
@@ -8311,6 +8312,14 @@
               "string"
             ],
             "description": "Assigned at finalization, such as `INV-2026-000123`."
+          },
+          "hostedInvoiceUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The page where the customer sees and pays the invoice (INV-24); none for drafts.",
+            "format": "uri"
           },
           "customerId": {
             "type": "string",

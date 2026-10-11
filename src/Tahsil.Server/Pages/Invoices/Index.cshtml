@@ -1,0 +1,184 @@
+@page "/invoices/{token}"
+@using Tahsil.Domain.Invoices
+@using Tahsil.Server.Ui
+@model Tahsil.Server.Pages.Invoices.IndexModel
+@{
+    var invoice = Model.Invoice;
+    var snapshot = invoice.CustomerSnapshot;
+    ViewData["Title"] = Model.View.Title;
+}
+
+<article class="invoice" id="invoice">
+    <header class="invoice-header">
+        <div>
+            <h1 id="page-title">@Model.View.Title</h1>
+            <p class="invoice-number">@invoice.Number</p>
+            <p class="status status-@invoice.Status.ToString().ToLowerInvariant()" id="status">@(invoice.Status switch
+            {
+                InvoiceStatus.Paid => L["Paid"],
+                InvoiceStatus.Void => L["Void"],
+                InvoiceStatus.Uncollectible => L["Overdue"],
+                _ => L["Due"],
+            })</p>
+        </div>
+        <dl class="invoice-dates">
+            <dt>@L["Issued"]</dt><dd>@Model.Date(invoice.FinalizedAt)</dd>
+            @if (invoice.DueDate is { } due && invoice.Status is InvoiceStatus.Open or InvoiceStatus.Uncollectible)
+            {
+                <dt>@L["Due date"]</dt><dd id="due-date">@Model.Date(due)</dd>
+            }
+            @if (invoice.PaidAt is { } paidAt)
+            {
+                <dt>@L["Paid on"]</dt><dd>@Model.Date(paidAt)</dd>
+            }
+            @if (invoice.LegalInvoiceNumber is { } legal)
+            {
+                <dt>@L["Invoice number"]</dt><dd id="legal-invoice">@legal</dd>
+            }
+        </dl>
+    </header>
+
+    @if (Model.JustPaid)
+    {
+        <p class="alert alert-success" role="status" id="paid-notice">@L["Thank you, your payment was received."]</p>
+    }
+    @if (Model.ErrorMessage is { } error)
+    {
+        <p class="alert alert-error" role="alert" id="payment-error">@error</p>
+    }
+
+    <section class="parties">
+        <div id="seller">
+            <h2>@L["Seller"]</h2>
+            <p><strong>@Model.Merchant.LegalName</strong></p>
+            <p>@Model.Merchant.Address</p>
+            @if (Model.Merchant.TaxNumber is { } taxNumber)
+            {
+                <p>@L["Tax office and number: {0} {1}", Model.Merchant.TaxOffice ?? string.Empty, taxNumber]</p>
+            }
+            @if (Model.Merchant.MersisNumber is { } mersis)
+            {
+                <p>MERSİS @mersis</p>
+            }
+            <p>@Model.Merchant.Email · @Model.Merchant.Phone</p>
+        </div>
+        <div id="customer">
+            <h2>@L["Billed to"]</h2>
+            <p><strong>@snapshot?.Name</strong></p>
+            @if (snapshot?.TaxOffice is { } office)
+            {
+                <p>@L["Tax office: {0}", office]</p>
+            }
+            @if (snapshot?.Address is { } address)
+            {
+                <p>@string.Join(", ", new[] { address.Line1, address.Line2, address.District, address.City, address.PostalCode, address.Country }.Where(part => !string.IsNullOrWhiteSpace(part)))</p>
+            }
+            <p>@snapshot?.Email</p>
+        </div>
+    </section>
+
+    <table class="lines" id="lines">
+        <thead><tr><th>@L["Description"]</th><th class="amount">@L["Quantity"]</th><th class="amount">@L["Amount"]</th></tr></thead>
+        <tbody>
+            @foreach (var line in invoice.Lines.OrderBy(line => line.SortOrder))
+            {
+                <tr class="line">
+                    <td>
+                        @line.Description
+                        @if (line.PeriodStart is { } start && line.PeriodEnd is { } end)
+                        {
+                            <br /><span class="hint">@Model.Date(start) – @Model.Date(end)</span>
+                        }
+                    </td>
+                    <td class="amount">@line.Quantity.ToString("0.########", Model.Culture)</td>
+                    <td class="amount">@Model.Money(line.Total)</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            @if (invoice.DiscountTotal > 0)
+            {
+                <tr><td colspan="2">@L["Discount"]</td><td class="amount">-@Model.Money(invoice.DiscountTotal)</td></tr>
+            }
+            @foreach (var tax in Model.View.Taxes)
+            {
+                <tr class="tax"><td colspan="2">@L["Tax {0}% on {1}", tax.Percentage.ToString("0.####", Model.Culture), Model.Money(tax.Taxable)]</td><td class="amount">@Model.Money(tax.Tax)</td></tr>
+            }
+            <tr class="total"><th scope="row" colspan="2">@L["Total"]</th><td class="amount" id="total">@Model.Money(invoice.Total)</td></tr>
+            @if (invoice.AppliedBalance != 0)
+            {
+                <tr><td colspan="2">@L["Applied balance"]</td><td class="amount">@Model.Money(-invoice.AppliedBalance)</td></tr>
+            }
+            @if (invoice.AmountPaid > 0)
+            {
+                <tr><td colspan="2">@L["Paid"]</td><td class="amount">@Model.Money(invoice.AmountPaid)</td></tr>
+            }
+            @if (invoice.Status is InvoiceStatus.Open or InvoiceStatus.Uncollectible)
+            {
+                <tr class="total"><th scope="row" colspan="2">@L["Amount due"]</th><td class="amount" id="amount-remaining">@Model.Money(invoice.AmountRemaining)</td></tr>
+            }
+        </tfoot>
+    </table>
+
+    @if (Model.View.Payments.Count > 0)
+    {
+        <section id="payments">
+            <h2>@L["Payments"]</h2>
+            <ul>
+                @foreach (var payment in Model.View.Payments)
+                {
+                    <li>@Model.Date(payment.SucceededAt) · @Model.Money(payment.Amount)</li>
+                }
+                @foreach (var refund in Model.View.Refunds)
+                {
+                    <li class="refund">@L["Refunded on {0}: {1}", Model.Date(refund.SucceededAt), Model.Money(refund.Amount)]</li>
+                }
+            </ul>
+        </section>
+    }
+
+    @if (Model.ShowsTaxNote)
+    {
+        <p class="hint" id="tax-note">@L["This document does not replace an invoice under tax law."]</p>
+    }
+</article>
+
+@if (Model.View.CanPay)
+{
+    <section class="pay no-print" id="pay-section">
+        @if (Model.Embed is { } embed)
+        {
+            <div id="payment">
+                @Html.Raw(embed.Html)
+                @foreach (var script in embed.Scripts)
+                {
+                    <script src="@script" nonce="@HttpContext.GetCspNonce()"></script>
+                }
+            </div>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Pay">
+                <button class="button" type="submit" id="pay">@L["Pay {0} by card", Model.Money(invoice.AmountRemaining)]</button>
+            </form>
+        }
+        @if (Model.View.BankTransfer is { } bank)
+        {
+            <div id="bank-transfer">
+                <h2>@L["Pay by bank transfer"]</h2>
+                <dl>
+                    <dt>@L["Bank"]</dt><dd>@bank.Bank</dd>
+                    <dt>@L["Account holder"]</dt><dd>@bank.AccountHolder</dd>
+                    <dt>IBAN</dt><dd id="iban">@bank.Iban</dd>
+                    <dt>@L["Payment reference"]</dt><dd id="reference">@invoice.Number</dd>
+                </dl>
+            </div>
+        }
+    </section>
+}
+
+<p class="no-print"><button class="button button-secondary" type="button" id="print">@L["Print or save as PDF"]</button></p>
+
+@section Scripts {
+    <script nonce="@HttpContext.GetCspNonce()">document.getElementById("print").addEventListener("click", () => window.print());</script>
+}

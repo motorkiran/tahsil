@@ -2,12 +2,15 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace Tahsil.Server.Pages.Checkout;
+namespace Tahsil.Server.Pages;
 
-/// <summary>What the checkout's pages share: no caching, no referrer, no indexing (CHK-32), in the session's language.</summary>
-public abstract class CheckoutPageModel : PageModel
+/// <summary>
+/// What the hosted pages of checkouts and invoices share: no caching, no referrer, no indexing (CHK-32, INV-28), in
+/// their customer's language.
+/// </summary>
+public abstract class HostedPageModel : PageModel
 {
-    /// <summary>The page's language, which <see cref="Ui.CheckoutCultureProvider"/> set from the session unless the person picked one.</summary>
+    /// <summary>The page's language, which <see cref="Ui.HostedPageCultureProvider"/> set from the session or invoice unless the person picked one.</summary>
     protected static string Locale => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
 
     public override void OnPageHandlerExecuting(PageHandlerExecutingContext context)
