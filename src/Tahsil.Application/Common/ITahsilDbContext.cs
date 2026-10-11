@@ -32,6 +32,8 @@ public interface ITahsilDbContext
 
     DbSet<Domain.Checkout.LegalDocumentVersion> LegalDocumentVersions { get; }
 
+    DbSet<Domain.Notifications.NotificationLog> NotificationLogs { get; }
+
     DbSet<ConnectionCurrency> ConnectionCurrencies { get; }
 
     DbSet<ProviderCustomer> ProviderCustomers { get; }

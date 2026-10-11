@@ -41,6 +41,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<Domain.Checkout.LegalDocumentVersion> LegalDocumentVersions => Set<Domain.Checkout.LegalDocumentVersion>();
 
+    public DbSet<Domain.Notifications.NotificationLog> NotificationLogs => Set<Domain.Notifications.NotificationLog>();
+
     public DbSet<ConnectionCurrency> ConnectionCurrencies => Set<ConnectionCurrency>();
 
     public DbSet<ProviderCustomer> ProviderCustomers => Set<ProviderCustomer>();

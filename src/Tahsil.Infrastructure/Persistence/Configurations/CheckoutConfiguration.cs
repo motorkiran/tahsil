@@ -6,6 +6,21 @@ using Tahsil.Infrastructure.Persistence.Conventions;
 
 namespace Tahsil.Infrastructure.Persistence.Configurations;
 
+internal sealed class NotificationLogConfiguration : IEntityTypeConfiguration<Domain.Notifications.NotificationLog>
+{
+    public void Configure(EntityTypeBuilder<Domain.Notifications.NotificationLog> builder)
+    {
+        builder.ToTable("notification_log");
+        builder.Property(log => log.Id).ValueGeneratedNever();
+        builder.Property(log => log.Type).HasMaxLength(64);
+        builder.Property(log => log.OccurrenceKey).HasMaxLength(Domain.Notifications.NotificationLog.OccurrenceKeyMaxLength);
+        builder.Property(log => log.Status).HasMaxLength(16);
+        builder.Property(log => log.Reason).HasMaxLength(64);
+        builder.HasIndex(log => log.OccurrenceKey).IsUnique();
+        builder.HasIndex(log => new { log.CustomerId, log.Id });
+    }
+}
+
 internal sealed class LegalDocumentVersionConfiguration : IEntityTypeConfiguration<LegalDocumentVersion>
 {
     public void Configure(EntityTypeBuilder<LegalDocumentVersion> builder)

@@ -160,6 +160,8 @@ public static class DependencyInjection
         services.AddScoped<GetWebhookDeliveryHandler>();
         services.AddScoped<RedeliverWebhookHandler>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
+        services.AddOptions<Notifications.NotificationOptions>().BindConfiguration(Notifications.NotificationOptions.SectionName);
+        services.AddScoped<IOutboxMessageHandler<Notifications.SendOrderConfirmation>, Notifications.OrderConfirmationSender>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();
         services.AddScoped<ListRefundsHandler>();

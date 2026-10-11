@@ -12,12 +12,14 @@
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="Fluid.Core" />
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="LegalDocuments\Starters\*.liquid" LogicalName="LegalDocuments.%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Email\Templates\*.liquid" LogicalName="Email.%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>

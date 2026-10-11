@@ -1,0 +1,32 @@
+{%- capture subject -%}{% if order.mode == "setup" %}Your card is saved{% else %}Your order is confirmed{% if order.number %} ({{ order.number }}){% endif %}{% endif %}{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+{% if order.mode == "setup" %}
+<p>Your card {{ order.card }} was saved on {{ order.date }} for your future payments to {{ merchant.name }}. Nothing was charged.</p>
+{% else %}
+<p>We received your payment for your order of {{ order.date }}. Thank you.</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0;border-collapse:collapse;">
+{% for item in order.items %}<tr><td style="padding:6px 0;border-bottom:1px solid #e3e5ea;">{{ item.description }}</td><td align="right" style="padding:6px 0;border-bottom:1px solid #e3e5ea;white-space:nowrap;">{{ item.amount }}</td></tr>
+{% endfor %}{% if order.tax %}<tr><td style="padding:6px 0;color:#6b7280;">Tax included</td><td align="right" style="padding:6px 0;color:#6b7280;">{{ order.tax }}</td></tr>{% endif %}
+<tr><td style="padding:6px 0;font-weight:600;">Paid</td><td align="right" style="padding:6px 0;font-weight:600;">{{ order.total }}</td></tr>
+</table>
+{% if order.number %}<p>Invoice number: {{ order.number }}</p>{% endif %}
+{% endif %}
+{% if documents.size > 0 %}<p>The documents you accepted are attached: {{ documents | join: ", " }}.</p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">Seller: {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSIS {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}. You receive this email because of your purchase from {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+{% if order.mode == "setup" %}Your card {{ order.card }} was saved on {{ order.date }} for your future payments to {{ merchant.name }}. Nothing was charged.
+{% else %}We received your payment for your order of {{ order.date }}. Thank you.
+
+{% for item in order.items %}{{ item.description }}: {{ item.amount }}
+{% endfor %}{% if order.tax %}Tax included: {{ order.tax }}
+{% endif %}Paid: {{ order.total }}
+{% if order.number %}Invoice number: {{ order.number }}
+{% endif %}{% endif %}
+{% if documents.size > 0 %}The documents you accepted are attached: {{ documents | join: ", " }}.
+{% endif %}
+Seller: {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSIS {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}. You receive this email because of your purchase from {{ merchant.name }}.
+{%- endcapture -%}

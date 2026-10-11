@@ -1609,6 +1609,56 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("pending_invoice_items", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Notifications.NotificationLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("OccurrenceKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("occurrence_key");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_log");
+
+                    b.HasIndex("OccurrenceKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_log_occurrence_key");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_notification_log_customer_id_id");
+
+                    b.ToTable("notification_log", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Payments.ConnectionCurrency", b =>
                 {
                     b.Property<string>("Currency")

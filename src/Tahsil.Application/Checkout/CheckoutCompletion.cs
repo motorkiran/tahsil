@@ -53,6 +53,7 @@ public sealed class CheckoutCompletion(ITahsilDbContext context, IBillingLocks l
         }
 
         session.Complete(payment.Id, invoiceId, payment.PaymentMethodId, now);
+        outbox.Enqueue(new Notifications.SendOrderConfirmation(session.Id));
         audit.Record(
             AuditActions.CheckoutCompleted,
             AuditSubject.Of(AuditSubjects.CheckoutSession, session.Id),
