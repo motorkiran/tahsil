@@ -64,7 +64,10 @@ public sealed class TimeTravelTests(TahsilServerFixture server)
     {
         await using var host = Host();
         using var client = await Subscriptions.SubscriptionScenarios.ClientAsync(host);
-        var subscription = await Subscriptions.SubscriptionScenarios.SendingInvoicesAsync(client, await CustomerAsync(client));
+        var created = await Subscriptions.SubscriptionScenarios.SendingInvoicesAsync(client, await CustomerAsync(client));
+
+        // As stored: PostgreSQL keeps microseconds, while the clock may have had ticks.
+        var subscription = await Subscriptions.SubscriptionScenarios.GetSubscriptionAsync(client, created.Id);
 
         using var travel = await client.PostAsJsonAsync(new Uri("/api/v1/test/clock", UriKind.Relative), new AdvanceClockRequest { AdvanceBy = "P1Y" }, ApiClients.Json, CancellationToken);
         var summary = await ReadAsync<TimeTravelResponse>(travel);

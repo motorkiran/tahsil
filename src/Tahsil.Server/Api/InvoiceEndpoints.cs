@@ -51,6 +51,16 @@ internal static class InvoiceEndpoints
             .WithDescription("Lines are one-time prices in the invoice's currency, or descriptions with unit amounts (negative for credits). The draft changes freely until it is finalized.")
             .ProducesValidationProblem().RequirePermission(TahsilPermissions.InvoicesWrite);
 
+        invoices.MapGet("upcoming", async (
+            [Description("The subscription whose next renewal to preview.")] Guid subscription,
+            Application.Subscriptions.UpcomingInvoiceHandler handler,
+            CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(subscription, cancellationToken)).ToOk())
+            .WithName("GetUpcomingInvoice").WithSummary("Preview a subscription's next renewal invoice")
+            .WithDescription("The invoice the next renewal would create as things stand, with a scheduled change that takes effect then and the subscription's pending items; nothing is created.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequirePermission(TahsilPermissions.InvoicesRead);
+
         invoices.MapGet("{id:guid}", async (Guid id, GetInvoiceHandler handler, HttpResponse response, CancellationToken cancellationToken) =>
             (await handler.HandleAsync(id, cancellationToken)).ToOk(response))
             .WithName("GetInvoice").WithSummary("Get an invoice").ProducesProblem(StatusCodes.Status404NotFound)

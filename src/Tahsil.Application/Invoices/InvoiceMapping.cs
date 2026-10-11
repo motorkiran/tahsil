@@ -50,7 +50,18 @@ public sealed class InvoiceMapper(ISecretEncryption encryption, InvoiceLinks lin
         LegalInvoice = invoice.LegalInvoice is { } legal ? new LegalInvoiceData(legal.Number, legal.Date, legal.Url) : null,
         Memo = invoice.Memo,
         Metadata = invoice.Metadata,
-        Lines = [.. invoice.Lines.OrderBy(line => line.SortOrder).Select(line => new InvoiceLineResponse(
+        Lines = LinesOf(invoice),
+        FinalizedAt = invoice.FinalizedAt,
+        PaidAt = invoice.PaidAt,
+        VoidedAt = invoice.VoidedAt,
+        MarkedUncollectibleAt = invoice.MarkedUncollectibleAt,
+        CreatedAt = invoice.CreatedAt,
+        UpdatedAt = invoice.UpdatedAt,
+    };
+
+    public static List<InvoiceLineResponse> LinesOf(Model.Invoice invoice) =>
+    [
+        .. invoice.Lines.OrderBy(line => line.SortOrder).Select(line => new InvoiceLineResponse(
             line.Id,
             line.Type.Map<InvoiceLineType>(),
             line.Description,
@@ -66,13 +77,24 @@ public sealed class InvoiceMapper(ISecretEncryption encryption, InvoiceLinks lin
             line.TaxPercentage,
             line.TaxInclusive,
             line.PeriodStart,
-            line.PeriodEnd))],
-        FinalizedAt = invoice.FinalizedAt,
-        PaidAt = invoice.PaidAt,
-        VoidedAt = invoice.VoidedAt,
-        MarkedUncollectibleAt = invoice.MarkedUncollectibleAt,
-        CreatedAt = invoice.CreatedAt,
-        UpdatedAt = invoice.UpdatedAt,
+            line.PeriodEnd)),
+    ];
+
+    /// <summary>A draft built in memory and never stored, with the balance its finalization would apply now (SUB-24).</summary>
+    public static InvoicePreviewResponse Preview(Model.Invoice draft, Domain.Money.BalanceOutcome balance) => new()
+    {
+        BillingReason = draft.BillingReason.Map<BillingReason>(),
+        Currency = draft.Currency,
+        PeriodStart = draft.PeriodStart,
+        PeriodEnd = draft.PeriodEnd,
+        Lines = LinesOf(draft),
+        Subtotal = draft.Subtotal,
+        DiscountTotal = draft.DiscountTotal,
+        TaxTotal = draft.TaxTotal,
+        TotalExcludingTax = draft.TotalExcludingTax,
+        Total = draft.Total,
+        AppliedBalance = balance.AppliedBalance,
+        AmountDue = balance.AmountDue,
     };
 
     public static InvoiceItemResponse ToResponse(Model.PendingInvoiceItem item) => new(
@@ -107,6 +129,13 @@ public sealed class InvoiceMapper(ISecretEncryption encryption, InvoiceLinks lin
 
 internal static class InvoiceQueries
 {
+    /// <summary>
+    /// The order pending items join an invoice: as they were created, and the credits of a change before its charges,
+    /// since the items of one change share their creation time.
+    /// </summary>
+    public static IOrderedQueryable<Model.PendingInvoiceItem> InJoiningOrder(this IQueryable<Model.PendingInvoiceItem> items) =>
+        items.OrderBy(item => item.CreatedAt).ThenBy(item => item.UnitAmount).ThenBy(item => item.Id);
+
     public static Task<Model.Invoice?> FindInvoiceAsync(this ITahsilDbContext context, Guid id, CancellationToken cancellationToken) =>
         context.Invoices.Include(invoice => invoice.Lines).SingleOrDefaultAsync(invoice => invoice.Id == id, cancellationToken);
 

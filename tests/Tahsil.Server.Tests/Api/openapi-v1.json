@@ -3171,6 +3171,61 @@
         ]
       }
     },
+    "/api/v1/invoices/upcoming": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Preview a subscription's next renewal invoice",
+        "description": "The invoice the next renewal would create as things stand, with a scheduled change that takes effect then and the subscription's pending items; nothing is created.\n\nRequires the `tahsil.invoices:read` permission.",
+        "operationId": "GetUpcomingInvoice",
+        "parameters": [
+          {
+            "name": "subscription",
+            "in": "query",
+            "description": "The subscription whose next renewal to preview.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePreviewResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.invoices:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/invoices/{id}": {
       "get": {
         "tags": [
@@ -5840,6 +5895,194 @@
             "ApiKey": [ ]
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Change a subscription",
+        "description": "`items` replaces the item set. Changed `now` (the default), it is prorated by `prorationBehavior`: `always_invoice` bills the difference at once and charges it like a first invoice (a credit goes to the customer's balance), `create_prorations` leaves it for the next renewal, `none` bills nothing until then. With `effective: period_end` (and optionally a later renewal as `effectiveAt`) it is stored as `scheduledChange` and applied at that renewal. Prices with another interval restart the period now. A higher price for an individual customer must be scheduled at least `Tahsil:Subscriptions:PriceIncreaseNotice` ahead.\n\nRequires the `tahsil.subscriptions:write` permission.",
+        "operationId": "UpdateSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:write`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/subscriptions/{id}/preview": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Preview a change of a subscription",
+        "description": "Takes the body of a change of `items` and returns the invoice it would create now (lines, totals, tax and the balance it would apply), the lines it would leave for the next renewal, and the next renewal, without changing anything.\n\nRequires the `tahsil.subscriptions:read` permission.",
+        "operationId": "PreviewSubscriptionChange",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:read`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
       }
     },
     "/api/v1/provisioning": {
@@ -6532,6 +6775,12 @@
           "incomplete_expired",
           "trial_without_payment_method",
           null
+        ]
+      },
+      "ChangeTiming": {
+        "enum": [
+          "now",
+          "period_end"
         ]
       },
       "CheckoutCustomerDetails": {
@@ -8596,6 +8845,109 @@
           "item"
         ]
       },
+      "InvoicePreviewResponse": {
+        "required": [
+          "billingReason",
+          "currency",
+          "periodStart",
+          "periodEnd",
+          "lines",
+          "subtotal",
+          "discountTotal",
+          "taxTotal",
+          "totalExcludingTax",
+          "total",
+          "appliedBalance",
+          "amountDue"
+        ],
+        "type": "object",
+        "properties": {
+          "billingReason": {
+            "$ref": "#/components/schemas/BillingReason"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "periodStart": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineResponse"
+            }
+          },
+          "subtotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "discountTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalExcludingTax": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "appliedBalance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The customer balance it would apply: positive when credit is spent, negative when a debt joins or the invoice becomes credit.",
+            "format": "int64"
+          },
+          "amountDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "An invoice as it would be created, without being created (SUB-24)."
+      },
       "InvoiceResponse": {
         "required": [
           "id",
@@ -10225,6 +10577,13 @@
           }
         }
       },
+      "ProrationBehavior": {
+        "enum": [
+          "always_invoice",
+          "create_prorations",
+          "none"
+        ]
+      },
       "ProviderCapabilitiesResponse": {
         "required": [
           "entry",
@@ -11124,6 +11483,45 @@
           }
         }
       },
+      "SubscriptionPreviewResponse": {
+        "required": [
+          "invoice",
+          "pendingLines",
+          "nextRenewal"
+        ],
+        "type": "object",
+        "properties": {
+          "invoice": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The invoice the change creates now; none for scheduled changes, `create_prorations` or `none`.",
+                "$ref": "#/components/schemas/InvoicePreviewResponse"
+              }
+            ]
+          },
+          "pendingLines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineResponse"
+            },
+            "description": "The proration lines that would wait for the next renewal, with `create_prorations`."
+          },
+          "nextRenewal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The next renewal after the change: when, and its total.",
+                "$ref": "#/components/schemas/UpcomingRenewalResponse"
+              }
+            ]
+          }
+        }
+      },
       "SubscriptionPriceResponse": {
         "required": [
           "id",
@@ -11582,6 +11980,27 @@
           "create_invoice"
         ]
       },
+      "UpcomingRenewalResponse": {
+        "required": [
+          "at",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "UpdateConnectionRequest": {
         "type": "object",
         "properties": {
@@ -11874,6 +12293,96 @@
           }
         },
         "description": "Test mode only: how a saved simulator card answers from now on (SIM-8): `succeed`, a failure code such as\n`insufficient_funds`, `timeout_after_charge`, `timeout_before_charge` or `pending`."
+      },
+      "UpdateSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionItemRequest"
+            }
+          },
+          "prorationBehavior": {
+            "description": "For changes now outside a trial; `always_invoice` by default.",
+            "$ref": "#/components/schemas/ProrationBehavior"
+          },
+          "effective": {
+            "$ref": "#/components/schemas/ChangeTiming"
+          },
+          "effectiveAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With `effective: period_end`: a later renewal of the subscription to change at, such as one far enough for a price increase notice.",
+            "format": "date-time"
+          },
+          "skipNotice": {
+            "type": "boolean",
+            "description": "Applies a price increase without notice; for company customers only."
+          },
+          "trialEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "While trialing: a new end of the trial, or `now` to end it at once."
+          },
+          "defaultPaymentMethod": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The card to charge; `null` falls back to the customer's default.",
+            "format": "uuid"
+          },
+          "collectionMethod": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For active subscriptions; applies from the next invoice.",
+                "$ref": "#/components/schemas/CollectionMethod"
+              }
+            ]
+          },
+          "daysUntilDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "With `collectionMethod: send_invoice`: days from finalization to the due date, 1 to 365.",
+            "format": "int32"
+          },
+          "scheduledChange": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only `null`, which drops the scheduled change.",
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "JSON Merge Patch. `items` replaces the item set (omitted items are removed), now or at a renewal;\n`scheduledChange: null` drops a scheduled change."
       },
       "UpdateTaxRateRequest": {
         "type": "object",

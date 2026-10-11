@@ -336,6 +336,58 @@ public sealed class SubscriptionTests
         (subscription.EndedAt, subscription.CancellationReason).ShouldBe((expiresAt, CancellationReason.IncompleteExpired));
     }
 
+    [Fact]
+    [Trait("Requirement", "SUB-19")]
+    [Trait("Requirement", "ENG-10")]
+    public void AScheduledChange_TakesEffectAtARenewal_AndIsDueThen()
+    {
+        var subscription = In(Start.Active);
+        var end = subscription.CurrentPeriodEnd;
+        SubscriptionItemSpec[] fewer = [new(Monthly, Pro, 1)];
+
+        subscription.ScheduleChange(fewer, end.AddDays(1), Utc, Now).Error.ShouldBe(SubscriptionErrors.InvalidEffectiveAt);
+        subscription.ScheduleChange(fewer, Now.AddDays(3), Utc, Now).Error.ShouldBe(SubscriptionErrors.InvalidEffectiveAt);
+        subscription.ScheduleChange([new(Recurring("pro-yearly", PriceInterval.Year), Pro, 1)], end, Utc, Now).Error.ShouldBe(SubscriptionErrors.IntervalChangeRequiresNow);
+        subscription.ScheduleChange(fewer, Instant(2026, 3, 31), Utc, Now).IsSuccess.ShouldBeTrue("a later renewal");
+
+        subscription.ScheduledChange!.EffectiveAt.ShouldBe(Instant(2026, 3, 31));
+        subscription.NextCycleAt.ShouldBe(end, "the renewal before it comes first");
+        subscription.ClearScheduledChange(Now).IsSuccess.ShouldBeTrue();
+        subscription.ScheduledChange.ShouldBeNull();
+    }
+
+    [Fact]
+    [Trait("Requirement", "SUB-21")]
+    [Trait("Requirement", "SUB-22")]
+    public void AnotherInterval_RestartsThePeriod_ExceptDuringATrial()
+    {
+        var active = In(Start.Active);
+        var trialing = In(Start.Trialing);
+        var later = Now.AddDays(10);
+        SubscriptionItemSpec[] yearly = [new(Recurring("pro-yearly", PriceInterval.Year), Pro, 1)];
+
+        active.ReplaceItems(yearly, Utc, later).Value.ShouldBeTrue();
+        trialing.ReplaceItems(yearly, Utc, later).Value.ShouldBeFalse();
+
+        (active.BillingCycleAnchor, active.CurrentPeriodStart, active.CurrentPeriodEnd, active.Interval).ShouldBe((later, later, later.AddYears(1), PriceInterval.Year));
+        (trialing.CurrentPeriodEnd, trialing.Interval, trialing.NextCycleAt).ShouldBe((trialing.TrialEnd!.Value, PriceInterval.Year, trialing.TrialEnd));
+        active.ReplaceItems([new(Recurring("pro-monthly-usd", currency: "USD"), Pro, 1)], Utc, later).Error.ShouldBe(SubscriptionErrors.CurrencyMismatch);
+    }
+
+    [Fact]
+    [Trait("Requirement", "SUB-17")]
+    public void TheTrialsEnd_Moves_WithACancellationAtIt()
+    {
+        var subscription = In(Start.Trialing);
+        subscription.ScheduleCancellation(subscription.TrialEnd!.Value, CancellationReason.RequestedByCustomer, null, null, Now).IsSuccess.ShouldBeTrue();
+
+        subscription.ChangeTrialEnd(Now.AddDays(30), Now.AddDays(1)).IsSuccess.ShouldBeTrue();
+
+        (subscription.TrialEnd, subscription.BillingCycleAnchor, subscription.CurrentPeriodEnd, subscription.CancelAt).ShouldBe((Now.AddDays(30), Now.AddDays(30), Now.AddDays(30), Now.AddDays(30)));
+        subscription.ChangeTrialEnd(Now, Now.AddDays(1)).Error.ShouldNotBeNull("not in the past");
+        In(Start.TrialEnded).ChangeTrialEnd(Now.AddDays(30), Now).Error.ShouldNotBeNull("the trial is over");
+    }
+
     /// <summary>ENG-10 as specified: the earliest of what can come due, nothing for terminal statuses.</summary>
     private static DateTimeOffset? NextCycleAt(Subscription subscription)
     {

@@ -25,6 +25,20 @@ public static class SubscriptionErrors
         "The card is not active, not the customer's, or its connection is disabled, cannot charge saved cards or does not take the subscription's currency.",
         "defaultPaymentMethod");
 
+    public static readonly Error CurrencyMismatch = Error.Validation(
+        "subscription.currency_mismatch", "Every price of a subscription is in the subscription's currency.", "items");
+
+    public static readonly Error IntervalChangeRequiresNow = Error.Validation(
+        "subscription.interval_change_requires_now", "Prices with another interval replace the items now; the period restarts at the change.", "effective");
+
+    public static readonly Error InvalidEffectiveAt = Error.Validation(
+        "subscription.invalid", "A scheduled change takes effect at a renewal of the subscription, before any scheduled cancellation.", "effectiveAt");
+
+    public static readonly Error PriceIncreaseNoticeRequired = Error.Validation(
+        "subscription.price_increase_notice_required",
+        "A higher price for an individual customer takes effect at a renewal at least the notice period away (Tahsil:Subscriptions:PriceIncreaseNotice); only company customers can skip the notice.",
+        "effective");
+
     public static readonly Error InvalidComment = Error.Validation("subscription.invalid", "The comment is at most 500 characters.", "comment");
 
     public static Error InvalidItems(string field, string message) => Error.Validation("subscription.invalid_items", message, field);

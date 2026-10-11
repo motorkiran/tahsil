@@ -21,10 +21,14 @@ public sealed class SubscriptionCycles(
     IBillingLocks locks,
     IAuditLog audit,
     SubscriptionInvoices invoices,
+    SubscriptionLines lines,
     Payments.ChargeableCards cards,
     InvoiceVoiding voiding,
     IOptions<BillingOptions> billing)
 {
+    private static readonly string[] ItemsChanged = ["items"];
+    private static readonly string[] ScheduledChangeDropped = ["scheduledChange"];
+
     public async Task ProcessAsync(Guid subscriptionId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var subscription = await context.Subscriptions.Include(row => row.Items).SingleAsync(row => row.Id == subscriptionId, cancellationToken);
@@ -57,6 +61,12 @@ public sealed class SubscriptionCycles(
         if (subscription.CancelAt is { } cancelAt && cancelAt <= now)
         {
             return Cancel(subscription, cancelAt, subscription.CancellationReason ?? CancellationReason.RequestedByMerchant, now);
+        }
+
+        if (subscription.ScheduledChange is { } change && change.EffectiveAt <= now)
+        {
+            await ApplyScheduledChangeAsync(subscription, change, now, cancellationToken);
+            return true;
         }
 
         if (subscription.CurrentPeriodEnd <= now)
@@ -131,6 +141,27 @@ public sealed class SubscriptionCycles(
             ["periodStart"] = period.Start,
             ["periodEnd"] = period.End,
             ["invoiceId"] = invoice?.Id,
+        }, customerId: subscription.CustomerId);
+    }
+
+    /// <summary>
+    /// The scheduled change takes effect at its renewal, before the renewal invoice (SUB-12, SUB-19). Prices archived
+    /// meanwhile no longer qualify; the change is dropped then, and the event says so.
+    /// </summary>
+    private async Task ApplyScheduledChangeAsync(Subscription subscription, ScheduledChange change, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var items = await lines.PricedAsync(change.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
+        var applied = subscription.ReplaceItems(items, billing.Value.Zone, now).IsSuccess;
+        if (!applied)
+        {
+            subscription.ClearScheduledChange(now);
+        }
+
+        audit.Record(AuditActions.SubscriptionUpdated, Subject(subscription), new Dictionary<string, object?>
+        {
+            ["changed"] = applied ? ItemsChanged : ScheduledChangeDropped,
+            ["status"] = SubscriptionMapper.Wire(subscription.Status),
+            ["previousStatus"] = null,
         }, customerId: subscription.CustomerId);
     }
 

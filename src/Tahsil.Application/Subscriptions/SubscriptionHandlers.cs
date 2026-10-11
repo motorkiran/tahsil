@@ -38,7 +38,7 @@ public sealed class CreateSubscriptionHandler(
     /// <summary>The longest trial, so that dates stay meaningful.</summary>
     public const int MaxTrialDays = 730;
 
-    public async Task<Result<SubscriptionResponse>> HandleAsync(CreateSubscriptionRequest request, CancellationToken cancellationToken)
+    public async Task<Result<Versioned<SubscriptionResponse>>> HandleAsync(CreateSubscriptionRequest request, CancellationToken cancellationToken)
     {
         if (authorizer.Require(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
         {
@@ -144,7 +144,7 @@ public sealed class CreateSubscriptionHandler(
             await payments.ChargeAsync(invoice.Id, method.Value!.Id, cancellationToken);
         }
 
-        return await mapper.ToResponseAsync(subscription, cancellationToken);
+        return new Versioned<SubscriptionResponse>(await mapper.ToResponseAsync(subscription, cancellationToken), subscription.Version);
     }
 
     /// <summary>
@@ -215,7 +215,7 @@ public sealed class CreateSubscriptionHandler(
 
 public sealed class GetSubscriptionHandler(ITahsilDbContext context, IAuthorizer authorizer, SubscriptionMapper mapper)
 {
-    public async Task<Result<SubscriptionResponse>> HandleAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result<Versioned<SubscriptionResponse>>> HandleAsync(Guid id, CancellationToken cancellationToken)
     {
         if (authorizer.Require(TahsilPermissions.SubscriptionsRead) is { IsFailure: true } denied)
         {
@@ -223,7 +223,7 @@ public sealed class GetSubscriptionHandler(ITahsilDbContext context, IAuthorizer
         }
 
         return await context.Subscriptions.AsNoTracking().Include(subscription => subscription.Items).SingleOrDefaultAsync(subscription => subscription.Id == id, cancellationToken) is { } found
-            ? await mapper.ToResponseAsync(found, cancellationToken)
+            ? new Versioned<SubscriptionResponse>(await mapper.ToResponseAsync(found, cancellationToken), found.Version)
             : SubscriptionErrors.NotFound;
     }
 }

@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Common;
 using Tahsil.Application.Subscriptions;
 using Tahsil.Contracts;
-using Tahsil.Domain.Common;
 
 namespace Tahsil.Server.Api;
 
@@ -13,8 +12,8 @@ internal static class SubscriptionEndpoints
     public static IEndpointRouteBuilder MapSubscriptionEndpoints(this IEndpointRouteBuilder api)
     {
         var subscriptions = api.MapGroup("subscriptions").WithTags("Subscriptions");
-        subscriptions.MapPost(string.Empty, async (CreateSubscriptionRequest request, CreateSubscriptionHandler handler, CancellationToken cancellationToken) =>
-            (await handler.HandleAsync(request, cancellationToken)).ToCreated(subscription => Location(subscription.Id)))
+        subscriptions.MapPost(string.Empty, async (CreateSubscriptionRequest request, CreateSubscriptionHandler handler, HttpResponse response, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(request, cancellationToken)).ToCreated(response, subscription => Location(subscription.Id)))
             .WithName("CreateSubscription").WithSummary("Create a subscription")
             .WithDescription("""
                 With a trial, the subscription starts `trialing` and nothing is charged. Otherwise its first invoice is finalized at once: charged to the card during the request with `charge_automatically` (`active` when paid; `incomplete` when declined, with `latestInvoice.hostedUrl` for the customer to pay within a day), or sent with `send_invoice` (`active` at once).
@@ -37,10 +36,29 @@ internal static class SubscriptionEndpoints
             .WithName("ListSubscriptions").WithSummary("List subscriptions").WithDescription("Newest first.")
             .RequirePermission(TahsilPermissions.SubscriptionsRead);
 
-        subscriptions.MapGet("{id:guid}", async (Guid id, GetSubscriptionHandler handler, CancellationToken cancellationToken) =>
-            (await handler.HandleAsync(id, cancellationToken)).ToOk())
+        subscriptions.MapGet("{id:guid}", async (Guid id, GetSubscriptionHandler handler, HttpResponse response, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(id, cancellationToken)).ToOk(response))
             .WithName("GetSubscription").WithSummary("Get a subscription")
             .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequirePermission(TahsilPermissions.SubscriptionsRead);
+
+        subscriptions.MapPatch("{id:guid}", async (Guid id, UpdateSubscriptionRequest request, UpdateSubscriptionHandler handler, HttpContext http, CancellationToken cancellationToken) =>
+            http.Request.ReadIfMatch() is { IsFailure: true } ifMatch
+                ? ApiResults.Problem(ifMatch.Error)
+                : (await handler.HandleAsync(id, request, http.Request.ReadIfMatch().Value, cancellationToken)).ToOk(http.Response))
+            .WithName("UpdateSubscription").WithSummary("Change a subscription")
+            .WithDescription("""
+                `items` replaces the item set. Changed `now` (the default), it is prorated by `prorationBehavior`: `always_invoice` bills the difference at once and charges it like a first invoice (a credit goes to the customer's balance), `create_prorations` leaves it for the next renewal, `none` bills nothing until then. With `effective: period_end` (and optionally a later renewal as `effectiveAt`) it is stored as `scheduledChange` and applied at that renewal. Prices with another interval restart the period now. A higher price for an individual customer must be scheduled at least `Tahsil:Subscriptions:PriceIncreaseNotice` ahead.
+                """)
+            .ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed)
+            .RequirePermission(TahsilPermissions.SubscriptionsWrite);
+
+        subscriptions.MapPost("{id:guid}/preview", async (Guid id, UpdateSubscriptionRequest request, PreviewSubscriptionChangeHandler handler, CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(id, request, cancellationToken)).ToOk())
+            .WithName("PreviewSubscriptionChange").WithSummary("Preview a change of a subscription")
+            .WithDescription("Takes the body of a change of `items` and returns the invoice it would create now (lines, totals, tax and the balance it would apply), the lines it would leave for the next renewal, and the next renewal, without changing anything.")
+            .ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict)
             .RequirePermission(TahsilPermissions.SubscriptionsRead);
         return api;
     }
@@ -48,12 +66,8 @@ internal static class SubscriptionEndpoints
     /// <summary>A retried creation answers with the subscription it created, as it stands now.</summary>
     public static IServiceCollection AddSubscriptionResourceReaders(this IServiceCollection services) =>
         services.AddSingleton(new IdempotentResourceReader(ResourceTypes.Subscription, async (http, id) =>
-        {
-            var subscription = await http.RequestServices.GetRequiredService<ITahsilDbContext>().Subscriptions.AsNoTracking()
-                .Include(candidate => candidate.Items).SingleAsync(candidate => candidate.Id == id, http.RequestAborted);
-            var response = await http.RequestServices.GetRequiredService<SubscriptionMapper>().ToResponseAsync(subscription, http.RequestAborted);
-            return Result.Success(response).ToCreated(created => Location(created.Id));
-        }));
+            (await http.RequestServices.GetRequiredService<GetSubscriptionHandler>().HandleAsync(id, http.RequestAborted))
+            .ToCreated(http.Response, subscription => Location(subscription.Id))));
 
     private static string Location(Guid id) => $"{TahsilApi.BasePath}/subscriptions/{id}";
 }

@@ -399,6 +399,159 @@ public sealed class Subscription : AggregateRoot
         return Result.Success();
     }
 
+    /// <summary>
+    /// Replaces the items now (SUB-18, SUB-19), dropping a scheduled change. Outside a trial, new items with another
+    /// interval restart the period at the change, which becomes the anchor (SUB-21, MNY-28); during a trial the trial
+    /// continues and the new interval applies after it (SUB-22). Returns whether the period restarted.
+    /// </summary>
+    public Result<bool> ReplaceItems(IReadOnlyList<SubscriptionItemSpec> items, TimeZoneInfo zone, DateTimeOffset now)
+    {
+        if (CanChange("changed") is { } invalid)
+        {
+            return invalid;
+        }
+
+        if (ValidateItems(items) is { } invalidItems)
+        {
+            return invalidItems;
+        }
+
+        var price = items[0].Price;
+        var interval = price.Interval!.Value;
+        var count = (int)price.IntervalCount!.Value;
+        var restarts = (interval != Interval || count != IntervalCount) && Status != SubscriptionStatus.Trialing;
+        (Interval, IntervalCount) = (interval, count);
+        if (restarts)
+        {
+            BillingCycleAnchor = now;
+            (CurrentPeriodStart, CurrentPeriodEnd) = (now, BillingPeriods.Start(now, interval, count, 1, zone));
+            if (CancelAtPeriodEnd)
+            {
+                CancelAt = CurrentPeriodEnd;
+            }
+        }
+
+        var kept = items.Select(item => item.Price.Id).ToHashSet();
+        _items.RemoveAll(item => !kept.Contains(item.PriceId));
+        foreach (var spec in items)
+        {
+            if (_items.Find(item => item.PriceId == spec.Price.Id) is { } existing)
+            {
+                existing.SetQuantity(spec, now);
+            }
+            else
+            {
+                _items.Add(SubscriptionItem.Create(Id, spec, now));
+            }
+        }
+
+        ScheduledChange = null;
+        Touch(now);
+        return restarts;
+    }
+
+    /// <summary>
+    /// Stores a change of items to apply at <paramref name="effectiveAt"/>, a renewal of the subscription (SUB-19); it
+    /// replaces any earlier one. The interval cannot change this way (SUB-21).
+    /// </summary>
+    public Result ScheduleChange(IReadOnlyList<SubscriptionItemSpec> items, DateTimeOffset effectiveAt, TimeZoneInfo zone, DateTimeOffset now)
+    {
+        if (CanChange("changed") is { } invalid)
+        {
+            return invalid;
+        }
+
+        if (ValidateItems(items) is { } invalidItems)
+        {
+            return invalidItems;
+        }
+
+        if (items[0].Price.Interval != Interval || items[0].Price.IntervalCount != IntervalCount)
+        {
+            return SubscriptionErrors.IntervalChangeRequiresNow;
+        }
+
+        if (effectiveAt < CurrentPeriodEnd || BillingPeriods.PeriodAt(BillingCycleAnchor, Interval, IntervalCount, effectiveAt, zone).Period.Start != effectiveAt
+            || (CancelAt is { } cancelAt && effectiveAt >= cancelAt))
+        {
+            return SubscriptionErrors.InvalidEffectiveAt;
+        }
+
+        ScheduledChange = new ScheduledChange([.. items.Select(item => new ScheduledChangeItem(item.Price.Id, item.Price.UsageType == UsageType.Metered ? null : item.Quantity ?? 1))], effectiveAt);
+        Touch(now);
+        return Result.Success();
+    }
+
+    /// <summary>Drops the scheduled change (SUB-19).</summary>
+    public Result ClearScheduledChange(DateTimeOffset now)
+    {
+        if (IsTerminal)
+        {
+            return SubscriptionErrors.InvalidState(Status, "changed");
+        }
+
+        ScheduledChange = null;
+        Touch(now);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Moves the end of a trial that has not ended (SUB-17): later to extend it, or <paramref name="now"/> to end it at
+    /// once. A cancellation at the trial's end moves with it.
+    /// </summary>
+    public Result ChangeTrialEnd(DateTimeOffset trialEnd, DateTimeOffset now)
+    {
+        if (Status != SubscriptionStatus.Trialing || TrialEnded)
+        {
+            return SubscriptionErrors.InvalidState(Status, "given another trial end");
+        }
+
+        if (trialEnd < now)
+        {
+            return SubscriptionErrors.Invalid("trialEnd", "The trial ends now or later.");
+        }
+
+        TrialEnd = BillingCycleAnchor = CurrentPeriodEnd = trialEnd;
+        if (CancelAt is not null && (CancelAtPeriodEnd || CancelAt > trialEnd))
+        {
+            (CancelAt, CancelAtPeriodEnd) = (trialEnd, true);
+        }
+
+        Touch(now);
+        return Result.Success();
+    }
+
+    /// <summary>The card the subscription's invoices are charged to, or the customer's default (SUB-26).</summary>
+    public Result SetDefaultPaymentMethod(Guid? paymentMethodId, DateTimeOffset now)
+    {
+        if (IsTerminal)
+        {
+            return SubscriptionErrors.InvalidState(Status, "changed");
+        }
+
+        DefaultPaymentMethodId = paymentMethodId;
+        Touch(now);
+        return Result.Success();
+    }
+
+    /// <summary>Switches how the next invoices are collected, for active subscriptions (SUB-27).</summary>
+    public Result ChangeCollectionMethod(CollectionMethod collectionMethod, int? daysUntilDue, DateTimeOffset now)
+    {
+        if (Status != SubscriptionStatus.Active)
+        {
+            return SubscriptionErrors.InvalidState(Status, "given another collection method");
+        }
+
+        if (collectionMethod == CollectionMethod.SendInvoice ? daysUntilDue is not (>= 1 and <= Invoice.MaxDaysUntilDue) : daysUntilDue is not null)
+        {
+            return SubscriptionErrors.InvalidDaysUntilDue;
+        }
+
+        (CollectionMethod, DaysUntilDue) = (collectionMethod, daysUntilDue);
+        Touch(now);
+        return Result.Success();
+    }
+
     public void SetLatestInvoice(Guid invoiceId, DateTimeOffset now)
     {
         LatestInvoiceId = invoiceId;
@@ -430,6 +583,13 @@ public sealed class Subscription : AggregateRoot
         DateTimeOffset?[] due = [Status == SubscriptionStatus.Trialing && !TrialEnded ? TrialEnd : null, CancelAt, ScheduledChange?.EffectiveAt, CurrentPeriodEnd];
         return due.Min();
     }
+
+    private Error? CanChange(string action) =>
+        Status is SubscriptionStatus.Trialing or SubscriptionStatus.Active or SubscriptionStatus.PastDue ? null : SubscriptionErrors.InvalidState(Status, action);
+
+    /// <summary>New items keep the subscription's currency (SUB-18) and follow DOM-11 and SUB-1.</summary>
+    private Error? ValidateItems(IReadOnlyList<SubscriptionItemSpec> items) =>
+        items.Any(item => item.Price.Currency != Currency) ? SubscriptionErrors.CurrencyMismatch : SubscriptionItems.Validate(items, Currency);
 
     private void RecordCancellation(CancellationReason reason, CancellationFeedback? feedback, string? comment, DateTimeOffset now)
     {
@@ -468,6 +628,16 @@ public sealed class SubscriptionItem
     public DateTimeOffset CreatedAt { get; private init; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
+
+    internal void SetQuantity(SubscriptionItemSpec spec, DateTimeOffset now)
+    {
+        int? quantity = spec.Price.UsageType == UsageType.Metered ? null : spec.Quantity ?? 1;
+        if (quantity != Quantity)
+        {
+            Quantity = quantity;
+            UpdatedAt = now;
+        }
+    }
 
     internal static SubscriptionItem Create(Guid subscriptionId, SubscriptionItemSpec spec, DateTimeOffset now) => new()
     {

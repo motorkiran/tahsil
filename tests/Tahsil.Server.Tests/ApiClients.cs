@@ -36,6 +36,18 @@ internal static class ApiClients
     public static Task<HttpResponseMessage> PostJsonAsync<T>(this HttpClient client, string path, T body) =>
         client.PostAsJsonAsync(new Uri(path, UriKind.Relative), body, Json, TestContext.Current.CancellationToken);
 
+    /// <summary>A JSON Merge Patch, guarded by <paramref name="ifMatch"/> when given; send only the fields to change.</summary>
+    public static async Task<HttpResponseMessage> PatchJsonAsync<T>(this HttpClient client, string path, T body, string? ifMatch = null)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri(path, UriKind.Relative)) { Content = JsonContent.Create(body, options: Json) };
+        if (ifMatch is not null)
+        {
+            request.Headers.IfMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(ifMatch));
+        }
+
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
     public static Task<HttpResponseMessage> PostPathAsync(this HttpClient client, string path) =>
         client.PostAsync(new Uri(path, UriKind.Relative), content: null, TestContext.Current.CancellationToken);
 

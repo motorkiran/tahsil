@@ -20,7 +20,10 @@ internal static class SubscriptionScenarios
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
-    /// <summary>A client with every permission the tests need, on a host with the catalog: Team monthly and yearly, a setup fee, and Pro with a 14-day trial.</summary>
+    /// <summary>
+    /// A client with every permission the tests need, on a host with the catalog: Team monthly (30,000), yearly and Plus
+    /// (60,000), a setup fee, Pro with a 14-day trial, and Growth's Starter (29,900) and Growth (49,900).
+    /// </summary>
     public static async Task<HttpClient> ClientAsync(WebApplicationFactory<Program> host)
     {
         var client = await host.CreateClientWithAsync(Permissions);
@@ -37,14 +40,29 @@ internal static class SubscriptionScenarios
                     [
                         Recurring("team-monthly-try", "Aylık", PriceInterval.Month, 30_000),
                         Recurring("team-yearly-try", "Yıllık", PriceInterval.Year, 300_000),
+                        Recurring("team-plus-monthly-try", "Plus Aylık", PriceInterval.Month, 60_000),
                         new ProvisionedPrice { Key = "setup-fee-try", Currency = "TRY", Type = PriceType.OneTime, UnitAmount = 10_000, TaxRate = "kdv-20" },
                     ],
                 },
                 new ProvisionedProduct { Key = "pro", Name = "Pro", Prices = [Recurring("pro-monthly-try", "Aylık", PriceInterval.Month, 50_000) with { TrialDays = 14 }] },
+                new ProvisionedProduct
+                {
+                    Key = "growth",
+                    Name = "Growth",
+                    Prices = [Recurring("starter-monthly-try", "Starter", PriceInterval.Month, 29_900), Recurring("growth-monthly-try", "Growth", PriceInterval.Month, 49_900)],
+                },
             ],
         });
         provisioned.StatusCode.ShouldBe(HttpStatusCode.OK, await provisioned.Content.ReadAsStringAsync(CancellationToken));
         return client;
+    }
+
+    /// <summary>A company customer, to whom price increases apply without notice when asked (SUB-34).</summary>
+    public static async Task<Guid> CompanyAsync(HttpClient client)
+    {
+        using var response = await client.PostJsonAsync("/api/v1/customers", new CreateCustomerRequest { Name = "Acme A.Ş.", Email = "billing@acme.example", Type = CustomerType.Company });
+        response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(CancellationToken));
+        return (await response.ReadAsync<CustomerResponse>()).Id;
     }
 
     public static async Task<Guid> SaveCardAsync(HttpClient client, Guid customer, string card, string? behavior = null)

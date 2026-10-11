@@ -74,7 +74,7 @@ public sealed class CreateInvoiceHandler(
         {
             var items = await context.PendingInvoiceItems
                 .Where(item => item.CustomerId == customer.Id && item.SubscriptionId == null && item.InvoiceId == null && item.Currency == request.Currency)
-                .OrderBy(item => item.Id)
+                .InJoiningOrder()
                 .ToListAsync(cancellationToken);
             drafts.Value.AddRange(await lines.FromPendingItemsAsync(items, customer.Locale, cancellationToken));
             foreach (var item in items)

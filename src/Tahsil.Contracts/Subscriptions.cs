@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Tahsil.Contracts;
 
@@ -97,6 +99,128 @@ public sealed record CreateSubscriptionRequest
     public DateTimeOffset? BillingCycleAnchor { get; init; }
 
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+}
+
+public enum ProrationBehavior
+{
+    /// <summary>Proration lines go on an invoice that is finalized and collected at once.</summary>
+    AlwaysInvoice,
+
+    /// <summary>Proration lines wait as pending items for the next renewal invoice.</summary>
+    CreateProrations,
+
+    /// <summary>No proration; the new items bill from the next renewal.</summary>
+    None,
+}
+
+public enum ChangeTiming
+{
+    Now,
+
+    /// <summary>At the end of the current period, or at <c>effectiveAt</c>.</summary>
+    PeriodEnd,
+}
+
+/// <summary>
+/// JSON Merge Patch. <c>items</c> replaces the item set (omitted items are removed), now or at a renewal;
+/// <c>scheduledChange: null</c> drops a scheduled change.
+/// </summary>
+public sealed record UpdateSubscriptionRequest
+{
+    public IReadOnlyList<SubscriptionItemRequest>? Items { get; init; }
+
+    /// <summary>For changes now outside a trial; <c>always_invoice</c> by default.</summary>
+    public ProrationBehavior ProrationBehavior { get; init; } = ProrationBehavior.AlwaysInvoice;
+
+    public ChangeTiming Effective { get; init; } = ChangeTiming.Now;
+
+    /// <summary>With <c>effective: period_end</c>: a later renewal of the subscription to change at, such as one far enough for a price increase notice.</summary>
+    public DateTimeOffset? EffectiveAt { get; init; }
+
+    /// <summary>Applies a price increase without notice; for company customers only.</summary>
+    public bool SkipNotice { get; init; }
+
+    /// <summary>While trialing: a new end of the trial, or <c>now</c> to end it at once.</summary>
+    public string? TrialEnd { get; init; }
+
+    /// <summary>The card to charge; <c>null</c> falls back to the customer's default.</summary>
+    public Guid? DefaultPaymentMethod
+    {
+        get;
+        init
+        {
+            field = value;
+            HasDefaultPaymentMethod = true;
+        }
+    }
+
+    /// <summary>For active subscriptions; applies from the next invoice.</summary>
+    public CollectionMethod? CollectionMethod { get; init; }
+
+    /// <summary>With <c>collectionMethod: send_invoice</c>: days from finalization to the due date, 1 to 365.</summary>
+    public int? DaysUntilDue { get; init; }
+
+    /// <summary>Only <c>null</c>, which drops the scheduled change.</summary>
+    public JsonElement? ScheduledChange
+    {
+        get;
+        init
+        {
+            field = value;
+            HasScheduledChange = true;
+        }
+    }
+
+    public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
+    [JsonIgnore]
+    public bool HasDefaultPaymentMethod { get; private init; }
+
+    [JsonIgnore]
+    public bool HasScheduledChange { get; private init; }
+}
+
+/// <summary>An invoice as it would be created, without being created (SUB-24).</summary>
+public sealed record InvoicePreviewResponse
+{
+    public required BillingReason BillingReason { get; init; }
+
+    public required string Currency { get; init; }
+
+    public required DateTimeOffset? PeriodStart { get; init; }
+
+    public required DateTimeOffset? PeriodEnd { get; init; }
+
+    public required IReadOnlyList<InvoiceLineResponse> Lines { get; init; }
+
+    public required long Subtotal { get; init; }
+
+    public required long DiscountTotal { get; init; }
+
+    public required long TaxTotal { get; init; }
+
+    public required long TotalExcludingTax { get; init; }
+
+    public required long Total { get; init; }
+
+    /// <summary>The customer balance it would apply: positive when credit is spent, negative when a debt joins or the invoice becomes credit.</summary>
+    public required long AppliedBalance { get; init; }
+
+    public required long AmountDue { get; init; }
+}
+
+public sealed record UpcomingRenewalResponse(DateTimeOffset At, long Amount);
+
+public sealed record SubscriptionPreviewResponse
+{
+    /// <summary>The invoice the change creates now; none for scheduled changes, <c>create_prorations</c> or <c>none</c>.</summary>
+    public required InvoicePreviewResponse? Invoice { get; init; }
+
+    /// <summary>The proration lines that would wait for the next renewal, with <c>create_prorations</c>.</summary>
+    public required IReadOnlyList<InvoiceLineResponse> PendingLines { get; init; }
+
+    /// <summary>The next renewal after the change: when, and its total.</summary>
+    public required UpcomingRenewalResponse? NextRenewal { get; init; }
 }
 
 public sealed record SubscriptionPriceResponse(Guid Id, string? Key, string? Name, ProductSummary Product);

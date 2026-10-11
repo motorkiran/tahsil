@@ -90,6 +90,20 @@ public sealed class InvoiceFinalizer(
         return Result.Success();
     }
 
+    /// <summary>
+    /// What finalizing an invoice of <paramref name="total"/> would do with the customer's balance now, without locking
+    /// or changing it (SUB-24).
+    /// </summary>
+    public async Task<BalanceOutcome> PreviewBalanceAsync(Guid customerId, string currency, long total, CollectionMethod collectionMethod, CancellationToken cancellationToken)
+    {
+        var balance = await context.CustomerBalances.AsNoTracking()
+            .Where(row => row.CustomerId == customerId && row.Currency == currency)
+            .Select(row => (long?)row.Amount)
+            .SingleOrDefaultAsync(cancellationToken) ?? 0;
+        var minimum = collectionMethod == CollectionMethod.ChargeAutomatically ? await MinimumChargeAsync(currency, cancellationToken) : null;
+        return BalanceApplication.Apply(balance, total, minimum);
+    }
+
     /// <summary>What events about an invoice carry (EVT-1).</summary>
     internal static Dictionary<string, object?> Details(Invoice invoice) => new()
     {

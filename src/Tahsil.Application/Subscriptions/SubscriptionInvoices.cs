@@ -25,7 +25,7 @@ public sealed class SubscriptionInvoices(
         var drafts = await lines.LicensedAsync(subscription, period, customer.Locale, cancellationToken);
         var pending = await context.PendingInvoiceItems
             .Where(item => item.SubscriptionId == subscription.Id && item.InvoiceId == null && item.Currency == subscription.Currency)
-            .OrderBy(item => item.Id)
+            .InJoiningOrder()
             .ToListAsync(cancellationToken);
         drafts.AddRange(await invoiceLines.FromPendingItemsAsync(pending, customer.Locale, cancellationToken));
         if (drafts.Count == 0)

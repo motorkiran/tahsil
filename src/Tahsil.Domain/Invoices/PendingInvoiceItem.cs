@@ -94,6 +94,29 @@ public sealed class PendingInvoiceItem : AggregateRoot
         };
     }
 
+    /// <summary>
+    /// A proration line waiting for its subscription's next invoice (SUB-20): its amount for the remaining period, with
+    /// the price's tax rate, described like the line it becomes (INV-2).
+    /// </summary>
+    public static PendingInvoiceItem ForProration(
+        Guid customerId, Guid subscriptionId, string currency, string description, long amount, Guid? taxRateId, DateTimeOffset periodStart, DateTimeOffset periodEnd, DateTimeOffset now) => new()
+        {
+            Id = Guid.CreateVersion7(now),
+            CustomerId = customerId,
+            SubscriptionId = subscriptionId,
+            Currency = currency,
+            Description = description,
+            Quantity = 1,
+            UnitAmount = amount,
+            TaxRateId = taxRateId,
+            IsDiscountable = true,
+            IsProration = true,
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
     public void IncludeIn(Guid invoiceId, DateTimeOffset now)
     {
         if (InvoiceId is not null)
