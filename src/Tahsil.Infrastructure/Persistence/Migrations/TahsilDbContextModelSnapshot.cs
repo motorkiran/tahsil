@@ -1839,6 +1839,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("method");
 
+                    b.Property<string>("OutOfBand")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("out_of_band");
+
                     b.Property<Guid?>("PaymentMethodId")
                         .HasColumnType("uuid")
                         .HasColumnName("payment_method_id");

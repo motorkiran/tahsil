@@ -9747,6 +9747,80 @@
           }
         }
       },
+      "OutOfBandMethod": {
+        "enum": [
+          "bank_transfer",
+          "cash",
+          "other"
+        ]
+      },
+      "OutOfBandPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/OutOfBandMethod"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Minor units; what is left to pay when omitted. A smaller amount is a partial payment.",
+            "format": "int64"
+          },
+          "receivedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the money arrived; now when omitted.",
+            "format": "date-time"
+          },
+          "reference": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How the payment is identified, such as a transfer's reference; at most 100 characters."
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "At most 500 characters."
+          }
+        },
+        "description": "Money received outside Tahsil, recorded against an invoice (INV-14)."
+      },
+      "OutOfBandResponse": {
+        "required": [
+          "receivedAt",
+          "reference",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "PackageRounding": {
         "enum": [
           "up",
@@ -10195,17 +10269,29 @@
         "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
       },
       "PayInvoiceRequest": {
-        "required": [
-          "paymentMethod"
-        ],
         "type": "object",
         "properties": {
           "paymentMethod": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A saved card of the customer to charge now.",
             "format": "uuid"
+          },
+          "outOfBand": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Money received outside Tahsil, such as a bank transfer.",
+                "$ref": "#/components/schemas/OutOfBandPaymentRequest"
+              }
+            ]
           }
         },
-        "description": "Pays an invoice now with one of the customer's saved cards, off session."
+        "description": "Pays an invoice now: with one of the customer's saved cards, off session, or by recording money received outside Tahsil."
       },
       "PaymentInitiator": {
         "enum": [
@@ -10370,6 +10456,7 @@
           "status",
           "initiator",
           "method",
+          "outOfBand",
           "providerPaymentId",
           "threeDSecure",
           "failureCode",
@@ -10443,6 +10530,17 @@
           },
           "method": {
             "$ref": "#/components/schemas/PaymentMethodKind"
+          },
+          "outOfBand": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For payments received outside Tahsil.",
+                "$ref": "#/components/schemas/OutOfBandResponse"
+              }
+            ]
           },
           "providerPaymentId": {
             "type": [

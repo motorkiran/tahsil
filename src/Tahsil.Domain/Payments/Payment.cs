@@ -31,6 +31,9 @@ public enum PaymentMethodKind
     Other,
 }
 
+/// <summary>A payment received outside Tahsil, as recorded (INV-14).</summary>
+public sealed record OutOfBandDetails(DateTimeOffset ReceivedAt, string? Reference, string? Note);
+
 public enum PaymentPurpose
 {
     Charge,
@@ -84,6 +87,9 @@ public sealed class Payment : AggregateRoot
     public PaymentInitiator Initiator { get; private init; }
 
     public PaymentMethodKind Method { get; private init; }
+
+    /// <summary>For payments received outside Tahsil: when, and how the operator identified it.</summary>
+    public OutOfBandDetails? OutOfBand { get; private init; }
 
     /// <summary>Whether a customer-present payment saves the card it is paid with.</summary>
     public bool SaveCard { get; private init; }
@@ -173,6 +179,39 @@ public sealed class Payment : AggregateRoot
     {
         var payment = New(customerId, invoiceId, null, connectionId, paymentMethodId, amount, currency, PaymentPurpose.Charge, PaymentInitiator.Merchant, false, null, actor, now);
         payment.Fail(failure, null, null, now);
+        return payment;
+    }
+
+    public const int OutOfBandReferenceMaxLength = 100;
+    public const int OutOfBandNoteMaxLength = 500;
+
+    /// <summary>
+    /// Money the operator received outside Tahsil, such as a bank transfer (INV-14): succeeded at once, without a
+    /// connection; Tahsil moves none of it.
+    /// </summary>
+    public static Result<Payment> RecordOutOfBand(
+        Guid customerId, Guid invoiceId, long amount, string currency, PaymentMethodKind method, OutOfBandDetails details, Actor actor, DateTimeOffset now)
+    {
+        if (method == PaymentMethodKind.Card)
+        {
+            return Error.Validation("payment.invalid", "A payment received outside Tahsil is a bank transfer, cash or other.", "outOfBand.method");
+        }
+
+        if (details.ReceivedAt > now)
+        {
+            return Error.Validation("payment.invalid", "The money was received now or earlier.", "outOfBand.receivedAt");
+        }
+
+        if (!Text.FitsOptional(details.Reference, OutOfBandReferenceMaxLength) || !Text.FitsOptional(details.Note, OutOfBandNoteMaxLength))
+        {
+            return Error.Validation("payment.invalid", "The reference is at most 100 characters, the note at most 500.", "outOfBand.reference");
+        }
+
+        var payment = New(
+            customerId, invoiceId, null, null, null, amount, currency, PaymentPurpose.Charge, PaymentInitiator.Operator, false, null, actor, now, method,
+            details with { Reference = Text.Normalize(details.Reference), Note = Text.Normalize(details.Note) });
+        payment.Status = PaymentStatus.Succeeded;
+        payment.SucceededAt = now;
         return payment;
     }
 
@@ -289,7 +328,9 @@ public sealed class Payment : AggregateRoot
         bool saveCard,
         Guid? consentRecordId,
         Actor actor,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        PaymentMethodKind method = PaymentMethodKind.Card,
+        OutOfBandDetails? outOfBand = null)
     {
         if (invoiceId is null && checkoutSessionId is null)
         {
@@ -316,7 +357,8 @@ public sealed class Payment : AggregateRoot
             Purpose = purpose,
             Status = PaymentStatus.Processing,
             Initiator = initiator,
-            Method = PaymentMethodKind.Card,
+            Method = method,
+            OutOfBand = outOfBand,
             SaveCard = saveCard,
             ConsentRecordId = consentRecordId,
             Actor = actor,

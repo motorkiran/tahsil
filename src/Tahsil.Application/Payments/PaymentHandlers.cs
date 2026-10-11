@@ -7,7 +7,8 @@ using Model = Tahsil.Domain.Payments;
 namespace Tahsil.Application.Payments;
 
 /// <summary>Charges a saved card of the customer for an invoice now, off session (INV §5.3).</summary>
-public sealed class PayInvoiceHandler(IAuthorizer authorizer, MerchantPayments payments)
+/// <summary>Pays an invoice now (INV §5.3): a saved card charged off session, or money received outside Tahsil recorded (INV-14).</summary>
+public sealed class PayInvoiceHandler(IAuthorizer authorizer, MerchantPayments payments, OutOfBandPayments outOfBand)
 {
     public async Task<Result<PaymentResponse>> HandleAsync(Guid invoiceId, PayInvoiceRequest request, CancellationToken cancellationToken)
     {
@@ -16,8 +17,13 @@ public sealed class PayInvoiceHandler(IAuthorizer authorizer, MerchantPayments p
             return denied.Error;
         }
 
-        var charged = await payments.ChargeAsync(invoiceId, request.PaymentMethod, cancellationToken);
-        return charged.IsFailure ? charged.Error : PaymentMapper.ToResponse(charged.Value);
+        var paid = (request.PaymentMethod, request.OutOfBand) switch
+        {
+            ({ } method, null) => await payments.ChargeAsync(invoiceId, method, cancellationToken),
+            (null, { } received) => await outOfBand.RecordAsync(invoiceId, received, cancellationToken),
+            _ => Error.Validation("payment.invalid", "Give either a saved card as paymentMethod or the money received as outOfBand.", "paymentMethod"),
+        };
+        return paid.IsFailure ? paid.Error : PaymentMapper.ToResponse(paid.Value);
     }
 }
 
@@ -103,6 +109,7 @@ public static class PaymentMapper
         Status = payment.Status.Map<PaymentStatus>(),
         Initiator = payment.Initiator.Map<PaymentInitiator>(),
         Method = payment.Method.Map<PaymentMethodKind>(),
+        OutOfBand = payment.OutOfBand is { } received ? new OutOfBandResponse(received.ReceivedAt, received.Reference, received.Note) : null,
         ProviderPaymentId = payment.ProviderPaymentId,
         ThreeDSecure = payment.ThreeDSecure,
         FailureCode = payment.FailureCode,

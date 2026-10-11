@@ -65,6 +65,12 @@ public sealed class Refunds(
         }
 
         var (refund, payment, connection) = written.Value;
+        if (connection is null)
+        {
+            // Money received outside Tahsil goes back outside Tahsil too; the refund is a record of it (PAY-21).
+            return await outcomes.ApplyAsync(refund.Id, new RefundOutcome { Status = ProviderRefundStatus.Succeeded }, CancellationToken.None);
+        }
+
         if (providers.For(connection) is not { } call)
         {
             return await outcomes.ApplyAsync(refund.Id, new RefundOutcome { Status = ProviderRefundStatus.Failed, FailureCode = "provider_unavailable" }, CancellationToken.None);
@@ -85,7 +91,7 @@ public sealed class Refunds(
         return await outcomes.ApplyAsync(refund.Id, outcome, CancellationToken.None);
     }
 
-    private async Task<Result<(Refund Refund, Payment Payment, ProviderConnection Connection)>> WriteAheadAsync(
+    private async Task<Result<(Refund Refund, Payment Payment, ProviderConnection? Connection)>> WriteAheadAsync(
         Guid paymentId, long? amount, RefundReason reason, string? note, CancellationToken cancellationToken)
     {
         await using var transaction = await context.BeginTransactionAsync(cancellationToken);
@@ -97,7 +103,8 @@ public sealed class Refunds(
 
         var refunded = await context.Refunds.Where(row => row.PaymentId == paymentId && row.Status != RefundStatus.Failed).SumAsync(row => row.Amount, cancellationToken);
         var left = payment.Amount - refunded;
-        if (payment.Status != PaymentStatus.Succeeded || payment.ConnectionId is not { } connectionId || left <= 0)
+        var outOfBand = payment.Initiator == PaymentInitiator.Operator && payment.ConnectionId is null;
+        if (payment.Status != PaymentStatus.Succeeded || (payment.ConnectionId is null && !outOfBand) || left <= 0)
         {
             return RefundErrors.PaymentNotRefundable;
         }
@@ -108,9 +115,11 @@ public sealed class Refunds(
             return RefundErrors.AmountTooLarge;
         }
 
-        var connection = await context.ProviderConnections.AsNoTracking().SingleAsync(row => row.Id == connectionId, cancellationToken);
+        var connection = payment.ConnectionId is { } connectionId
+            ? await context.ProviderConnections.AsNoTracking().SingleAsync(row => row.Id == connectionId, cancellationToken)
+            : null;
         var now = clock.GetUtcNow();
-        if (registry.Find(connection.Provider)?.CapabilitiesFor(connection.Settings) is { } capabilities && value < payment.Amount)
+        if (connection is not null && registry.Find(connection.Provider)?.CapabilitiesFor(connection.Settings) is { } capabilities && value < payment.Amount)
         {
             if (capabilities.Refunds == RefundSupport.Full)
             {
@@ -182,7 +191,10 @@ public sealed class RefundOutcomes(ITahsilDbContext context, IBillingLocks locks
             switch (outcome.Status)
             {
                 case ProviderRefundStatus.Succeeded:
-                    refund.Succeed(outcome.ProviderRefundId, outcome.Kind == Providers.Abstractions.RefundKind.Void ? RefundKind.Void : RefundKind.Refund, now);
+                    refund.Succeed(
+                        outcome.ProviderRefundId,
+                        payment.ConnectionId is null ? RefundKind.OutOfBand : outcome.Kind == Providers.Abstractions.RefundKind.Void ? RefundKind.Void : RefundKind.Refund,
+                        now);
                     payment.AddRefunded(refund.Amount, now);
                     if (payment.InvoiceId is { } invoiceId)
                     {

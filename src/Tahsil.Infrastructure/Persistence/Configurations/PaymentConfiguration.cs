@@ -19,6 +19,9 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             table.HasCheckConstraint("ck_payments_amount", "amount > 0 OR (purpose = 'setup' AND amount = 0)");
         });
         builder.Property(payment => payment.Id).ValueGeneratedNever();
+        builder.Property(payment => payment.OutOfBand)
+            .HasColumnType("jsonb")
+            .HasConversion(new JsonValueConverter<OutOfBandDetails?>(), JsonValueConverter<OutOfBandDetails?>.Comparer);
         builder.Property(payment => payment.Reference).HasMaxLength(64);
         builder.Property(payment => payment.Currency).HasMaxLength(3);
         builder.Property(payment => payment.Purpose).HasMaxLength(16);

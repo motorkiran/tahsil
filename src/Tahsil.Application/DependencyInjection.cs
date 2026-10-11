@@ -83,6 +83,7 @@ public static class DependencyInjection
         services.AddScoped<DraftFinalization>();
         services.AddScoped<ChargeableCards>();
         services.AddScoped<Dunning>();
+        services.AddScoped<OutOfBandPayments>();
         services.AddScoped<InvoiceReminders>();
         services.AddScoped<SendInvoiceHandler>();
         services.AddScoped<InvoiceEmailModels>();

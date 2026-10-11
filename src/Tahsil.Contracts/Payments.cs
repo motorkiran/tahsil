@@ -30,11 +30,42 @@ public enum PaymentPurpose
     Setup,
 }
 
-/// <summary>Pays an invoice now with one of the customer's saved cards, off session.</summary>
+public enum OutOfBandMethod
+{
+    BankTransfer,
+    Cash,
+    Other,
+}
+
+/// <summary>Money received outside Tahsil, recorded against an invoice (INV-14).</summary>
+public sealed record OutOfBandPaymentRequest
+{
+    public OutOfBandMethod Method { get; init; } = OutOfBandMethod.BankTransfer;
+
+    /// <summary>Minor units; what is left to pay when omitted. A smaller amount is a partial payment.</summary>
+    public long? Amount { get; init; }
+
+    /// <summary>When the money arrived; now when omitted.</summary>
+    public DateTimeOffset? ReceivedAt { get; init; }
+
+    /// <summary>How the payment is identified, such as a transfer's reference; at most 100 characters.</summary>
+    public string? Reference { get; init; }
+
+    /// <summary>At most 500 characters.</summary>
+    public string? Note { get; init; }
+}
+
+/// <summary>Pays an invoice now: with one of the customer's saved cards, off session, or by recording money received outside Tahsil.</summary>
 public sealed record PayInvoiceRequest
 {
-    public required Guid PaymentMethod { get; init; }
+    /// <summary>A saved card of the customer to charge now.</summary>
+    public Guid? PaymentMethod { get; init; }
+
+    /// <summary>Money received outside Tahsil, such as a bank transfer.</summary>
+    public OutOfBandPaymentRequest? OutOfBand { get; init; }
 }
+
+public sealed record OutOfBandResponse(DateTimeOffset ReceivedAt, string? Reference, string? Note);
 
 public sealed record PaymentResponse
 {
@@ -62,6 +93,9 @@ public sealed record PaymentResponse
     public required PaymentInitiator Initiator { get; init; }
 
     public required PaymentMethodKind Method { get; init; }
+
+    /// <summary>For payments received outside Tahsil.</summary>
+    public required OutOfBandResponse? OutOfBand { get; init; }
 
     public required string? ProviderPaymentId { get; init; }
 

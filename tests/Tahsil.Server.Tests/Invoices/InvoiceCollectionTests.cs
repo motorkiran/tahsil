@@ -83,6 +83,28 @@ public sealed class InvoiceCollectionTests(TahsilServerFixture server)
     }
 
     [Fact]
+    [Trait("Requirement", "INV-15")]
+    [Trait("Requirement", "DUN-10")]
+    public async Task ABankTransferForAnOverdueInvoice_MakesTheSubscriptionActiveAgain()
+    {
+        await using var host = Host();
+        using var client = await ClientAsync(host);
+        var subscription = await SendingInvoicesAsync(client, await CustomerAsync(client), daysUntilDue: 14);
+        AdvanceTo(April.AddDays(16));
+        await host.RunWorkersUntilIdleAsync();
+        (await GetSubscriptionAsync(client, subscription.Id)).Status.ShouldBe(SubscriptionStatus.PastDue);
+
+        using var paid = await client.PostJsonAsync($"/api/v1/invoices/{subscription.LatestInvoice!.Id}/pay", new PayInvoiceRequest
+        {
+            OutOfBand = new OutOfBandPaymentRequest { Reference = "EFT 9001" },
+        });
+
+        paid.StatusCode.ShouldBe(HttpStatusCode.Created, await paid.Content.ReadAsStringAsync(CancellationToken));
+        var active = await GetSubscriptionAsync(client, subscription.Id);
+        (active.Status, active.PastDueSince).ShouldBe((SubscriptionStatus.Active, null));
+    }
+
+    [Fact]
     [Trait("Requirement", "INV-22")]
     public async Task AnInvoice_IsEmailedAgainOnRequest_AtMostOnceInTenMinutes()
     {
