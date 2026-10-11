@@ -1,0 +1,16 @@
+{%- capture subject -%}Your card is expiring{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>Your card {{ card.name }} expires{% if card.expiry %} at the end of {{ card.expiry }}{% endif %}. It pays for these subscriptions: {{ plans | join: ", " }}.</p>
+<p>Please add your new card so that your payments continue.</p>
+<p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+Your card {{ card.name }} expires{% if card.expiry %} at the end of {{ card.expiry }}{% endif %}. It pays for these subscriptions: {{ plans | join: ", " }}.
+
+Please add your new card so that your payments continue.
+
+You receive this email because of your subscription with {{ merchant.name }}.
+{%- endcapture -%}

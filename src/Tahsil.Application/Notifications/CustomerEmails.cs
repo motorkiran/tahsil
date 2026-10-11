@@ -72,7 +72,8 @@ public sealed partial class CustomerEmailSender(
 
         var now = clock.GetUtcNow();
         var composer = composers.Single(candidate => candidate.Type == message.Type);
-        if (!notifications.Value.IsEnabled(message.Type))
+        // A card trial's ending notice cannot be turned off (SUB-16).
+        if (!notifications.Value.IsEnabled(message.Type) && message.Data?.GetValueOrDefault("mandatory") != "true")
         {
             await RecordAsync(NotificationLog.Skipped(message.Type, message.OccurrenceKey, null, "disabled", now), cancellationToken);
             return;

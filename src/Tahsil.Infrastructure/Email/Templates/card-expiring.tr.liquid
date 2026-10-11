@@ -1,0 +1,16 @@
+{%- capture subject -%}Kartınızın süresi doluyor{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ card.name }} kartınızın süresi{% if card.expiry %} {{ card.expiry }} sonunda{% endif %} doluyor. Bu kart şu aboneliklerinizin ödemesinde kullanılıyor: {{ plans | join: ", " }}.</p>
+<p>Ödemelerinizin aksamaması için yeni kartınızı ekleyin.</p>
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ card.name }} kartınızın süresi{% if card.expiry %} {{ card.expiry }} sonunda{% endif %} doluyor. Bu kart şu aboneliklerinizin ödemesinde kullanılıyor: {{ plans | join: ", " }}.
+
+Ödemelerinizin aksamaması için yeni kartınızı ekleyin.
+
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}

@@ -185,6 +185,9 @@ public static class DependencyInjection
         services.AddSingleton<Application.Notifications.IEmailTemplateRenderer, Email.FluidEmailTemplateRenderer>();
         services.AddHostedService<Email.EmailStartupWarnings>();
         AddHostedSingleton<Email.OperatorDigestJob>(services);
+        AddHostedSingleton<Email.TrialEndingReminderWorker>(services);
+        AddHostedSingleton<Email.RenewalReminderWorker>(services);
+        AddHostedSingleton<Email.CardExpiryReminderWorker>(services);
         AddHostedSingleton<OutboxCleanup>(services);
     }
 

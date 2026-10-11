@@ -91,6 +91,9 @@ public sealed class PaymentMethod : AggregateRoot
 
     public DateTimeOffset? RemovedAt { get; private set; }
 
+    /// <summary>When the customer was told the card expires soon (CUS-15).</summary>
+    public DateTimeOffset? ExpiryRemindedAt { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private init; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -147,6 +150,12 @@ public sealed class PaymentMethod : AggregateRoot
     }
 
     /// <summary>The expiry worker passed the card's expiry (CUS-14).</summary>
+    public void RecordExpiryReminder(DateTimeOffset now)
+    {
+        ExpiryRemindedAt = now;
+        UpdatedAt = now;
+    }
+
     public void Expire(DateTimeOffset now)
     {
         if (Status == PaymentMethodStatus.Active && ExpiresAt <= now)

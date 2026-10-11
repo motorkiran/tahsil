@@ -28,7 +28,6 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     /// <summary>Catalog types that no M2 scenario emits, and the milestone that emits them.</summary>
     private static readonly Dictionary<string, string> EmittedLater = new(StringComparer.Ordinal)
     {
-        [TahsilEventTypes.PaymentMethodWillExpire] = "M5: card expiry reminders for running subscriptions (CUS-15)",
     };
 
     private static readonly SemaphoreSlim StoryGate = new(1, 1);
@@ -64,6 +63,9 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.SubscriptionPastDue, ["invoiceId", "failureCode"] },
         { TahsilEventTypes.InvoiceActionRequired, ["number", "hostedUrl"] },
         { TahsilEventTypes.InvoiceOverdue, ["number", "dueDate", "amountRemaining"] },
+        { TahsilEventTypes.PaymentMethodWillExpire, ["expMonth", "expYear", "subscriptionIds"] },
+        { TahsilEventTypes.SubscriptionTrialWillEnd, ["trialEnd"] },
+        { TahsilEventTypes.SubscriptionWillRenew, ["renewsAt"] },
         { TahsilEventTypes.InvoiceCreated, ["billingReason", "subscriptionId", "finalizeAt"] },
     };
 
@@ -122,6 +124,11 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
                             Key = "team-monthly-try", Currency = "TRY", Type = PriceType.Recurring, Interval = PriceInterval.Month, IntervalCount = 1,
                             UsageType = UsageType.Licensed, UnitAmount = 30_000,
                         },
+                        new ProvisionedPrice
+                        {
+                            Key = "pro-monthly-try", Currency = "TRY", Type = PriceType.Recurring, Interval = PriceInterval.Month, IntervalCount = 1,
+                            UsageType = UsageType.Licensed, UnitAmount = 50_000, TrialDays = 14,
+                        },
                     ],
                 },
             ],
@@ -138,8 +145,12 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
 
     private async Task<IReadOnlyList<WebhookEvent>> TellAsync()
     {
-        await using var host = IsolatedHosts.Create(server, server.NewDatabase("catalog"), _time, services =>
-            services.AddHttpClient(WebhookSender.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => _receiver.CreateHandler()));
+        await using var host = IsolatedHosts.Create(
+            server,
+            server.NewDatabase("catalog"),
+            _time,
+            services => services.AddHttpClient(WebhookSender.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => _receiver.CreateHandler()),
+            new Dictionary<string, string?> { ["Tahsil:Notifications:UpcomingRenewalNoticeDays:month"] = "7" });
         using var client = await host.CreateClientWithAsync(Permissions);
         var url = _receiver.NewEndpoint();
         (await SendAsync(client, HttpMethod.Post, "/api/v1/webhooks/endpoints", new CreateWebhookEndpointRequest { Url = url })).Dispose();
@@ -208,14 +219,38 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         // An invoice sent for payment that is never paid; a month later, it is overdue.
         await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice);
 
-        // A month later, the subscription renews, its payment fails, and it is canceled.
+        // Another customer trials Pro, and pays Team with a card that expires at the end of this month.
+        var other = await CustomerAsync(client);
+        (await SendAsync(client, HttpMethod.Post, "/api/v1/subscriptions", new CreateSubscriptionRequest { Customer = other, Items = [new() { Price = "pro-monthly-try" }] })).Dispose();
+        using (var expiring = await SendAsync(client, HttpMethod.Post, "/api/v1/test/simulator/payment-methods", new CreateSimulatorPaymentMethodRequest
+        {
+            Customer = other,
+            Card = "4242424242424242",
+            ExpMonth = FakeBillingClock.Start.Month,
+            ExpYear = FakeBillingClock.Start.Year,
+        }))
+        {
+            var expiringCard = (await expiring.ReadAsync<PaymentMethodResponse>()).Id;
+            (await SendAsync(client, HttpMethod.Post, "/api/v1/subscriptions", new CreateSubscriptionRequest
+            {
+                Customer = other,
+                Items = [new() { Price = "team-monthly-try" }],
+                DefaultPaymentMethod = expiringCard,
+            })).Dispose();
+        }
+
+        // A month later, by steps that the reminders see: the subscription renews, its payment fails, and it is canceled.
         (await SendAsync(client, HttpMethod.Patch, $"/api/v1/test/simulator/payment-methods/{unrefundable.PaymentMethodId}", new UpdateSimulatorPaymentMethodRequest
         {
             Behavior = "card_declined",
         })).Dispose();
         await host.RunWorkersUntilIdleAsync();
-        _time.Advance(TimeSpan.FromDays(32));
-        await host.RunWorkersUntilIdleAsync();
+        foreach (var days in new[] { 12, 12, 8 })
+        {
+            _time.Advance(TimeSpan.FromDays(days));
+            await host.RunWorkersUntilIdleAsync();
+        }
+
         _time.Advance(TimeSpan.FromHours(1));
         await host.RunWorkersUntilIdleAsync();
         (await SendAsync(client, HttpMethod.Post, $"/api/v1/subscriptions/{subscription}/cancel", new { at = "now" })).Dispose();

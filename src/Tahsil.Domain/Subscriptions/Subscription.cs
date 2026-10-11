@@ -161,6 +161,12 @@ public sealed class Subscription : AggregateRoot
 
     public Guid? CheckoutSessionId { get; private init; }
 
+    /// <summary>The trial end the customer was reminded of (SUB-16); a moved trial end is reminded of again.</summary>
+    public DateTimeOffset? TrialRemindedFor { get; private set; }
+
+    /// <summary>The renewal the customer was reminded of (NTF-6), as the end of the period it follows.</summary>
+    public DateTimeOffset? RenewalRemindedFor { get; private set; }
+
     public IReadOnlyDictionary<string, string> Metadata { get; private set; } = Common.Metadata.Empty;
 
     public DateTimeOffset CreatedAt { get; private init; }
@@ -550,6 +556,18 @@ public sealed class Subscription : AggregateRoot
         (CollectionMethod, DaysUntilDue) = (collectionMethod, daysUntilDue);
         Touch(now);
         return Result.Success();
+    }
+
+    public void RecordTrialReminder(DateTimeOffset now)
+    {
+        TrialRemindedFor = TrialEnd;
+        UpdatedAt = now;
+    }
+
+    public void RecordRenewalReminder(DateTimeOffset now)
+    {
+        RenewalRemindedFor = CurrentPeriodEnd;
+        UpdatedAt = now;
     }
 
     public void SetLatestInvoice(Guid invoiceId, DateTimeOffset now)

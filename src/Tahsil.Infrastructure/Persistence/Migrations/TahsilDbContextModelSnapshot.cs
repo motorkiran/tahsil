@@ -1137,6 +1137,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<DateTimeOffset?>("ExpiryRemindedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expiry_reminded_at");
+
                     b.Property<string>("Funding")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -2405,6 +2409,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("past_due_since");
 
+                    b.Property<DateTimeOffset?>("RenewalRemindedFor")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("renewal_reminded_for");
+
                     b.Property<string>("ScheduledChange")
                         .HasColumnType("jsonb")
                         .HasColumnName("scheduled_change");
@@ -2424,6 +2432,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)")
                         .HasColumnName("trial_end_behavior");
+
+                    b.Property<DateTimeOffset?>("TrialRemindedFor")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("trial_reminded_for");
 
                     b.Property<DateTimeOffset?>("TrialStart")
                         .HasColumnType("timestamp with time zone")

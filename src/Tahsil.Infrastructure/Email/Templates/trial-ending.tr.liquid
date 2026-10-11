@@ -1,0 +1,16 @@
+{%- capture subject -%}Deneme süreniz {{ subscription.trial_end }} tarihinde bitiyor{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ merchant.name }} ({{ subscription.plan }}) deneme süreniz {{ subscription.trial_end }} tarihinde bitiyor.</p>
+{% if subscription.with_card %}<p><strong>Deneme süresi bittiğinde, {{ subscription.trial_end }} tarihinde kayıtlı kartınızdan {{ subscription.first_charge }} tahsil edilecek</strong> ve aboneliğiniz her dönem yenilenecek. Devam etmek istemiyorsanız aboneliğinizi bu tarihten önce dilediğiniz zaman iptal edebilirsiniz; iptal ederseniz ücret alınmaz.</p>{% else %}<p>Aboneliğinizi sürdürmek için deneme süresi bitmeden bir ödeme yöntemi ekleyin. Eklemezseniz aboneliğiniz deneme süresiyle birlikte sona erer ve sizden ücret alınmaz.</p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ merchant.name }} ({{ subscription.plan }}) deneme süreniz {{ subscription.trial_end }} tarihinde bitiyor.
+
+{% if subscription.with_card %}Deneme süresi bittiğinde, {{ subscription.trial_end }} tarihinde kayıtlı kartınızdan {{ subscription.first_charge }} tahsil edilecek ve aboneliğiniz her dönem yenilenecek. Devam etmek istemiyorsanız aboneliğinizi bu tarihten önce dilediğiniz zaman iptal edebilirsiniz; iptal ederseniz ücret alınmaz.{% else %}Aboneliğinizi sürdürmek için deneme süresi bitmeden bir ödeme yöntemi ekleyin. Eklemezseniz aboneliğiniz deneme süresiyle birlikte sona erer ve sizden ücret alınmaz.{% endif %}
+
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}

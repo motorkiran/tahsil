@@ -1,0 +1,16 @@
+{%- capture subject -%}Aboneliğiniz {{ subscription.renews_at }} tarihinde yenileniyor{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.renews_at }} tarihinde {{ subscription.amount }} tutarıyla yenilenecek.</p>
+<p>Devam etmek istemiyorsanız bu tarihten önce iptal edebilirsiniz.</p>
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.renews_at }} tarihinde {{ subscription.amount }} tutarıyla yenilenecek.
+
+Devam etmek istemiyorsanız bu tarihten önce iptal edebilirsiniz.
+
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}

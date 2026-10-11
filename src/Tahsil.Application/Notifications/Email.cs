@@ -36,6 +36,23 @@ public sealed class NotificationOptions
     /// <summary>Where operator emails go: attention items when they appear, and a daily digest of those still open (NTF-7).</summary>
     public string? OperatorEmail { get; set; }
 
+    /// <summary>Days before a trial's end that the customer is reminded of it (SUB-16).</summary>
+    public int TrialEndingNoticeDays { get; set; } = 3;
+
+    /// <summary>Days before a card used by a subscription expires that the customer is told (CUS-15).</summary>
+    public int CardExpiringNoticeDays { get; set; } = 30;
+
+    /// <summary>
+    /// Days before a renewal that the customer is reminded of it, by the prices' interval (NTF-6): 14 for yearly
+    /// subscriptions by default, 0 (none) for the others.
+    /// </summary>
+    public Dictionary<string, int> UpcomingRenewalNoticeDays { get; set; } = new(StringComparer.OrdinalIgnoreCase) { ["year"] = 14, ["month"] = 0, ["week"] = 0, ["day"] = 0 };
+
+    public int RenewalNoticeDays(string interval) => UpcomingRenewalNoticeDays.GetValueOrDefault(interval);
+
+    internal bool HasValidNotices() =>
+        TrialEndingNoticeDays is >= 1 and <= 30 && CardExpiringNoticeDays is >= 1 and <= 90 && UpcomingRenewalNoticeDays.Values.All(days => days is >= 0 and <= 60);
+
     public bool IsEnabled(string type) => Types.GetValueOrDefault(type)?.Enabled ?? true;
 }
 
@@ -56,7 +73,10 @@ public static class EmailTypes
     public const string SubscriptionCanceled = "subscription_canceled";
     public const string RefundIssued = "refund_issued";
     public const string PriceChange = "price_change";
+    public const string TrialEnding = "trial_ending";
+    public const string UpcomingRenewal = "upcoming_renewal";
+    public const string CardExpiring = "card_expiring";
 
     /// <summary>Types that back legal duties (NTF-4): turning one off leaves the duty to the application.</summary>
-    public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation, SubscriptionCanceled, PriceChange];
+    public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation, SubscriptionCanceled, PriceChange, TrialEnding];
 }

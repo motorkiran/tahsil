@@ -62,6 +62,9 @@ public sealed class EmailTemplateTests(TahsilServerFixture server)
             ("amount", "₺100,00"), ("payment_date", "1 April 2026"), ("payment_amount", "₺300,00"), ("card", "visa •••• 4242"), ("invoice_number", "INV-2026-000001"), ("void", false)))),
         ["price-change"] = () => With(("subscription", Map(
             ("plan", "Team (Monthly) × 1"), ("new_plan", "Team Plus (Monthly) × 1"), ("old_amount", "₺300,00"), ("new_amount", "₺600,00"), ("effective_date", "1 June 2026")))),
+        ["trial-ending"] = () => With(("subscription", Map(("plan", "Pro (Monthly) × 1"), ("trial_end", "15 April 2026"), ("with_card", true), ("first_charge", "₺500,00")))),
+        ["upcoming-renewal"] = () => With(("subscription", Map(("plan", "Team (Yearly) × 1"), ("renews_at", "1 April 2027"), ("amount", "₺3.000,00")))),
+        ["card-expiring"] = () => With(("card", Map(("name", "visa •••• 4242"), ("expiry", "05/2026"))), ("plans", new List<object?> { "Team (Monthly) × 1" })),
         ["operator-attention"] = () => With(("items", new List<object?> { Item() }), ("admin_url", "https://billing.example.com/admin/attention")),
         ["operator-digest"] = () => With(("items", new List<object?> { Item(), Item() }), ("admin_url", "https://billing.example.com/admin/attention")),
     };

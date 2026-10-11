@@ -31,6 +31,8 @@ public static class TahsilEventTypes
     public const string SubscriptionRenewed = "subscription.renewed";
     public const string SubscriptionCanceled = "subscription.canceled";
     public const string SubscriptionPastDue = "subscription.past_due";
+    public const string SubscriptionTrialWillEnd = "subscription.trial_will_end";
+    public const string SubscriptionWillRenew = "subscription.will_renew";
     public const string InvoiceCreated = "invoice.created";
     public const string InvoiceFinalized = "invoice.finalized";
     public const string InvoicePaid = "invoice.paid";
@@ -63,6 +65,8 @@ public static class TahsilEventTypes
         [SubscriptionRenewed] = "A subscription's new period started, after a renewal or at the end of its trial; `details.invoiceId` bills it.",
         [SubscriptionCanceled] = "A subscription ended; `details.reason` says why.",
         [SubscriptionPastDue] = "A payment of a subscription's invoice failed for the customer, and the subscription is past due until it is paid.",
+        [SubscriptionTrialWillEnd] = "A subscription's trial ends in a few days (`Tahsil:Notifications:TrialEndingNoticeDays`).",
+        [SubscriptionWillRenew] = "A subscription renews in a few days (`Tahsil:Notifications:UpcomingRenewalNoticeDays`).",
         [InvoiceCreated] = "A draft with a draft period was created; it is finalized at `details.finalizeAt`.",
         [InvoiceFinalized] = "An invoice was finalized: it has a number and is due.",
         [InvoicePaid] = "An invoice was paid in full.",

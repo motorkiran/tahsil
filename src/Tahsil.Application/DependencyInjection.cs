@@ -97,6 +97,10 @@ public static class DependencyInjection
         services.AddScoped<ICustomerEmailComposer, SubscriptionCanceledComposer>();
         services.AddScoped<ICustomerEmailComposer, RefundIssuedComposer>();
         services.AddScoped<ICustomerEmailComposer, PriceChangeComposer>();
+        services.AddScoped<Reminders>();
+        services.AddScoped<ICustomerEmailComposer, TrialEndingComposer>();
+        services.AddScoped<ICustomerEmailComposer, UpcomingRenewalComposer>();
+        services.AddScoped<ICustomerEmailComposer, CardExpiringComposer>();
         services.AddScoped<IOutboxMessageHandler<SendCustomerEmail>, CustomerEmailSender>();
         services.AddScoped<IOutboxMessageHandler<SendOperatorEmail>, OperatorEmailSender>();
         services.AddScoped<OperatorDigest>();
@@ -212,7 +216,12 @@ public static class DependencyInjection
         services.AddScoped<GetWebhookDeliveryHandler>();
         services.AddScoped<RedeliverWebhookHandler>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
-        services.AddOptions<Notifications.NotificationOptions>().BindConfiguration(Notifications.NotificationOptions.SectionName);
+        services.AddOptions<Notifications.NotificationOptions>()
+            .BindConfiguration(Notifications.NotificationOptions.SectionName)
+            .Validate(
+                options => options.HasValidNotices(),
+                $"{Notifications.NotificationOptions.SectionName}: TrialEndingNoticeDays is 1 to 30, CardExpiringNoticeDays 1 to 90, and each of UpcomingRenewalNoticeDays 0 to 60.")
+            .ValidateOnStart();
         services.AddScoped<IOutboxMessageHandler<Notifications.SendOrderConfirmation>, Notifications.OrderConfirmationSender>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();

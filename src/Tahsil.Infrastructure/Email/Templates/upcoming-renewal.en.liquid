@@ -1,0 +1,16 @@
+{%- capture subject -%}Your subscription renews on {{ subscription.renews_at }}{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>Your {{ merchant.name }} subscription ({{ subscription.plan }}) renews on {{ subscription.renews_at }} for {{ subscription.amount }}.</p>
+<p>If you do not want to continue, you can cancel before then.</p>
+<p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+Your {{ merchant.name }} subscription ({{ subscription.plan }}) renews on {{ subscription.renews_at }} for {{ subscription.amount }}.
+
+If you do not want to continue, you can cancel before then.
+
+You receive this email because of your subscription with {{ merchant.name }}.
+{%- endcapture -%}

@@ -43,6 +43,10 @@ public static class AuditActions
     public const string CustomerBalanceAdjusted = "customer.balance_adjusted";
     public const string PaymentMethodAttached = "payment_method.attached";
     public const string PaymentMethodRemoved = "payment_method.removed";
+
+    /// <summary>A card a subscription uses expires soon (CUS-15).</summary>
+    public const string PaymentMethodWillExpire = "payment_method.will_expire";
+
     public const string InvoicePaymentFailed = "invoice.payment_failed";
 
     /// <summary>The customer must authenticate the payment on the invoice's hosted page (DUN-4).</summary>
@@ -65,6 +69,12 @@ public static class AuditActions
     /// <summary>A new period started, after a renewal or a trial (ENG-8).</summary>
     public const string SubscriptionRenewed = "subscription.renewed";
     public const string SubscriptionCanceled = "subscription.canceled";
+
+    /// <summary>The trial ends in a few days (SUB-16).</summary>
+    public const string SubscriptionTrialWillEnd = "subscription.trial_will_end";
+
+    /// <summary>The subscription renews in a few days (NTF-6).</summary>
+    public const string SubscriptionWillRenew = "subscription.will_renew";
 
     /// <summary>A customer failure made the subscription past due (DUN-5).</summary>
     public const string SubscriptionPastDue = "subscription.past_due";

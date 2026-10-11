@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Notifications;
 using Tahsil.Application.TestClock;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
@@ -16,7 +18,9 @@ namespace Tahsil.Infrastructure.Clock;
 /// worker runs until nothing is due at that instant, outbox included, and so on until the target, so records get the
 /// timestamps they would have had. One time travel runs at a time, across instances.
 /// </summary>
-internal sealed class TimeTravel(IServiceScopeFactory scopes, IServiceProvider services, TestClockOffset offset, TimeProvider system, BillingClock clock) : ITimeTravel
+internal sealed class TimeTravel(
+    IServiceScopeFactory scopes, IServiceProvider services, TestClockOffset offset, TimeProvider system, BillingClock clock, IOptions<NotificationOptions> notifications)
+    : ITimeTravel
 {
     /// <summary>A guard against a worker that keeps an item due without moving it on.</summary>
     private const int MaxSteps = 10_000;
@@ -152,6 +156,11 @@ internal sealed class TimeTravel(IServiceScopeFactory scopes, IServiceProvider s
                 UNION ALL SELECT min(expires_at) FROM tahsil.checkout_sessions WHERE status = 'open'
             ) AS instants
             """).ToListAsync(cancellationToken);
-        return due.SingleOrDefault();
+
+#pragma warning disable EF1002 // The windows hold no input: only validated whole numbers from configuration.
+        var reminder = await scope.ServiceProvider.GetRequiredService<TahsilDbContext>().Database
+            .SqlQueryRaw<DateTimeOffset?>(Email.ReminderWindows.NextOpening(notifications.Value), clock.GetUtcNow()).ToListAsync(cancellationToken);
+#pragma warning restore EF1002
+        return new[] { due.SingleOrDefault(), reminder.SingleOrDefault() }.Min();
     }
 }
