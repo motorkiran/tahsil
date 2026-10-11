@@ -50,11 +50,15 @@
     private readonly List<ApiKeyResponse> _keys = [];
     private string? _nextCursor;
 
+    // Each search starts a new generation; a page still loading for an earlier one is dropped.
+    private int _generation;
+
     protected override Task OnInitializedAsync() => LoadMoreAsync();
 
     private async Task LoadMoreAsync()
     {
-        if (await ReadAsync<ListApiKeysHandler, Page<ApiKeyResponse>>((handler, token) => handler.HandleAsync(new ListApiKeysQuery(_nextCursor, null), token)) is { } page)
+        var generation = _generation;
+        if (await ReadAsync<ListApiKeysHandler, Page<ApiKeyResponse>>((handler, token) => handler.HandleAsync(new ListApiKeysQuery(_nextCursor, null), token)) is { } page && generation == _generation)
         {
             _keys.AddRange(page.Items);
             _nextCursor = page.NextCursor;
@@ -64,6 +68,7 @@
     private async Task ReloadAsync()
     {
         _keys.Clear();
+        _generation++;
         _nextCursor = null;
         await LoadMoreAsync();
     }

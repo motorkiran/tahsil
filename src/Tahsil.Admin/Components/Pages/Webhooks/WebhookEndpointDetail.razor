@@ -96,6 +96,9 @@
     private WebhookEndpointResponse? _endpoint;
     private WebhookDeliveryStatus? _status;
     private string? _nextCursor;
+
+    // Each search starts a new generation; a page still loading for an earlier one is dropped.
+    private int _generation;
     private Guid? _shown;
 
     [Parameter]
@@ -113,14 +116,16 @@
     {
         _status = status;
         _deliveries.Clear();
+        _generation++;
         _nextCursor = null;
         await LoadMoreAsync();
     }
 
     private async Task LoadMoreAsync()
     {
+        var generation = _generation;
         var query = new ListWebhookDeliveriesQuery(Endpoint: Id, Status: _status, Cursor: _nextCursor);
-        if (await ReadAsync<ListWebhookDeliveriesHandler, Page<WebhookDeliveryResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        if (await ReadAsync<ListWebhookDeliveriesHandler, Page<WebhookDeliveryResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page && generation == _generation)
         {
             _deliveries.AddRange(page.Items);
             _nextCursor = page.NextCursor;

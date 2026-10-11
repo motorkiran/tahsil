@@ -28,6 +28,9 @@
 @code {
     private readonly List<InvoiceResponse> _invoices = [];
     private string? _nextCursor;
+
+    // Each search starts a new generation; a page still loading for an earlier one is dropped.
+    private int _generation;
     private InvoiceStatus? _status;
     private string? _number;
 
@@ -36,14 +39,16 @@
     private async Task SearchAsync()
     {
         _invoices.Clear();
+        _generation++;
         _nextCursor = null;
         await LoadMoreAsync();
     }
 
     private async Task LoadMoreAsync()
     {
+        var generation = _generation;
         var query = new ListInvoicesQuery(Status: _status, Number: string.IsNullOrWhiteSpace(_number) ? null : _number.Trim(), Cursor: _nextCursor);
-        if (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        if (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page && generation == _generation)
         {
             _invoices.AddRange(page.Items);
             _nextCursor = page.NextCursor;

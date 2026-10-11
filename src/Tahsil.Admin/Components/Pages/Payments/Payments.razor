@@ -36,6 +36,9 @@
     private readonly List<PaymentResponse> _payments = [];
     private IReadOnlyList<ConnectionResponse> _connections = [];
     private string? _nextCursor;
+
+    // Each search starts a new generation; a page still loading for an earlier one is dropped.
+    private int _generation;
     private PaymentStatus? _status;
     private Guid? _connection;
     private string? _failureCode;
@@ -53,15 +56,17 @@
     private async Task SearchAsync()
     {
         _payments.Clear();
+        _generation++;
         _nextCursor = null;
         await LoadMoreAsync();
     }
 
     private async Task LoadMoreAsync()
     {
+        var generation = _generation;
         var query = new ListPaymentsQuery(
             Status: _status, Connection: _connection, FailureCode: string.IsNullOrWhiteSpace(_failureCode) ? null : _failureCode.Trim(), Cursor: _nextCursor);
-        if (await ReadAsync<ListPaymentsHandler, Page<PaymentResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        if (await ReadAsync<ListPaymentsHandler, Page<PaymentResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page && generation == _generation)
         {
             _payments.AddRange(page.Items);
             _nextCursor = page.NextCursor;

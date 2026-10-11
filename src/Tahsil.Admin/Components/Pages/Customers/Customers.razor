@@ -38,6 +38,9 @@
 @code {
     private readonly List<CustomerResponse> _customers = [];
     private string? _nextCursor;
+
+    // Each search starts a new generation; a page still loading for an earlier one is dropped.
+    private int _generation;
     private string? _search;
 
     protected override Task OnInitializedAsync() => LoadMoreAsync();
@@ -55,14 +58,16 @@
     private async Task SearchAsync()
     {
         _customers.Clear();
+        _generation++;
         _nextCursor = null;
         await LoadMoreAsync();
     }
 
     private async Task LoadMoreAsync()
     {
+        var generation = _generation;
         var query = new ListCustomersQuery(Search: _search, Cursor: _nextCursor);
-        if (await ReadAsync<ListCustomersHandler, Page<CustomerResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        if (await ReadAsync<ListCustomersHandler, Page<CustomerResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page && generation == _generation)
         {
             _customers.AddRange(page.Items);
             _nextCursor = page.NextCursor;

@@ -28,6 +28,9 @@
 @code {
     private readonly List<SubscriptionResponse> _subscriptions = [];
     private string? _nextCursor;
+
+    // Each search starts a new generation; a page still loading for an earlier one is dropped.
+    private int _generation;
     private SubscriptionStatus? _status;
     private string? _product;
 
@@ -36,14 +39,16 @@
     private async Task SearchAsync()
     {
         _subscriptions.Clear();
+        _generation++;
         _nextCursor = null;
         await LoadMoreAsync();
     }
 
     private async Task LoadMoreAsync()
     {
+        var generation = _generation;
         var query = new ListSubscriptionsQuery(Status: _status, Product: string.IsNullOrWhiteSpace(_product) ? null : _product.Trim(), Cursor: _nextCursor);
-        if (await ReadAsync<ListSubscriptionsHandler, Page<SubscriptionResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        if (await ReadAsync<ListSubscriptionsHandler, Page<SubscriptionResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page && generation == _generation)
         {
             _subscriptions.AddRange(page.Items);
             _nextCursor = page.NextCursor;
