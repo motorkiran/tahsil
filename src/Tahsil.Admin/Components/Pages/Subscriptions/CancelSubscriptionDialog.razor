@@ -1,0 +1,63 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudSelect T="string" @bind-Value="_at" Label="Ends" id="cancel-at">
+                <MudSelectItem T="string" Value="@("period_end")">At the end of the period</MudSelectItem>
+                <MudSelectItem T="string" Value="@("now")">Now</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="CancellationReason" @bind-Value="_reason" Label="Requested by">
+                <MudSelectItem T="CancellationReason" Value="CancellationReason.RequestedByCustomer">The customer</MudSelectItem>
+                <MudSelectItem T="CancellationReason" Value="CancellationReason.RequestedByMerchant">The merchant</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="CancellationFeedback?" @bind-Value="_feedback" Label="Feedback" Clearable>
+                @foreach (var feedback in Enum.GetValues<CancellationFeedback>())
+                {
+                    <MudSelectItem T="CancellationFeedback?" Value="feedback">@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(feedback.ToString())</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_comment" Label="Comment" Lines="2" MaxLength="500" />
+            @if (_at == "now")
+            {
+                @if (CanRefund)
+                {
+                    <MudSelect T="CancellationRefund" @bind-Value="_refund" Label="Refund" id="cancel-refund">
+                        <MudSelectItem T="CancellationRefund" Value="CancellationRefund.None">No refund</MudSelectItem>
+                        <MudSelectItem T="CancellationRefund" Value="CancellationRefund.Prorated">The unused share of the period</MudSelectItem>
+                        <MudSelectItem T="CancellationRefund" Value="CancellationRefund.LastPayment">The last payment in full</MudSelectItem>
+                    </MudSelect>
+                }
+                <MudSwitch T="bool" @bind-Value="_invoiceNow" Label="Invoice the pending items now" Color="Color.Primary" />
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Keep it</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit" id="confirm-cancel">Cancel the subscription</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _at = "period_end";
+    private CancellationReason _reason = CancellationReason.RequestedByCustomer;
+    private CancellationFeedback? _feedback;
+    private string? _comment;
+    private CancellationRefund _refund;
+    private bool _invoiceNow = true;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    /// <summary>Whether the administrator may refund (<c>tahsil.refunds:write</c>).</summary>
+    [Parameter]
+    public bool CanRefund { get; set; }
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new CancelSubscriptionRequest
+    {
+        At = _at,
+        Reason = _reason,
+        Feedback = _feedback,
+        Comment = string.IsNullOrWhiteSpace(_comment) ? null : _comment.Trim(),
+        Refund = _at == "now" ? _refund : CancellationRefund.None,
+        InvoiceNow = _invoiceNow,
+    }));
+}

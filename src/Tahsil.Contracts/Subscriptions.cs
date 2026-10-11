@@ -260,7 +260,7 @@ public sealed record SubscriptionItemResponse(Guid Id, SubscriptionPriceResponse
 
 public sealed record LatestInvoiceResponse(Guid Id, string? Number, InvoiceStatus Status, long AmountDue, Uri? HostedUrl);
 
-public sealed record ScheduledChangeItemResponse(Guid Price, int? Quantity);
+public sealed record ScheduledChangeItemResponse(SubscriptionPriceResponse Price, int? Quantity);
 
 public sealed record ScheduledChangeResponse(IReadOnlyList<ScheduledChangeItemResponse> Items, DateTimeOffset EffectiveAt);
 

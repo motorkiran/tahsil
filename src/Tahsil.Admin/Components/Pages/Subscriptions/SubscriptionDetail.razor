@@ -1,0 +1,238 @@
+@page "/admin/subscriptions/{Id:guid}"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Invoices
+@using Tahsil.Application.Payments
+@using Tahsil.Application.PaymentMethods
+@using Tahsil.Application.Subscriptions
+@using Tahsil.Admin.Components.Pages.Invoices
+@inherits AdminPageBase
+
+<PageTitle>Subscription · Tahsil</PageTitle>
+
+@if (_subscription is { } subscription)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">@SubscriptionTable.Describe(subscription)</MudText>
+        <SubscriptionStatusChip Status="subscription.Status" />
+        <MudSpacer />
+        @if (Session.Has(TahsilPermissions.SubscriptionsWrite))
+        {
+            @if (Changeable)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ChangePlanAsync" id="change-plan">Change plan</MudButton>
+            }
+            @if (subscription is { Status: SubscriptionStatus.Trialing, TrialEnd: { } trialEnd } && subscription.CurrentPeriodEnd == trialEnd)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="ChangeTrialEndAsync" id="trial-end">Change the trial's end</MudButton>
+            }
+            @if (subscription.Status == SubscriptionStatus.PastDue && Session.Has(TahsilPermissions.InvoicesWrite) && OldestOpenInvoice is not null)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="RetryPaymentAsync" id="retry-payment">Retry payment</MudButton>
+            }
+            @if (subscription.CancelAt is not null && Changeable)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="ResumeAsync" id="resume">Resume</MudButton>
+            }
+            @if (Changeable)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="CancelAsync" id="cancel-subscription">Cancel</MudButton>
+            }
+        }
+    </MudStack>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined Class="pa-4">
+                <MudSimpleTable Dense Elevation="0" id="subscription-details">
+                    <tbody>
+                        <tr><th>ID</th><td><code>@subscription.Id</code></td></tr>
+                        <tr><th>Customer</th><td><MudLink Href="@($"/admin/customers/{subscription.CustomerId}")">@subscription.CustomerId</MudLink></td></tr>
+                        <tr><th>Collection</th><td>@Snake(subscription.CollectionMethod)@(subscription.DaysUntilDue is { } days ? $", due in {days} days" : null)</td></tr>
+                        <tr><th>Card</th><td>@(subscription.DefaultPaymentMethodId?.ToString() ?? "The customer's default")</td></tr>
+                        <tr><th>Created</th><td><Moment Value="subscription.CreatedAt" /></td></tr>
+                        @if (subscription.CheckoutSessionId is { } session)
+                        {
+                            <tr><th>Checkout session</th><td><code>@session</code></td></tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined Class="pa-4">
+                <MudSimpleTable Dense Elevation="0" id="subscription-periods">
+                    <tbody>
+                        <tr><th>Current period</th><td><Moment Value="subscription.CurrentPeriodStart" /> – <Moment Value="subscription.CurrentPeriodEnd" /></td></tr>
+                        <tr><th>Billing anchor</th><td><Moment Value="subscription.BillingCycleAnchor" /></td></tr>
+                        <tr><th>Trial</th><td>@if (subscription.TrialEnd is { } end) { <span>Until <Moment Value="end" />, then @Snake(subscription.TrialEndBehavior) without a card</span> } else { <span>–</span> }</td></tr>
+                        <tr><th>Ends</th><td id="ends"><Moment Value="subscription.EndedAt ?? subscription.CancelAt" Empty="–" />@(subscription.CancellationReason is { } reason ? $" ({Snake(reason)})" : null)</td></tr>
+                        @if (subscription.IncompleteExpiresAt is { } expires)
+                        {
+                            <tr><th>Expires unpaid</th><td><Moment Value="expires" /></td></tr>
+                        }
+                        @if (subscription.PastDueSince is { } since)
+                        {
+                            <tr><th>Past due since</th><td><Moment Value="since" /></td></tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Items</MudText>
+    <MudTable T="SubscriptionItemResponse" Items="subscription.Items" Dense id="items">
+        <HeaderContent>
+            <MudTh>Price</MudTh>
+            <MudTh>Lookup key</MudTh>
+            <MudTh>Quantity</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Price">@SubscriptionTable.Describe(context)</MudTd>
+            <MudTd DataLabel="Lookup key"><code>@context.Price.Key</code></MudTd>
+            <MudTd DataLabel="Quantity">@(context.Quantity?.ToString(CultureInfo.InvariantCulture) ?? "metered")</MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    @if (subscription.ScheduledChange is { } change)
+    {
+        <MudAlert Severity="Severity.Info" Class="mt-4" id="scheduled-change">
+            From <Moment Value="change.EffectiveAt" />: @string.Join(", ", change.Items.Select(item => $"{Tahsil.Application.Catalog.PriceDisplay.Name(item.Price.Product.Name, item.Price.Name)}{(item.Quantity is { } quantity ? $" × {quantity}" : null)}")).
+            @if (Session.Has(TahsilPermissions.SubscriptionsWrite))
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="DropScheduledChangeAsync" id="drop-change">Drop</MudButton>
+            }
+        </MudAlert>
+    }
+
+    @if (Session.Has(TahsilPermissions.InvoicesRead))
+    {
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Invoices</MudText>
+        <InvoiceTable Invoices="_invoices" />
+    }
+}
+
+@code {
+    private SubscriptionResponse? _subscription;
+    private uint _version;
+    private IReadOnlyList<InvoiceResponse> _invoices = [];
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool Changeable => _subscription?.Status is SubscriptionStatus.Trialing or SubscriptionStatus.Active or SubscriptionStatus.PastDue;
+
+    private InvoiceResponse? OldestOpenInvoice => _invoices.Where(invoice => invoice.Status == InvoiceStatus.Open).MinBy(invoice => invoice.CreatedAt);
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string Snake<T>(T value)
+        where T : struct, Enum => System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString());
+
+    private async Task LoadAsync()
+    {
+        if (await ReadAsync<GetSubscriptionHandler, Versioned<SubscriptionResponse>>((handler, token) => handler.HandleAsync(Id, token)) is { } read)
+        {
+            (_subscription, _version) = (read.Value, read.Version);
+        }
+
+        if (Session.Has(TahsilPermissions.InvoicesRead))
+        {
+            _invoices = (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>(
+                (handler, token) => handler.HandleAsync(new ListInvoicesQuery(Subscription: Id, Limit: Paging.MaxLimit), token)))?.Items ?? [];
+        }
+    }
+
+    private async Task Saved(Versioned<SubscriptionResponse>? saved)
+    {
+        if (saved is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Task<Versioned<SubscriptionResponse>?> UpdateAsync(UpdateSubscriptionRequest request, string done) =>
+        ChangeAsync<UpdateSubscriptionHandler, Versioned<SubscriptionResponse>>((handler, token) => handler.HandleAsync(Id, request, [_version], token), done);
+
+    private async Task ChangePlanAsync()
+    {
+        var parameters = new DialogParameters<ChangePlanDialog> { { dialog => dialog.Subscription, _subscription! } };
+        var dialog = await Dialogs.ShowAsync<ChangePlanDialog>("Change plan", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: UpdateSubscriptionRequest request })
+        {
+            await Saved(await UpdateAsync(request, request.Effective == ChangeTiming.Now ? "The plan was changed." : "The change was scheduled."));
+        }
+    }
+
+    private async Task DropScheduledChangeAsync() =>
+        await Saved(await UpdateAsync(new UpdateSubscriptionRequest { ScheduledChange = null }, "The scheduled change was dropped."));
+
+    private async Task ChangeTrialEndAsync()
+    {
+        var parameters = new DialogParameters<TrialEndDialog> { { dialog => dialog.TrialEnd, _subscription!.TrialEnd!.Value } };
+        var dialog = await Dialogs.ShowAsync<TrialEndDialog>("The trial's end", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: string end })
+        {
+            await Saved(await UpdateAsync(new UpdateSubscriptionRequest { TrialEnd = end }, end == "now" ? "The trial ended." : "The trial's end moved."));
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        var parameters = new DialogParameters<CancelSubscriptionDialog> { { dialog => dialog.CanRefund, Session.Has(TahsilPermissions.RefundsWrite) } };
+        var dialog = await Dialogs.ShowAsync<CancelSubscriptionDialog>("Cancel the subscription", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: CancelSubscriptionRequest request })
+        {
+            await Saved(await ChangeAsync<CancelSubscriptionHandler, Versioned<SubscriptionResponse>>(
+                (handler, token) => handler.HandleAsync(Id, request, [_version], token), request.At == "now" ? "The subscription was canceled." : "The cancellation was scheduled."));
+        }
+    }
+
+    private async Task ResumeAsync()
+    {
+        if (await ConfirmAsync("Resume", "The subscription keeps renewing as before the cancellation was scheduled.", "Resume"))
+        {
+            await Saved(await ChangeAsync<ResumeSubscriptionHandler, Versioned<SubscriptionResponse>>(
+                (handler, token) => handler.HandleAsync(Id, [_version], token), "The subscription was resumed."));
+        }
+    }
+
+    /// <summary>Charges the oldest open invoice now with a card the administrator picks.</summary>
+    private async Task RetryPaymentAsync()
+    {
+        var invoice = OldestOpenInvoice!;
+        var cards = await ReadAsync<ListPaymentMethodsHandler, Page<PaymentMethodResponse>>(
+            (handler, token) => handler.HandleAsync(_subscription!.CustomerId, PaymentMethodStatus.Active, token));
+        if (cards is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<PayInvoiceDialog> { { dialog => dialog.Cards, cards.Items }, { dialog => dialog.Amount, AdminFormat.Money(invoice.AmountRemaining, invoice.Currency) } };
+        var dialog = await Dialogs.ShowAsync<PayInvoiceDialog>("Retry payment", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is not { Canceled: false, Data: Guid card })
+        {
+            return;
+        }
+
+        var paid = await Operations.RunAsync<PayInvoiceHandler, Tahsil.Domain.Common.Result<PaymentResponse>>(
+            handler => handler.HandleAsync(invoice.Id, new PayInvoiceRequest { PaymentMethod = card }, Aborted));
+        if (paid.IsFailure)
+        {
+            Report(paid.Error, string.Empty);
+        }
+        else
+        {
+            Snackbar.Add(
+                paid.Value.Status switch
+                {
+                    PaymentStatus.Succeeded => "The payment succeeded.",
+                    PaymentStatus.Failed => $"The payment failed: {paid.Value.FailureMessage}",
+                    _ => "The payment is processing; reconciliation settles it.",
+                },
+                paid.Value.Status == PaymentStatus.Succeeded ? Severity.Success : Severity.Warning);
+        }
+
+        await LoadAsync();
+    }
+}

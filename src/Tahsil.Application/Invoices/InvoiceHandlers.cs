@@ -394,7 +394,8 @@ public sealed class GetInvoiceHandler(ITahsilDbContext context, IAuthorizer auth
     }
 }
 
-public sealed record ListInvoicesQuery(Guid? Customer = null, InvoiceStatus? Status = null, string? Number = null, string? Cursor = null, int? Limit = null);
+public sealed record ListInvoicesQuery(
+    Guid? Customer = null, InvoiceStatus? Status = null, string? Number = null, string? Cursor = null, int? Limit = null, Guid? Subscription = null);
 
 public sealed class ListInvoicesHandler(ITahsilDbContext context, IAuthorizer authorizer, InvoiceMapper mapper)
 {
@@ -416,6 +417,11 @@ public sealed class ListInvoicesHandler(ITahsilDbContext context, IAuthorizer au
         if (query.Customer is { } customer)
         {
             invoices = invoices.Where(invoice => invoice.CustomerId == customer);
+        }
+
+        if (query.Subscription is { } subscription)
+        {
+            invoices = invoices.Where(invoice => invoice.SubscriptionId == subscription);
         }
 
         if (query.Status is { } status)

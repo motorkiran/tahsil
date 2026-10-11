@@ -1,0 +1,101 @@
+@using Tahsil.Application.Subscriptions
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            @foreach (var row in _rows)
+            {
+                <MudStack Row AlignItems="AlignItems.Center" Class="item-row">
+                    <MudTextField @bind-Value="row.Price" Label="Price" HelperText="A lookup key or ID" />
+                    <MudNumericField T="int?" @bind-Value="row.Quantity" Label="Quantity" Min="1" Style="max-width: 8rem" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => _rows.Remove(row)" Disabled="_rows.Count == 1" aria-label="Remove" />
+                </MudStack>
+            }
+            <MudButton Variant="Variant.Text" OnClick="() => _rows.Add(new Row())" id="add-item">Add an item</MudButton>
+            <MudSelect T="ChangeTiming" @bind-Value="_timing" Label="Takes effect" id="timing">
+                <MudSelectItem T="ChangeTiming" Value="ChangeTiming.Now">Now</MudSelectItem>
+                <MudSelectItem T="ChangeTiming" Value="ChangeTiming.PeriodEnd">At the end of the period</MudSelectItem>
+            </MudSelect>
+            @if (_timing == ChangeTiming.Now)
+            {
+                <MudSelect T="ProrationBehavior" @bind-Value="_proration" Label="Proration" id="proration">
+                    <MudSelectItem T="ProrationBehavior" Value="ProrationBehavior.AlwaysInvoice">Invoice the difference now</MudSelectItem>
+                    <MudSelectItem T="ProrationBehavior" Value="ProrationBehavior.CreateProrations">Add the difference to the next invoice</MudSelectItem>
+                    <MudSelectItem T="ProrationBehavior" Value="ProrationBehavior.None">No proration</MudSelectItem>
+                </MudSelect>
+            }
+            <MudButton Variant="Variant.Outlined" OnClick="PreviewAsync" id="preview">Preview</MudButton>
+            @if (_preview is { } preview)
+            {
+                <MudSimpleTable Dense Elevation="0" id="change-preview">
+                    <tbody>
+                        @if (preview.Invoice is { } invoice)
+                        {
+                            <tr><th>Invoiced now</th><td>@AdminFormat.Money(invoice.Total, Subscription.Currency)</td></tr>
+                            <tr><th>Due now</th><td id="preview-due">@AdminFormat.Money(invoice.AmountDue, Subscription.Currency)</td></tr>
+                        }
+                        @if (preview.PendingLines.Count > 0)
+                        {
+                            <tr><th>Added to the next invoice</th><td>@AdminFormat.Money(preview.PendingLines.Sum(line => line.Amount), Subscription.Currency)</td></tr>
+                        }
+                        @if (preview.NextRenewal is { } renewal)
+                        {
+                            <tr><th>Next renewal</th><td id="preview-renewal">@AdminFormat.Money(renewal.Amount, Subscription.Currency) on <Moment Value="renewal.At" /></td></tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Dialog.Close(DialogResult.Ok(Request()))" id="apply-change">Change</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<Row> _rows = [];
+    private ChangeTiming _timing;
+    private ProrationBehavior _proration;
+    private SubscriptionPreviewResponse? _preview;
+    private string? _error;
+
+    [Inject]
+    private AdminOperations Operations { get; set; } = null!;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required SubscriptionResponse Subscription { get; set; }
+
+    protected override void OnInitialized() =>
+        _rows = [.. Subscription.Items.Select(item => new Row { Price = item.Price.Key ?? item.Price.Id.ToString(), Quantity = item.Quantity })];
+
+    private UpdateSubscriptionRequest Request() => new()
+    {
+        Items = [.. _rows.Where(row => !string.IsNullOrWhiteSpace(row.Price)).Select(row => new SubscriptionItemRequest { Price = row.Price!.Trim(), Quantity = row.Quantity })],
+        Effective = _timing,
+        ProrationBehavior = _proration,
+    };
+
+    private async Task PreviewAsync()
+    {
+        var request = Request();
+        var result = await Operations.RunAsync<PreviewSubscriptionChangeHandler, Tahsil.Domain.Common.Result<SubscriptionPreviewResponse>>(
+            handler => handler.HandleAsync(Subscription.Id, request, CancellationToken.None));
+        _preview = result.IsSuccess ? result.Value : null;
+        _error = result.IsSuccess ? null : result.Error.Message;
+    }
+
+    private sealed class Row
+    {
+        public string? Price { get; set; }
+
+        public int? Quantity { get; set; } = 1;
+    }
+}

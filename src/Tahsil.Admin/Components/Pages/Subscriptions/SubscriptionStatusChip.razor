@@ -1,0 +1,14 @@
+<MudChip T="string" Size="Size.Small" Color="Tone" Class="status">@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(Status.ToString())</MudChip>
+
+@code {
+    [Parameter, EditorRequired]
+    public SubscriptionStatus Status { get; set; }
+
+    private Color Tone => Status switch
+    {
+        SubscriptionStatus.Active => Color.Success,
+        SubscriptionStatus.Trialing => Color.Info,
+        SubscriptionStatus.PastDue or SubscriptionStatus.Incomplete => Color.Warning,
+        _ => Color.Default,
+    };
+}

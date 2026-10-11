@@ -3057,6 +3057,15 @@
             }
           },
           {
+            "name": "subscription",
+            "in": "query",
+            "description": "Only this subscription's invoices.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "description": "The `nextCursor` of the previous page.",
@@ -11627,8 +11636,7 @@
         "type": "object",
         "properties": {
           "price": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/SubscriptionPriceResponse"
           },
           "quantity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",

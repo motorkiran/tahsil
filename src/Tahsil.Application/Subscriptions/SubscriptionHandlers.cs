@@ -306,13 +306,21 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
 
     public async Task<List<SubscriptionResponse>> ToResponsesAsync(IReadOnlyList<Subscription> subscriptions, CancellationToken cancellationToken)
     {
-        var priceIds = subscriptions.SelectMany(subscription => subscription.Items).Select(item => item.PriceId).Distinct().ToList();
+        var priceIds = subscriptions.SelectMany(subscription => subscription.Items.Select(item => item.PriceId)
+            .Concat(subscription.ScheduledChange?.Items.Select(item => item.PriceId) ?? [])).Distinct().ToList();
         var prices = await context.Prices.AsNoTracking().Where(price => priceIds.Contains(price.Id)).ToDictionaryAsync(price => price.Id, cancellationToken);
         var productIds = prices.Values.Select(price => price.ProductId).Distinct().ToList();
         var products = await context.Products.AsNoTracking().Where(product => productIds.Contains(product.Id)).ToDictionaryAsync(product => product.Id, cancellationToken);
         var invoiceIds = subscriptions.Where(subscription => subscription.LatestInvoiceId is not null).Select(subscription => subscription.LatestInvoiceId!.Value).ToList();
         var invoices = await context.Invoices.AsNoTracking().Where(invoice => invoiceIds.Contains(invoice.Id)).ToDictionaryAsync(invoice => invoice.Id, cancellationToken);
         return [.. subscriptions.Select(subscription => ToResponse(subscription, prices, products, invoices))];
+    }
+
+    private static SubscriptionPriceResponse Price(Guid priceId, Dictionary<Guid, Domain.Catalog.Price> prices, Dictionary<Guid, Domain.Catalog.Product> products)
+    {
+        var price = prices[priceId];
+        var product = products[price.ProductId];
+        return new SubscriptionPriceResponse(price.Id, price.Key, price.Name, new ProductSummary(product.Id, product.Key, product.Name));
     }
 
     /// <summary>A value as events and the API write it, such as <c>past_due</c>.</summary>
@@ -328,15 +336,7 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
             CustomerId = subscription.CustomerId,
             Status = subscription.Status.Map<Contracts.SubscriptionStatus>(),
             Currency = subscription.Currency,
-            Items =
-        [
-            .. subscription.Items.Select(item =>
-            {
-                var price = prices[item.PriceId];
-                var product = products[price.ProductId];
-                return new SubscriptionItemResponse(item.Id, new SubscriptionPriceResponse(price.Id, price.Key, price.Name, new ProductSummary(product.Id, product.Key, product.Name)), item.Quantity);
-            }),
-        ],
+            Items = [.. subscription.Items.Select(item => new SubscriptionItemResponse(item.Id, Price(item.PriceId, prices, products), item.Quantity))],
             CollectionMethod = subscription.CollectionMethod.Map<CollectionMethod>(),
             DaysUntilDue = subscription.DaysUntilDue,
             DefaultPaymentMethodId = subscription.DefaultPaymentMethodId,
@@ -354,7 +354,7 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
             CancellationFeedback = subscription.CancellationFeedback?.Map<Contracts.CancellationFeedback>(),
             CancellationComment = subscription.CancellationComment,
             ScheduledChange = subscription.ScheduledChange is { } change
-            ? new ScheduledChangeResponse([.. change.Items.Select(item => new ScheduledChangeItemResponse(item.PriceId, item.Quantity))], change.EffectiveAt)
+            ? new ScheduledChangeResponse([.. change.Items.Select(item => new ScheduledChangeItemResponse(Price(item.PriceId, prices, products), item.Quantity))], change.EffectiveAt)
             : null,
             LatestInvoice = subscription.LatestInvoiceId is { } invoiceId && invoices.TryGetValue(invoiceId, out var invoice)
             ? new LatestInvoiceResponse(invoice.Id, invoice.Number, invoice.Status.Map<InvoiceStatus>(), invoice.AmountDue, links.UrlFor(invoice))

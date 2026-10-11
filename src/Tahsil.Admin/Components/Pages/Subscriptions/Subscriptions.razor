@@ -1,0 +1,52 @@
+@page "/admin/subscriptions"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Subscriptions
+@inherits AdminPageBase
+
+<PageTitle>Subscriptions · Tahsil</PageTitle>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" GutterBottom>Subscriptions</MudText>
+
+<MudStack Row Class="mb-4" AlignItems="AlignItems.End">
+    <MudSelect T="SubscriptionStatus?" @bind-Value="_status" Label="Status" Clearable Style="max-width: 14rem" id="status">
+        @foreach (var status in Enum.GetValues<SubscriptionStatus>())
+        {
+            <MudSelectItem T="SubscriptionStatus?" Value="status">@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(status.ToString())</MudSelectItem>
+        }
+    </MudSelect>
+    <MudTextField @bind-Value="_product" Label="Product" HelperText="A product key or ID" Clearable Style="max-width: 16rem" id="product" />
+    <MudButton Variant="Variant.Outlined" OnClick="SearchAsync" id="search-button">Search</MudButton>
+</MudStack>
+
+<SubscriptionTable Subscriptions="_subscriptions" />
+
+@if (_nextCursor is not null)
+{
+    <MudButton Class="mt-4" Variant="Variant.Text" OnClick="LoadMoreAsync">Load more</MudButton>
+}
+
+@code {
+    private readonly List<SubscriptionResponse> _subscriptions = [];
+    private string? _nextCursor;
+    private SubscriptionStatus? _status;
+    private string? _product;
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private async Task SearchAsync()
+    {
+        _subscriptions.Clear();
+        _nextCursor = null;
+        await LoadMoreAsync();
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var query = new ListSubscriptionsQuery(Status: _status, Product: string.IsNullOrWhiteSpace(_product) ? null : _product.Trim(), Cursor: _nextCursor);
+        if (await ReadAsync<ListSubscriptionsHandler, Page<SubscriptionResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page)
+        {
+            _subscriptions.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+    }
+}

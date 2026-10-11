@@ -1,3 +1,5 @@
+@using Tahsil.Admin.Components.Pages.Subscriptions
+@using Tahsil.Application.Subscriptions
 @using Tahsil.Admin.Components.Pages.Invoices
 @using Tahsil.Admin.Components.Pages.Payments
 @using Tahsil.Application.Invoices
@@ -92,6 +94,12 @@
     <NoRecordsContent><MudText>No saved cards.</MudText></NoRecordsContent>
 </MudTable>
 
+@if (Session.Has(TahsilPermissions.SubscriptionsRead))
+{
+    <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Subscriptions</MudText>
+    <SubscriptionTable Subscriptions="_subscriptions" />
+}
+
 <MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
     <MudText Typo="Typo.h6" HtmlTag="h2">Invoices</MudText>
     <MudSpacer />
@@ -112,6 +120,7 @@
     private IReadOnlyList<BalanceTransactionResponse> _balanceHistory = [];
     private IReadOnlyList<PaymentMethodResponse> _cards = [];
     private IReadOnlyList<InvoiceResponse> _invoices = [];
+    private IReadOnlyList<SubscriptionResponse> _subscriptions = [];
     private IReadOnlyList<PaymentResponse> _payments = [];
 
     [Parameter, EditorRequired]
@@ -132,6 +141,12 @@
     {
         await LoadBalanceHistoryAsync();
         await LoadCardsAsync();
+        if (Session.Has(TahsilPermissions.SubscriptionsRead))
+        {
+            _subscriptions = (await ReadAsync<ListSubscriptionsHandler, Page<SubscriptionResponse>>(
+                (handler, token) => handler.HandleAsync(new ListSubscriptionsQuery(Customer: CustomerId, Limit: 50), token)))?.Items ?? [];
+        }
+
         if (Session.Has(TahsilPermissions.InvoicesRead))
         {
             _invoices = (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>((handler, token) => handler.HandleAsync(new ListInvoicesQuery(Customer: CustomerId, Limit: 50), token)))?.Items ?? [];

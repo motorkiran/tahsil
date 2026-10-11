@@ -36,12 +36,13 @@ internal static class InvoiceEndpoints
             [Description("Only this customer's invoices.")] Guid? customer,
             [Description("`draft`, `open`, `paid`, `void` or `uncollectible`.")] string? status,
             [Description("An invoice number, such as `INV-2026-000123`.")] string? number,
+            [Description("Only this subscription's invoices.")] Guid? subscription,
             [Description("The `nextCursor` of the previous page.")] string? cursor,
             [Description("Page size, 50 by default and at most 200.")] int? limit,
             ListInvoicesHandler handler,
             CancellationToken cancellationToken) =>
             QueryValues.TryParseEnum<InvoiceStatus>(status, out var statusFilter)
-                ? (await handler.HandleAsync(new ListInvoicesQuery(customer, statusFilter, number, cursor, limit), cancellationToken)).ToOk()
+                ? (await handler.HandleAsync(new ListInvoicesQuery(customer, statusFilter, number, cursor, limit, subscription), cancellationToken)).ToOk()
                 : ApiResults.Problem(CommonErrors.InvalidParameter(nameof(status))))
             .WithName("ListInvoices").WithSummary("List invoices").WithDescription("Newest first.").RequirePermission(TahsilPermissions.InvoicesRead);
 

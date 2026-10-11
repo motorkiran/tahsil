@@ -1,0 +1,32 @@
+@inject NavigationManager Navigation
+
+<MudTable T="SubscriptionResponse" Items="Subscriptions" Dense Hover OnRowClick="args => Navigation.NavigateTo(Link(args.Item!))" Class="subscriptions">
+    <HeaderContent>
+        <MudTh>Items</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Period ends</MudTh>
+        <MudTh>Ends</MudTh>
+        <MudTh>Created</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Items"><MudLink Href="@Link(context)">@Describe(context)</MudLink></MudTd>
+        <MudTd DataLabel="Status"><SubscriptionStatusChip Status="context.Status" /></MudTd>
+        <MudTd DataLabel="Period ends"><Moment Value="context.CurrentPeriodEnd" /></MudTd>
+        <MudTd DataLabel="Ends"><Moment Value="context.EndedAt ?? context.CancelAt" Empty="–" /></MudTd>
+        <MudTd DataLabel="Created"><Moment Value="context.CreatedAt" /></MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No subscriptions found.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<SubscriptionResponse> Subscriptions { get; set; }
+
+    /// <summary>The items as the customer reads them, such as <c>Team (Monthly) × 5</c>.</summary>
+    internal static string Describe(SubscriptionResponse subscription) => string.Join(", ", subscription.Items.Select(Describe));
+
+    internal static string Describe(SubscriptionItemResponse item) =>
+        $"{Tahsil.Application.Catalog.PriceDisplay.Name(item.Price.Product.Name, item.Price.Name)}{(item.Quantity is { } quantity ? $" × {quantity}" : null)}";
+
+    private static string Link(SubscriptionResponse subscription) => $"/admin/subscriptions/{subscription.Id}";
+}

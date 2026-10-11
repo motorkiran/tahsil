@@ -1,0 +1,32 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText>The trial ends <Moment Value="TrialEnd" />. A later date extends it; ending it now starts the first paid period at once.</MudText>
+            <MudDatePicker @bind-Date="_date" Label="New end" id="trial-end-date" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => Dialog.Close(DialogResult.Ok("now")))" id="end-trial-now">End it now</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_date is null" OnClick="Extend" id="extend-trial">Move the end</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private DateTime? _date;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset TrialEnd { get; set; }
+
+    protected override void OnInitialized() => _date = TrialEnd.UtcDateTime.Date.AddDays(7);
+
+    /// <summary>The new end keeps the trial's time of day.</summary>
+    private void Extend()
+    {
+        var end = new DateTimeOffset(_date!.Value.Date + TrialEnd.UtcDateTime.TimeOfDay, TimeSpan.Zero);
+        Dialog.Close(DialogResult.Ok(end.ToString("O", CultureInfo.InvariantCulture)));
+    }
+}
