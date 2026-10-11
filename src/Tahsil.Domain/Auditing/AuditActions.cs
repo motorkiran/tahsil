@@ -55,6 +55,10 @@ public static class AuditActions
 
     /// <summary>Items, the trial, the cancellation schedule, the payment or collection method, or the status changed.</summary>
     public const string SubscriptionUpdated = "subscription.updated";
+
+    /// <summary>A new period started, after a renewal or a trial (ENG-8).</summary>
+    public const string SubscriptionRenewed = "subscription.renewed";
+    public const string SubscriptionCanceled = "subscription.canceled";
     public const string RefundCreated = "refund.created";
     public const string RefundSucceeded = "refund.succeeded";
     public const string RefundFailed = "refund.failed";

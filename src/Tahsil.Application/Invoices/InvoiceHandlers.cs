@@ -323,7 +323,7 @@ public sealed class FinalizeInvoiceHandler(
 
 /// <summary>Voids an invoice without payments and gives the balance back what finalization took or added (INV-16).</summary>
 public sealed class VoidInvoiceHandler(
-    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IBillingLocks locks, IRequestContext request, InvoiceMapper mapper, BillingClock clock)
+    ITahsilDbContext context, IAuthorizer authorizer, IBillingLocks locks, IRequestContext request, InvoiceVoiding voiding, InvoiceMapper mapper, BillingClock clock)
 {
     public async Task<Result<Versioned<InvoiceResponse>>> HandleAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -339,21 +339,11 @@ public sealed class VoidInvoiceHandler(
             return Model.InvoiceErrors.NotFound;
         }
 
-        var now = clock.GetUtcNow();
-        var voided = invoice.Void(now);
-        if (voided.IsFailure)
+        if (await voiding.VoidAsync(invoice, request.Caller.ToActor(), clock.GetUtcNow(), cancellationToken) is { IsFailure: true } failed)
         {
-            return voided.Error;
+            return failed.Error;
         }
 
-        if (voided.Value != 0)
-        {
-            await locks.LockBalanceAsync(invoice.CustomerId, invoice.Currency, cancellationToken);
-            var balance = await context.CustomerBalances.SingleAsync(row => row.CustomerId == invoice.CustomerId && row.Currency == invoice.Currency, cancellationToken);
-            context.BalanceTransactions.Add(balance.Change(voided.Value, Domain.Money.BalanceTransactionType.InvoiceVoided, invoice.Id, null, request.Caller.ToActor(), now));
-        }
-
-        audit.Record(AuditActions.InvoiceVoided, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: invoice.CustomerId);
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new Versioned<InvoiceResponse>(mapper.ToResponse(invoice), invoice.Version);

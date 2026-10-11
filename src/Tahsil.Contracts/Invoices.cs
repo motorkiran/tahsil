@@ -256,6 +256,12 @@ public sealed record CreateInvoiceItemRequest
 {
     public required Guid Customer { get; init; }
 
+    /// <summary>
+    /// A subscription of the customer whose next invoice takes the item; while its cycle invoice is still a draft, the
+    /// item joins that draft. The currency must be the subscription's.
+    /// </summary>
+    public Guid? Subscription { get; init; }
+
     [Required]
     public required string Currency { get; init; }
 

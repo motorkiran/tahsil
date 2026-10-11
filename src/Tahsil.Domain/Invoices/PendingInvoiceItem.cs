@@ -59,7 +59,8 @@ public sealed class PendingInvoiceItem : AggregateRoot
         long? unitAmount,
         Guid? taxRateId,
         bool isDiscountable,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        Guid? subscriptionId = null)
     {
         if (quantity <= 0 || decimal.Round(quantity, 8) != quantity)
         {
@@ -80,6 +81,7 @@ public sealed class PendingInvoiceItem : AggregateRoot
         {
             Id = Guid.CreateVersion7(now),
             CustomerId = customerId,
+            SubscriptionId = subscriptionId,
             Currency = currency,
             PriceId = priceId,
             Description = Text.Normalize(description),

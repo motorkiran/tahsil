@@ -15,6 +15,9 @@ public sealed class BillingOptions
 
     public TimeZoneInfo Zone => TimeZoneInfo.FindSystemTimeZoneById(TimeZone);
 
+    /// <summary>How long a cycle invoice stays a draft that items can join before it finalizes itself (INV-5); may be zero (INV-6).</summary>
+    public TimeSpan DraftPeriod { get; set; } = TimeSpan.FromHours(1);
+
     internal bool HasKnownTimeZone() => TimeZoneInfo.TryFindSystemTimeZoneById(TimeZone, out _);
 }
 

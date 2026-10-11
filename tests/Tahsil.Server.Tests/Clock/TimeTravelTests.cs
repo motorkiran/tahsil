@@ -57,6 +57,26 @@ public sealed class TimeTravelTests(TahsilServerFixture server)
         clock.OffsetSeconds.ShouldBeGreaterThan(27 * 24 * 3600);
     }
 
+    [Fact]
+    [Trait("Requirement", "ENG-23")]
+    [Trait("Requirement", "SUB-11")]
+    public async Task AYearInOneCall_RenewsAMonthlySubscriptionTwelveTimes_EachAtItsOwnInstant()
+    {
+        await using var host = Host();
+        using var client = await Subscriptions.SubscriptionScenarios.ClientAsync(host);
+        var subscription = await Subscriptions.SubscriptionScenarios.SendingInvoicesAsync(client, await CustomerAsync(client));
+
+        using var travel = await client.PostAsJsonAsync(new Uri("/api/v1/test/clock", UriKind.Relative), new AdvanceClockRequest { AdvanceBy = "P1Y" }, ApiClients.Json, CancellationToken);
+        var summary = await ReadAsync<TimeTravelResponse>(travel);
+
+        var renewals = await host.QueryAsync<Renewal>($"""
+            SELECT period_start, created_at FROM tahsil.invoices WHERE billing_reason = 'subscription_cycle' ORDER BY period_start
+            """);
+        renewals.Select(renewal => renewal.PeriodStart).ShouldBe(Enumerable.Range(1, 12).Select(month => subscription.CurrentPeriodStart.AddMonths(month)));
+        renewals.ShouldAllBe(renewal => renewal.CreatedAt >= renewal.PeriodStart && renewal.CreatedAt < renewal.PeriodStart.AddMinutes(1));
+        summary.InvoicesCreated.ShouldBe(12);
+    }
+
     [Theory]
     [Trait("Requirement", "ENG-22")]
     [InlineData("P")]
@@ -139,4 +159,6 @@ public sealed class TimeTravelTests(TahsilServerFixture server)
             return await response.ReadAsync<T>();
         }
     }
+
+    private sealed record Renewal(DateTimeOffset PeriodStart, DateTimeOffset CreatedAt);
 }

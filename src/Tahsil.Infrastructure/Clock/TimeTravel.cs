@@ -66,18 +66,22 @@ internal sealed class TimeTravel(IServiceScopeFactory scopes, IServiceProvider s
         }
 
         await SetClockAsync(target, actor, cancellationToken);
+
+        // Steps set the clock to whole seconds, so the last ones may run a moment past the target.
+        var end = clock.GetUtcNow();
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<TahsilDbContext>();
-        var payments = context.Payments.AsNoTracking().Where(payment => payment.CreatedAt >= from && payment.CreatedAt <= target);
+        var payments = context.Payments.AsNoTracking().Where(payment => payment.CreatedAt >= from && payment.CreatedAt <= end);
         var summary = new TimeTravelSummary(
             from,
             target,
             steps,
-            await context.Invoices.CountAsync(invoice => invoice.CreatedAt >= from && invoice.CreatedAt <= target && invoice.BillingReason != Domain.Invoices.BillingReason.Manual, cancellationToken),
+            await context.Invoices.CountAsync(invoice => invoice.CreatedAt >= from && invoice.CreatedAt <= end && invoice.BillingReason != Domain.Invoices.BillingReason.Manual, cancellationToken),
             await payments.CountAsync(payment => payment.Initiator == Domain.Payments.PaymentInitiator.Merchant, cancellationToken),
             await payments.CountAsync(payment => payment.Initiator == Domain.Payments.PaymentInitiator.Merchant && payment.Status == Domain.Payments.PaymentStatus.Succeeded, cancellationToken),
             await payments.CountAsync(payment => payment.Initiator == Domain.Payments.PaymentInitiator.Merchant && payment.Status == Domain.Payments.PaymentStatus.Failed, cancellationToken),
-            0);
+            await context.Subscriptions.CountAsync(
+                subscription => subscription.Status == Domain.Subscriptions.SubscriptionStatus.Canceled && subscription.EndedAt > from && subscription.EndedAt <= end, cancellationToken));
         scope.ServiceProvider.GetRequiredService<IAuditLog>().Record(AuditActions.TestClockAdvanced, data: new Dictionary<string, object?>
         {
             ["from"] = from,
@@ -133,6 +137,7 @@ internal sealed class TimeTravel(IServiceScopeFactory scopes, IServiceProvider s
         var due = await scope.ServiceProvider.GetRequiredService<TahsilDbContext>().Database.SqlQuery<DateTimeOffset?>($"""
             SELECT min(due) AS "Value" FROM (
                 SELECT min(finalize_at) AS due FROM tahsil.invoices WHERE status = 'draft' AND auto_advance
+                UNION ALL SELECT min(next_cycle_at) FROM tahsil.subscriptions
                 UNION ALL SELECT min(next_payment_attempt_at) FROM tahsil.invoices WHERE status = 'open' AND collection_method = 'charge_automatically'
                 UNION ALL SELECT min(reconcile_at) FROM tahsil.payments WHERE status IN ('processing', 'requires_action')
                 UNION ALL SELECT min(reconcile_at) FROM tahsil.refunds WHERE status = 'processing'

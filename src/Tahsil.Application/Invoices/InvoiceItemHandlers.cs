@@ -8,8 +8,12 @@ using Model = Tahsil.Domain.Invoices;
 
 namespace Tahsil.Application.Invoices;
 
-/// <summary>Adds a charge or credit that waits for the customer's next manual invoice (INV §8).</summary>
-public sealed class CreateInvoiceItemHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IIdempotency idempotency, InvoiceLines lines, BillingClock clock)
+/// <summary>
+/// Adds a charge or credit that waits for the customer's next manual invoice (INV §8), or for a subscription's next
+/// invoice, joining its cycle invoice while that is still a draft (INV-5).
+/// </summary>
+public sealed class CreateInvoiceItemHandler(
+    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IIdempotency idempotency, IBillingLocks locks, InvoiceLines lines, BillingClock clock)
 {
     public async Task<Result<Versioned<InvoiceItemResponse>>> HandleAsync(CreateInvoiceItemRequest request, CancellationToken cancellationToken)
     {
@@ -27,6 +31,21 @@ public sealed class CreateInvoiceItemHandler(ITahsilDbContext context, IAuthoriz
         if (!Currency.TryGet(request.Currency, out _))
         {
             return Error.Validation("currency.unsupported", "The currency is not a supported ISO 4217 code.", "currency");
+        }
+
+        Domain.Subscriptions.Subscription? subscription = null;
+        if (request.Subscription is { } subscriptionId)
+        {
+            subscription = await context.Subscriptions.AsNoTracking().SingleOrDefaultAsync(row => row.Id == subscriptionId, cancellationToken);
+            if (subscription is null || subscription.CustomerId != customer.Value.Id || subscription.IsTerminal)
+            {
+                return InvoiceItemErrors.Invalid("subscription", "The subscription is not a running subscription of the customer.");
+            }
+
+            if (subscription.Currency != request.Currency)
+            {
+                return InvoiceItemErrors.Invalid("currency", $"The subscription bills in {subscription.Currency}.");
+            }
         }
 
         Guid? priceId = null;
@@ -64,15 +83,27 @@ public sealed class CreateInvoiceItemHandler(ITahsilDbContext context, IAuthoriz
             taxRateId = rate.Value.Id;
         }
 
+        var now = clock.GetUtcNow();
         var created = Model.PendingInvoiceItem.Create(
-            customer.Value.Id, request.Currency, priceId, request.Description, quantity.Value, request.UnitAmount, taxRateId, request.Discountable, clock.GetUtcNow());
+            customer.Value.Id, request.Currency, priceId, request.Description, quantity.Value, request.UnitAmount, taxRateId, request.Discountable, now, subscription?.Id);
         if (created.IsFailure)
         {
             return created.Error;
         }
 
         var item = created.Value;
+        await using var transaction = await context.BeginTransactionAsync(cancellationToken);
         context.PendingInvoiceItems.Add(item);
+        if (subscription?.LatestInvoiceId is { } latest)
+        {
+            await locks.LockInvoiceAsync(latest, cancellationToken);
+            if (await context.FindInvoiceAsync(latest, cancellationToken) is { Status: Model.InvoiceStatus.Draft, AutoAdvance: true } draft && draft.SubscriptionId == subscription.Id)
+            {
+                draft.AddLines(await lines.FromPendingItemsAsync([item], customer.Value.Locale, cancellationToken), customer.Value.IsTaxExempt, now);
+                item.IncludeIn(draft.Id, now);
+            }
+        }
+
         idempotency.RecordCreated(ResourceTypes.InvoiceItem, item.Id);
         audit.Record(AuditActions.InvoiceItemCreated, AuditSubject.Of(AuditSubjects.InvoiceItem, item.Id), new Dictionary<string, object?>
         {
@@ -80,8 +111,10 @@ public sealed class CreateInvoiceItemHandler(ITahsilDbContext context, IAuthoriz
             ["priceId"] = item.PriceId,
             ["unitAmount"] = item.UnitAmount,
             ["quantity"] = item.Quantity,
+            ["subscriptionId"] = item.SubscriptionId,
         }, customerId: item.CustomerId);
         await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return new Versioned<InvoiceItemResponse>(InvoiceMapper.ToResponse(item), item.Version);
     }
 }
@@ -174,4 +207,6 @@ public static class InvoiceItemErrors
 {
     public static readonly Error NotFound = Error.NotFound("invoice_item.not_found", "The invoice item does not exist.");
     public static readonly Error Invoiced = Error.Conflict("invoice_item.invoiced", "An invoice includes the item; remove its line from the draft first.");
+
+    public static Error Invalid(string field, string message) => Error.Validation("invoice_item.invalid", message, field);
 }

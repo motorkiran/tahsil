@@ -147,12 +147,15 @@ public sealed class PaymentOutcomes(
         }
 
         payment.Fail(failure, outcome.ProviderPaymentId, ThreeDSecureOf(outcome), now);
-        RecordFailure(payment, invoice);
+        await RecordFailureAsync(payment, invoice, now, cancellationToken);
         await protection.WatchDeclinesAsync(payment, now, cancellationToken);
     }
 
-    /// <summary>Counts and announces a failed payment: <c>payment.failed</c>, and <c>invoice.payment_failed</c> for automatic charges.</summary>
-    internal void RecordFailure(Payment payment, Invoice? invoice)
+    /// <summary>
+    /// Counts and announces a failed payment: <c>payment.failed</c>, and <c>invoice.payment_failed</c> for automatic
+    /// charges, whose subscription follows. Runs in the caller's transaction, which holds the invoice's lock.
+    /// </summary>
+    internal async Task RecordFailureAsync(Payment payment, Invoice? invoice, DateTimeOffset now, CancellationToken cancellationToken)
     {
         Count(payment);
         audit.Record(AuditActions.PaymentFailed, AuditSubject.Of(AuditSubjects.Payment, payment.Id), Details(payment, late: false), customerId: payment.CustomerId);
@@ -168,6 +171,7 @@ public sealed class PaymentOutcomes(
                 ["attempt"] = invoice.AttemptCount,
                 ["nextAttemptAt"] = invoice.NextPaymentAttemptAt,
             }, customerId: invoice.CustomerId);
+            await subscriptions.AutomaticPaymentFailedAsync(invoice, now, cancellationToken);
         }
     }
 

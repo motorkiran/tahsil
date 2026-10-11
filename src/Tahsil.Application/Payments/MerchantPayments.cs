@@ -20,8 +20,8 @@ public sealed class MerchantPayments(
     IBillingLocks locks,
     IIdempotency idempotency,
     IRequestContext request,
-    ProviderRegistry registry,
     ProviderAccess providers,
+    ChargeableCards chargeable,
     PaymentRequests requests,
     PaymentOutcomes outcomes,
     SavedCards cards,
@@ -67,18 +67,20 @@ public sealed class MerchantPayments(
 
             invoice.ClaimPaymentAttempt(now);
             var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == invoice.CustomerId, cancellationToken);
-            if (customer.DefaultPaymentMethodId is { } defaultMethod)
+            var subscriptionMethod = invoice.SubscriptionId is { } subscriptionId
+                ? await context.Subscriptions.Where(row => row.Id == subscriptionId).Select(row => row.DefaultPaymentMethodId).SingleAsync(cancellationToken)
+                : null;
+            if (await chargeable.ForInvoiceAsync(customer, subscriptionMethod, invoice.Currency, cancellationToken) is { } card)
             {
-                method = await context.PaymentMethods.AsNoTracking().SingleOrDefaultAsync(row => row.Id == defaultMethod, cancellationToken);
-                connection = method is null ? null : await context.ProviderConnections.AsNoTracking().SingleAsync(row => row.Id == method.ConnectionId, cancellationToken);
+                (method, connection) = (card.Method, card.Connection);
             }
 
-            if (method is null || connection is null || !Usable(method, connection, invoice))
+            if (method is null || connection is null)
             {
                 payment = Payment.FailedBeforeCharge(
                     invoice.CustomerId, invoice.Id, invoice.AmountRemaining, invoice.Currency, PaymentOutcomes.Failure(FailureCode.PaymentMethodMissing), request.Caller.ToActor(), now);
                 context.Payments.Add(payment);
-                outcomes.RecordFailure(payment, invoice);
+                await outcomes.RecordFailureAsync(payment, invoice, now, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return payment;
@@ -135,9 +137,7 @@ public sealed class MerchantPayments(
             return InvoiceErrors.PaymentInProgress;
         }
 
-        var method = await context.PaymentMethods.AsNoTracking().SingleOrDefaultAsync(row => row.Id == paymentMethodId, cancellationToken);
-        var connection = method is null ? null : await context.ProviderConnections.AsNoTracking().SingleAsync(row => row.Id == method.ConnectionId, cancellationToken);
-        if (method is null || connection is null || !Usable(method, connection, invoice))
+        if (await chargeable.FindAsync(paymentMethodId, invoice.CustomerId, invoice.Currency, cancellationToken) is not var (method, connection))
         {
             return InvoiceErrors.PaymentMethodUnusable;
         }
@@ -159,20 +159,4 @@ public sealed class MerchantPayments(
         await transaction.CommitAsync(cancellationToken);
         return (payment, method, connection);
     }
-
-    /// <summary>
-    /// INV-10: an active card of the invoice's customer, with consent, whose connection is enabled, fits the mode and
-    /// takes the currency. It need not be the connection routed for the currency: cards stay with the connection that saved them.
-    /// </summary>
-    private bool Usable(PaymentMethod method, ProviderConnection connection, Invoice invoice) => CanCharge(method, connection, invoice.CustomerId, invoice.Currency);
-
-    /// <summary>Whether the card can be charged without the customer for the customer's payments in the currency (INV-10).</summary>
-    public bool CanCharge(PaymentMethod method, ProviderConnection connection, Guid customerId, string currency) =>
-        method.IsChargeable
-        && method.CustomerId == customerId
-        && connection.IsEnabled
-        && ProviderRegistry.AllowsInMode(registry.Mode, connection.Provider, connection.Environment)
-        && registry.Find(connection.Provider) is { } provider
-        && provider.Descriptor.Currencies.Contains(currency)
-        && provider.CapabilitiesFor(connection.Settings).ChargesSavedCards;
 }

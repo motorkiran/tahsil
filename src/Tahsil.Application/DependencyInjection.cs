@@ -76,6 +76,11 @@ public static class DependencyInjection
         services.AddScoped<DeleteProductHandler>();
         services.AddScoped<IPriceUsage, BillingPriceUsage>();
         services.AddScoped<SubscriptionLines>();
+        services.AddScoped<SubscriptionInvoices>();
+        services.AddScoped<SubscriptionCycles>();
+        services.AddScoped<InvoiceVoiding>();
+        services.AddScoped<DraftFinalization>();
+        services.AddScoped<ChargeableCards>();
         services.AddScoped<SubscriptionSettlement>();
         services.AddScoped<SubscriptionMapper>();
         services.AddScoped<CreateSubscriptionHandler>();
@@ -104,6 +109,7 @@ public static class DependencyInjection
         services.AddOptions<BillingOptions>()
             .BindConfiguration(BillingOptions.SectionName)
             .Validate(options => options.HasKnownTimeZone(), $"{BillingOptions.SectionName}:TimeZone must be an IANA time zone such as Europe/Istanbul.")
+            .Validate(options => options.DraftPeriod >= TimeSpan.Zero, $"{BillingOptions.SectionName}:DraftPeriod must not be negative.")
             .ValidateOnStart();
         services.AddOptions<SubscriptionOptions>()
             .BindConfiguration(SubscriptionOptions.SectionName)

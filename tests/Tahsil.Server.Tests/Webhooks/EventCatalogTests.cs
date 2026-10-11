@@ -29,7 +29,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     private static readonly Dictionary<string, string> EmittedLater = new(StringComparer.Ordinal)
     {
         [TahsilEventTypes.PaymentMethodWillExpire] = "M5: card expiry reminders for running subscriptions (CUS-15)",
-        [TahsilEventTypes.InvoiceCreated] = "M4: cycle invoices with a draft period (INV-5)",
+        [TahsilEventTypes.SubscriptionCanceled] = "M4-T8: cancellation through the API (SUB-28 to SUB-31)",
         [TahsilEventTypes.InvoiceActionRequired] = "M5: dunning asks the customer to authenticate (DUN-4)",
         [TahsilEventTypes.InvoiceOverdue] = "M5: overdue invoices (INV-13)",
     };
@@ -62,6 +62,8 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.CheckoutCompleted, ["mode", "clientReferenceId", "subscriptionId", "invoiceId", "paymentMethodId"] },
         { TahsilEventTypes.SubscriptionCreated, ["status", "items", "currentPeriodEnd", "trialEnd"] },
         { TahsilEventTypes.SubscriptionUpdated, ["changed", "status", "previousStatus"] },
+        { TahsilEventTypes.SubscriptionRenewed, ["periodStart", "periodEnd", "invoiceId"] },
+        { TahsilEventTypes.InvoiceCreated, ["billingReason", "subscriptionId", "finalizeAt"] },
     };
 
     [Fact]
@@ -196,6 +198,9 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         // A customer without history, deleted.
         (await SendAsync(client, HttpMethod.Delete, $"/api/v1/customers/{await CustomerAsync(client)}")).Dispose();
 
+        // A month later, the subscription renews.
+        await host.RunWorkersUntilIdleAsync();
+        _time.Advance(TimeSpan.FromDays(32));
         await host.RunWorkersUntilIdleAsync();
         return [.. _receiver.ReceivedBy(url).Where(webhook => webhook.Answer == HttpStatusCode.OK).Select(webhook => JsonSerializer.Deserialize<WebhookEvent>(webhook.Body, ApiClients.Json)!)];
     }

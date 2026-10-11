@@ -175,6 +175,8 @@ public static class DependencyInjection
         AddHostedSingleton<ProviderNotificationCleanup>(services);
         AddHostedSingleton<PaymentMethodExpiryWorker>(services);
         AddHostedSingleton<CheckoutExpiryWorker>(services);
+        AddHostedSingleton<SubscriptionCycleWorker>(services);
+        AddHostedSingleton<InvoiceFinalizationWorker>(services);
         services.AddSingleton<Application.Checkout.ILegalDocumentRenderer, LegalDocuments.FluidLegalDocumentRenderer>();
         services.AddOptions<Email.EmailOptions>().BindConfiguration(Email.EmailOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddSingleton<Application.Notifications.IEmailSender, Email.SmtpEmailSender>();

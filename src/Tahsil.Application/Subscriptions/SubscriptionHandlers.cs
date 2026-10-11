@@ -30,6 +30,7 @@ public sealed class CreateSubscriptionHandler(
     SubscriptionMapper mapper,
     InvoiceFinalizer finalizer,
     MerchantPayments payments,
+    ChargeableCards cards,
     IOptions<BillingOptions> billing,
     IOptions<SubscriptionOptions> options,
     BillingClock clock)
@@ -206,16 +207,9 @@ public sealed class CreateSubscriptionHandler(
             return Result.Success<PaymentMethod?>(null);
         }
 
-        return customer.DefaultPaymentMethodId is { } defaultId && await UsableAsync(defaultId) is { } method
-            ? method
-            : SubscriptionErrors.PaymentMethodRequired;
+        return await UsableAsync(customer.DefaultPaymentMethodId) is { } method ? method : SubscriptionErrors.PaymentMethodRequired;
 
-        async Task<PaymentMethod?> UsableAsync(Guid methodId)
-        {
-            var method = await context.PaymentMethods.AsNoTracking().SingleOrDefaultAsync(row => row.Id == methodId, cancellationToken);
-            var connection = method is null ? null : await context.ProviderConnections.AsNoTracking().SingleAsync(row => row.Id == method.ConnectionId, cancellationToken);
-            return method is not null && connection is not null && payments.CanCharge(method, connection, customer.Id, currency) ? method : null;
-        }
+        async Task<PaymentMethod?> UsableAsync(Guid? methodId) => (await cards.FindAsync(methodId, customer.Id, currency, cancellationToken))?.Method;
     }
 }
 
@@ -321,8 +315,8 @@ public sealed class SubscriptionMapper(ITahsilDbContext context, InvoiceLinks li
         return [.. subscriptions.Select(subscription => ToResponse(subscription, prices, products, invoices))];
     }
 
-    /// <summary>A status as events and the API write it, such as <c>past_due</c>.</summary>
-    internal static string Wire(Model.SubscriptionStatus status) => JsonNamingPolicy.SnakeCaseLower.ConvertName(status.ToString());
+    /// <summary>A value as events and the API write it, such as <c>past_due</c>.</summary>
+    internal static string Wire(Enum value) => JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString());
 
     private SubscriptionResponse ToResponse(
         Subscription subscription,

@@ -7372,6 +7372,14 @@
             "type": "string",
             "format": "uuid"
           },
+          "subscription": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A subscription of the customer whose next invoice takes the item; while its cycle invoice is still a draft, the\nitem joins that draft. The currency must be the subscription's.",
+            "format": "uuid"
+          },
           "currency": {
             "type": "string"
           },

@@ -147,7 +147,8 @@ public sealed class Invoice : AggregateRoot
         IReadOnlyDictionary<string, string> metadata,
         DateTimeOffset now,
         Guid? subscriptionId = null,
-        BillingPeriod? period = null)
+        BillingPeriod? period = null,
+        DateTimeOffset? finalizeAt = null)
     {
         if (ValidateTerms(memo, daysUntilDue) is { } invalid)
         {
@@ -168,6 +169,7 @@ public sealed class Invoice : AggregateRoot
             DaysUntilDue = collectionMethod == CollectionMethod.SendInvoice ? daysUntilDue : null,
             Memo = Text.Normalize(memo),
             AutoAdvance = autoAdvance,
+            FinalizeAt = autoAdvance ? finalizeAt : null,
             Metadata = metadata,
             CreatedAt = now,
             UpdatedAt = now,
