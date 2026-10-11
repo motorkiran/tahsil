@@ -21,7 +21,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     [
         TahsilPermissions.CustomersWrite, TahsilPermissions.CustomersRead, TahsilPermissions.InvoicesRead, TahsilPermissions.InvoicesWrite,
         TahsilPermissions.PaymentsRead, TahsilPermissions.RefundsWrite, TahsilPermissions.ConnectionsWrite, TahsilPermissions.WebhooksWrite,
-        TahsilPermissions.TestWrite,
+        TahsilPermissions.TestWrite, TahsilPermissions.CheckoutWrite,
     ];
 
     /// <summary>Catalog types that no M2 scenario emits, and the milestone that emits them.</summary>
@@ -57,6 +57,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         { TahsilEventTypes.PaymentFailed, ["invoiceId", "amount", "currency", "failureCode", "failureCategory"] },
         { TahsilEventTypes.RefundSucceeded, ["paymentId", "invoiceId", "amount", "currency", "reason"] },
         { TahsilEventTypes.RefundFailed, ["paymentId", "amount", "currency", "failureCode"] },
+        { TahsilEventTypes.CheckoutExpired, ["mode", "clientReferenceId"] },
     };
 
     [Fact]
@@ -124,6 +125,19 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
         // A payment whose refund the provider declines.
         var unrefundable = await PayOnPageAsync(host, await FinalizedInvoiceAsync(client, customer, collection: CollectionMethod.SendInvoice), "4000000000005126");
         (await SendAsync(client, HttpMethod.Post, "/api/v1/refunds", new CreateRefundRequest { Payment = unrefundable.Id })).Dispose();
+
+        // A checkout the customer never finished.
+        using (var checkout = await SendAsync(client, HttpMethod.Post, "/api/v1/checkout-sessions", new CreateCheckoutSessionRequest
+        {
+            Mode = CheckoutMode.Setup,
+            Currency = "TRY",
+            SuccessUrl = "https://app.example.com/billing",
+            ClientReferenceId = "order-1",
+        }))
+        {
+            var session = await checkout.ReadAsync<CheckoutSessionResponse>();
+            (await SendAsync(client, HttpMethod.Post, $"/api/v1/checkout-sessions/{session.Id}/expire")).Dispose();
+        }
 
         // A customer without history, deleted.
         (await SendAsync(client, HttpMethod.Delete, $"/api/v1/customers/{await CustomerAsync(client)}")).Dispose();

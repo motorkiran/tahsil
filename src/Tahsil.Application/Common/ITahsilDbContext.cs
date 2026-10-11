@@ -28,6 +28,8 @@ public interface ITahsilDbContext
 
     DbSet<ProviderConnection> ProviderConnections { get; }
 
+    DbSet<Domain.Checkout.CheckoutSession> CheckoutSessions { get; }
+
     DbSet<ConnectionCurrency> ConnectionCurrencies { get; }
 
     DbSet<ProviderCustomer> ProviderCustomers { get; }

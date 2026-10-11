@@ -37,6 +37,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<ProviderConnection> ProviderConnections => Set<ProviderConnection>();
 
+    public DbSet<Domain.Checkout.CheckoutSession> CheckoutSessions => Set<Domain.Checkout.CheckoutSession>();
+
     public DbSet<ConnectionCurrency> ConnectionCurrencies => Set<ConnectionCurrency>();
 
     public DbSet<ProviderCustomer> ProviderCustomers => Set<ProviderCustomer>();

@@ -47,6 +47,8 @@ public static class AuditActions
     public const string PaymentSucceeded = "payment.succeeded";
     public const string PaymentFailed = "payment.failed";
     public const string PaymentCanceled = "payment.canceled";
+    public const string CheckoutSessionCreated = "checkout_session.created";
+    public const string CheckoutExpired = "checkout.expired";
     public const string RefundCreated = "refund.created";
     public const string RefundSucceeded = "refund.succeeded";
     public const string RefundFailed = "refund.failed";

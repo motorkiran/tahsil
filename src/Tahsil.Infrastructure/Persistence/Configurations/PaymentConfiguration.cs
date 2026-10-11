@@ -43,6 +43,7 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasOne<ProviderConnection>().WithMany().HasForeignKey(payment => payment.ConnectionId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<PaymentMethod>().WithMany().HasForeignKey(payment => payment.PaymentMethodId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<ConsentRecord>().WithMany().HasForeignKey(payment => payment.ConsentRecordId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Domain.Checkout.CheckoutSession>().WithMany().HasForeignKey(payment => payment.CheckoutSessionId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(payment => payment.Reference).IsUnique();
         builder.HasIndex(payment => new { payment.ConnectionId, payment.ProviderPaymentId }).IsUnique().HasFilter("provider_payment_id IS NOT NULL");
@@ -96,6 +97,7 @@ internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<Cons
 
         // Legal evidence outlives the customer's anonymization (DOM-20), so the customer cannot be deleted under it.
         builder.HasOne<Customer>().WithMany().HasForeignKey(record => record.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Domain.Checkout.CheckoutSession>().WithMany().HasForeignKey(record => record.CheckoutSessionId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(record => new { record.CustomerId, record.Id });
     }
 }

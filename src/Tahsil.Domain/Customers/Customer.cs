@@ -189,7 +189,8 @@ public sealed partial class Customer : AggregateRoot
         UpdatedAt = now;
     }
 
-    private static Error? Validate(CustomerDetails details)
+    /// <summary>Checks billing details as <see cref="Create"/> and <see cref="Update"/> do, such as details to use later.</summary>
+    public static Error? Validate(CustomerDetails details)
     {
         if (Text.Normalize(details.Email) is { } email && (email.Length > EmailMaxLength || !IsEmail(email)))
         {

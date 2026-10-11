@@ -81,7 +81,7 @@ public sealed class DataProtectionTests(TahsilServerFixture server)
     public void EverySecretColumn_IsRegisteredForReencryption()
     {
         server.Services.GetServices<IEncryptedStore>().Select(store => store.Name)
-            .ShouldBe(["data_protection_keys.xml", "customers.tax_id", "provider_connections.credentials", "invoices.customer_tax_id", "payment_methods.token", "provider_notifications.raw_body", "webhook_endpoints.secret", "webhook_endpoints.previous_secret"], ignoreOrder: true);
+            .ShouldBe(["data_protection_keys.xml", "customers.tax_id", "provider_connections.credentials", "invoices.customer_tax_id", "payment_methods.token", "provider_notifications.raw_body", "webhook_endpoints.secret", "webhook_endpoints.previous_secret", "checkout_sessions.token"], ignoreOrder: true);
     }
 
     private WebApplicationFactory<Program> Host(string database, string masterKey, int keyId = 1, string? previousKey1 = null)

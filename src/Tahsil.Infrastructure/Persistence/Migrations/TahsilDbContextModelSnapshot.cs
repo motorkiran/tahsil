@@ -512,6 +512,159 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Checkout.CheckoutSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowPromotionCodes")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_promotion_codes");
+
+                    b.Property<string>("BillingDetailsCollection")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("billing_details_collection");
+
+                    b.Property<string>("CancelUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("cancel_url");
+
+                    b.Property<string>("ClientReferenceId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("client_reference_id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("CustomerDetails")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("customer_details");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<DateTimeOffset?>("ExpiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expired_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<string>("Items")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("items");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("locale");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("mode");
+
+                    b.Property<short>("PaymentAttempts")
+                        .HasColumnType("smallint")
+                        .HasColumnName("payment_attempts");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_id");
+
+                    b.Property<Guid?>("PaymentMethodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_method_id");
+
+                    b.Property<string>("Quote")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("quote");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("SuccessUrl")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("success_url");
+
+                    b.Property<byte[]>("Token")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_checkout_sessions");
+
+                    b.HasIndex("ClientReferenceId")
+                        .HasDatabaseName("ix_checkout_sessions_client_reference_id")
+                        .HasFilter("client_reference_id IS NOT NULL");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_checkout_sessions_expires_at")
+                        .HasFilter("status = 'open'");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_checkout_sessions_token_hash");
+
+                    b.HasIndex("CustomerId", "Id")
+                        .HasDatabaseName("ix_checkout_sessions_customer_id_id");
+
+                    b.ToTable("checkout_sessions", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Clock.TestClock", b =>
                 {
                     b.Property<short>("Id")
@@ -739,6 +892,9 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_consent_records");
+
+                    b.HasIndex("CheckoutSessionId")
+                        .HasDatabaseName("ix_consent_records_checkout_session_id");
 
                     b.HasIndex("CustomerId", "Id")
                         .HasDatabaseName("ix_consent_records_customer_id_id");
@@ -1605,6 +1761,9 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_payments");
 
+                    b.HasIndex("CheckoutSessionId")
+                        .HasDatabaseName("ix_payments_checkout_session_id");
+
                     b.HasIndex("ConsentRecordId")
                         .HasDatabaseName("ix_payments_consent_record_id");
 
@@ -2388,6 +2547,15 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_prices_tax_rates_tax_rate_id");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Checkout.CheckoutSession", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_checkout_sessions_customers_customer_id");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Customers.BalanceTransaction", b =>
                 {
                     b.HasOne("Tahsil.Domain.Customers.Customer", null)
@@ -2406,6 +2574,12 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Tahsil.Domain.Customers.ConsentRecord", b =>
                 {
+                    b.HasOne("Tahsil.Domain.Checkout.CheckoutSession", null)
+                        .WithMany()
+                        .HasForeignKey("CheckoutSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_consent_records_checkout_sessions_checkout_session_id");
+
                     b.HasOne("Tahsil.Domain.Customers.Customer", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -2535,6 +2709,12 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Tahsil.Domain.Payments.Payment", b =>
                 {
+                    b.HasOne("Tahsil.Domain.Checkout.CheckoutSession", null)
+                        .WithMany()
+                        .HasForeignKey("CheckoutSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payments_checkout_sessions_checkout_session_id");
+
                     b.HasOne("Tahsil.Domain.Payments.ProviderConnection", null)
                         .WithMany()
                         .HasForeignKey("ConnectionId")

@@ -174,6 +174,12 @@ public static class DependencyInjection
         services.AddScoped<PaymentMethodExpiry>();
         services.AddScoped<IOutboxMessageHandler<DeleteProviderToken>, ProviderTokenDeleter>();
         services.AddScoped<CreateTestPaymentMethodHandler>();
+        services.AddScoped<Checkout.CheckoutMapper>();
+        services.AddScoped<Checkout.CheckoutExpiry>();
+        services.AddScoped<Checkout.CreateCheckoutSessionHandler>();
+        services.AddScoped<Checkout.GetCheckoutSessionHandler>();
+        services.AddScoped<Checkout.ListCheckoutSessionsHandler>();
+        services.AddScoped<Checkout.ExpireCheckoutSessionHandler>();
         services.AddScoped<AttentionItems.ListAttentionItemsHandler>();
         services.AddScoped<AttentionItems.ListWorkerAttentionHandler>();
         services.AddScoped<AttentionItems.ResolveAttentionItemHandler>();

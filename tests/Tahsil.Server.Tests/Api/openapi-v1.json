@@ -5314,6 +5314,309 @@
         ]
       }
     },
+    "/api/v1/checkout-sessions": {
+      "post": {
+        "tags": [
+          "Checkout"
+        ],
+        "summary": "Create a checkout session",
+        "description": "Prices and the amount due are computed now and shown on the page as the `quote`; send the customer to `url`. The session expires unpaid after `expiresIn` (24 hours by default).\n\nRequires the `tahsil.checkout:write` permission.",
+        "operationId": "CreateCheckoutSession",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckoutSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Checkout"
+        ],
+        "summary": "List checkout sessions",
+        "description": "Newest first.\n\nRequires the `tahsil.subscriptions:read` permission.",
+        "operationId": "ListCheckoutSessions",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`open`, `complete` or `expired`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Only sessions of this customer.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clientReferenceId",
+            "in": "query",
+            "description": "Only sessions with this client reference ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `nextCursor` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 50 by default and at most 200.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfCheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/checkout-sessions/{id}": {
+      "get": {
+        "tags": [
+          "Checkout"
+        ],
+        "summary": "Get a checkout session",
+        "description": "`url` is given while the session is open.\n\nRequires the `tahsil.subscriptions:read` permission.",
+        "operationId": "GetCheckoutSession",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.subscriptions:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/checkout-sessions/{id}/expire": {
+      "post": {
+        "tags": [
+          "Checkout"
+        ],
+        "summary": "Expire a checkout session",
+        "description": "Ends an open session so it can no longer be paid; `checkout.expired` is sent.\n\nRequires the `tahsil.checkout:write` permission.",
+        "operationId": "ExpireCheckoutSession",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.checkout:write`."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/provisioning": {
       "get": {
         "tags": [
@@ -5958,6 +6261,12 @@
           "invoice_voided"
         ]
       },
+      "BillingDetailsCollectionMode": {
+        "enum": [
+          "auto",
+          "required"
+        ]
+      },
       "BillingReason": {
         "enum": [
           "subscription_create",
@@ -5973,6 +6282,401 @@
           "per_unit",
           "tiered",
           "package"
+        ]
+      },
+      "CheckoutCustomerDetails": {
+        "type": "object",
+        "properties": {
+          "externalId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/CustomerType"
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CustomerAddress"
+              }
+            ]
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "kimlikSubscriber": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/KimlikSubscriber"
+              }
+            ]
+          }
+        },
+        "description": "A customer to create when they submit the checkout form; one with the same external ID is reused."
+      },
+      "CheckoutItemRequest": {
+        "required": [
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "string",
+            "description": "A price ID or lookup key."
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CheckoutMode": {
+        "enum": [
+          "payment",
+          "setup"
+        ]
+      },
+      "CheckoutQuoteLineResponse": {
+        "required": [
+          "priceId",
+          "description",
+          "quantity",
+          "unitAmountDecimal",
+          "amount",
+          "discountAmount",
+          "taxPercentage",
+          "taxInclusive",
+          "taxAmount",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "priceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unitAmountDecimal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "discountAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxPercentage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "taxInclusive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "taxAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "CheckoutQuoteResponse": {
+        "required": [
+          "lines",
+          "subtotal",
+          "discountTotal",
+          "taxTotal",
+          "totalExcludingTax",
+          "total",
+          "amountDue"
+        ],
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckoutQuoteLineResponse"
+            }
+          },
+          "subtotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "discountTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalExcludingTax": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "amountDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "The first invoice as computed for the customer, which is what they pay; never taken from the browser."
+      },
+      "CheckoutSessionResponse": {
+        "required": [
+          "id",
+          "url",
+          "mode",
+          "status",
+          "customerId",
+          "customerDetails",
+          "currency",
+          "quote",
+          "allowPromotionCodes",
+          "billingDetailsCollection",
+          "locale",
+          "successUrl",
+          "cancelUrl",
+          "clientReferenceId",
+          "metadata",
+          "expiresAt",
+          "completedAt",
+          "expiredAt",
+          "invoiceId",
+          "paymentId",
+          "paymentMethodId",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The page to send the customer to; returned when the session is created only, since Tahsil keeps just its hash.",
+            "format": "uri"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/CheckoutMode"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckoutStatus"
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerDetails": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CheckoutCustomerDetails"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/CheckoutQuoteResponse"
+          },
+          "allowPromotionCodes": {
+            "type": "boolean"
+          },
+          "billingDetailsCollection": {
+            "$ref": "#/components/schemas/BillingDetailsCollectionMode"
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "successUrl": {
+            "type": "string"
+          },
+          "cancelUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientReferenceId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "expiredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "invoiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "paymentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "paymentMethodId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CheckoutStatus": {
+        "enum": [
+          "open",
+          "complete",
+          "expired"
         ]
       },
       "CollectionMethod": {
@@ -6144,6 +6848,99 @@
           "description": {
             "type": "string",
             "description": "Why the balance changes, such as `Goodwill credit`."
+          }
+        }
+      },
+      "CreateCheckoutSessionRequest": {
+        "required": [
+          "mode",
+          "successUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/CheckoutMode"
+          },
+          "customer": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An existing customer's ID; otherwise `customerDetails` describe one to create.",
+            "format": "uuid"
+          },
+          "customerDetails": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CheckoutCustomerDetails"
+              }
+            ]
+          },
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CheckoutItemRequest"
+            },
+            "description": "What is sold, in one currency; none in setup mode."
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required in setup mode; otherwise the items' currency."
+          },
+          "allowPromotionCodes": {
+            "type": "boolean"
+          },
+          "billingDetailsCollection": {
+            "$ref": "#/components/schemas/BillingDetailsCollectionMode"
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`tr` or `en`; the customer's language when omitted."
+          },
+          "successUrl": {
+            "type": "string",
+            "description": "Where the customer goes after paying; `{CHECKOUT_SESSION_ID}` is replaced with the session's ID."
+          },
+          "cancelUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientReferenceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The application's own reference, such as an order number."
+          },
+          "expiresIn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An ISO 8601 duration from `PT30M` to `PT24H` (the default)."
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         }
       },
@@ -7938,6 +8735,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BalanceTransactionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfCheckoutSessionResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckoutSessionResponse"
             }
           },
           "nextCursor": {
@@ -10580,6 +11399,9 @@
     },
     {
       "name": "Webhooks"
+    },
+    {
+      "name": "Checkout"
     },
     {
       "name": "Provisioning"

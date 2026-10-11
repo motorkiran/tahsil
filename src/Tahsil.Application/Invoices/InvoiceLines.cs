@@ -61,6 +61,21 @@ public sealed class InvoiceLines(ITahsilDbContext context)
         return lines;
     }
 
+    /// <summary>The line of a one-time price, with its tax rate, described in the customer's language unless a description is given.</summary>
+    public async Task<InvoiceLineDraft> FromPriceAsync(Price price, decimal quantity, string? description, string locale, CancellationToken cancellationToken)
+    {
+        var taxRate = price.TaxRateId is { } rateId ? await context.TaxRates.AsNoTracking().SingleAsync(rate => rate.Id == rateId, cancellationToken) : null;
+        return new InvoiceLineDraft(
+            InvoiceLineType.OneTime,
+            description ?? await DescribeAsync(price, quantity, locale, cancellationToken),
+            quantity,
+            PriceAmounts.For(price, quantity),
+            UnitAmountDecimal: UnitAmountOf(price),
+            PriceId: price.Id,
+            TaxRateId: taxRate?.Id,
+            Tax: taxRate is null ? null : new TaxRateSnapshot(taxRate.Percentage, taxRate.IsInclusive));
+    }
+
     /// <summary>A one-time price that can be sold in the currency, by ID or lookup key.</summary>
     public async Task<Result<Price>> SellablePriceAsync(string idOrKey, string currency, string field, CancellationToken cancellationToken)
     {
@@ -126,16 +141,7 @@ public sealed class InvoiceLines(ITahsilDbContext context)
                 return InvoiceErrors.InvalidLine($"{path}.description", "The description is at most 500 characters.");
             }
 
-            var taxRate = price.Value.TaxRateId is { } rateId ? await context.TaxRates.AsNoTracking().SingleAsync(rate => rate.Id == rateId, cancellationToken) : null;
-            return new InvoiceLineDraft(
-                InvoiceLineType.OneTime,
-                Text.Normalize(request.Description) ?? await DescribeAsync(price.Value, quantity.Value, locale, cancellationToken),
-                quantity.Value,
-                PriceAmounts.For(price.Value, quantity.Value),
-                UnitAmountDecimal: UnitAmountOf(price.Value),
-                PriceId: price.Value.Id,
-                TaxRateId: taxRate?.Id,
-                Tax: taxRate is null ? null : new TaxRateSnapshot(taxRate.Percentage, taxRate.IsInclusive));
+            return await FromPriceAsync(price.Value, quantity.Value, Text.Normalize(request.Description), locale, cancellationToken);
         }
 
         if (!Text.FitsRequired(request.Description, InvoiceLine.DescriptionMaxLength) || request.UnitAmount is null)

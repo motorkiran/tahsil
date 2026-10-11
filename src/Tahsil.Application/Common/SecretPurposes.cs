@@ -21,6 +21,9 @@ public static class SecretPurposes
     /// <summary>Tax IDs such as TCKN; owner: the customer, or the invoice inside its snapshot.</summary>
     public const string CustomerTaxId = "customers.tax_id";
 
+    /// <summary>Checkout page tokens, kept to give a session's URL again; owner: the session.</summary>
+    public const string CheckoutToken = "checkout_sessions.token";
+
     /// <summary>The HMAC key of hosted invoice links; no owner.</summary>
     public const string InvoiceLinkKey = "invoices.link_key";
 

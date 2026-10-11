@@ -140,6 +140,7 @@ internal sealed class TimeTravel(IServiceScopeFactory scopes, IServiceProvider s
                 UNION ALL SELECT min(next_attempt_at) FROM tahsil.webhook_deliveries WHERE status = 'pending'
                 UNION ALL SELECT min(next_attempt_at) FROM tahsil.outbox_messages WHERE status = 'pending'
                 UNION ALL SELECT min(expires_at) FROM tahsil.payment_methods WHERE status = 'active'
+                UNION ALL SELECT min(expires_at) FROM tahsil.checkout_sessions WHERE status = 'open'
             ) AS instants
             """).ToListAsync(cancellationToken);
         return due.SingleOrDefault();
