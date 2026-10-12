@@ -24,6 +24,10 @@
                 {
                     <tr><td>@L["Credit for the unused time"]</td><td class="amount" id="credit">@Model.Money(quote.Credit, quote.Currency)</td></tr>
                 }
+                @if (quote.PromotionCode is { } code)
+                {
+                    <tr><td>@L["Promotion code"]</td><td class="amount" id="promotion-code-applied">@code</td></tr>
+                }
                 @if (quote.NextRenewal is { } renewal)
                 {
                     <tr><td>@L["Next renewal on {0}", Model.Date(renewal.At)]</td><td class="amount" id="next-renewal">@Model.Money(renewal.Amount, quote.Currency)</td></tr>
@@ -34,6 +38,10 @@
         <form method="post" asp-page-handler="Confirm" id="confirm-form">
             <input type="hidden" name="Price" value="@quote.Offer.PriceId" />
             <input type="hidden" name="Quantity" value="@quote.Quantity" />
+            @if (quote.PromotionCode is { } entered)
+            {
+                <input type="hidden" name="PromotionCode" value="@entered" />
+            }
             <button class="button" type="submit" id="confirm">@quote.ButtonText</button>
             <a class="button button-secondary" href="/portal/@Model.Token/subscriptions/@Model.Choices.Subscription.Id/change" id="back">@L["Choose another plan"]</a>
         </form>
@@ -62,6 +70,13 @@ else
         else
         {
             <input type="hidden" name="Quantity" value="@Model.Quantity" />
+        }
+        @if (Model.Choices.TakesCodes)
+        {
+            <div class="field">
+                <label for="promotion-code">@L["Promotion code"]</label>
+                <input type="text" id="promotion-code" name="PromotionCode" value="@Model.PromotionCode" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+            </div>
         }
         <p class="hint">@L["Prices include taxes. You see what changes before you confirm."]</p>
         <button class="button" type="submit" id="preview-change">@L["Continue"]</button>

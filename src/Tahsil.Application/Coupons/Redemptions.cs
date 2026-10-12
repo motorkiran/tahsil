@@ -148,11 +148,7 @@ public sealed class Redemptions(ITahsilDbContext context, IBillingLocks locks, I
     public async Task<Result> ApplyToSubscriptionAsync(
         Subscription subscription, (Guid CouponId, Guid? CodeId) found, IReadOnlyList<SubscriptionItemSpec> items, CancellationToken cancellationToken)
     {
-        var target = new RedemptionTarget(
-            subscription.Currency,
-            [.. items.Select(item => item.Product.Id).Distinct()],
-            items.Where(item => item.Quantity is not null).Sum(item => PriceAmounts.For(item.Price, item.Quantity!.Value)));
-        var redeemed = await RedeemAsync(found.CouponId, found.CodeId, subscription.CustomerId, target, cancellationToken);
+        var redeemed = await RedeemAsync(found.CouponId, found.CodeId, subscription.CustomerId, TargetOf(subscription.Currency, items), cancellationToken);
         if (redeemed.IsFailure)
         {
             return redeemed.Error;
@@ -165,6 +161,12 @@ public sealed class Redemptions(ITahsilDbContext context, IBillingLocks locks, I
         subscription.SetDiscount(discount.Id, now);
         return Result.Success();
     }
+
+    /// <summary>What a subscription of <paramref name="items"/> redeems for: the subtotal a code's minimum is compared with is a period of the licensed items.</summary>
+    public static RedemptionTarget TargetOf(string currency, IReadOnlyList<SubscriptionItemSpec> items) => new(
+        currency,
+        [.. items.Select(item => item.Product.Id).Distinct()],
+        items.Where(item => item.Quantity is not null).Sum(item => PriceAmounts.For(item.Price, item.Quantity!.Value)));
 
     /// <summary>Ends a subscription's discount; invoices created afterwards are not discounted, and drafts drop it when finalized (CPN-14).</summary>
     public async Task RemoveFromSubscriptionAsync(Subscription subscription, CancellationToken cancellationToken)

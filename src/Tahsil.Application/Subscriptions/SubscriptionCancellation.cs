@@ -136,11 +136,18 @@ public sealed class CancelSubscriptionHandler(
                     return failed.Error;
                 }
 
-                audit.Record(AuditActions.SubscriptionCanceled, AuditSubject.Of(AuditSubjects.Subscription, subscription.Id), new Dictionary<string, object?>
+                var canceled = new Dictionary<string, object?>
                 {
                     ["reason"] = SubscriptionMapper.Wire(subscription.CancellationReason!.Value),
                     ["endedAt"] = subscription.EndedAt,
-                }, customerId: subscription.CustomerId);
+                };
+                if (toRefund.Count > 0)
+                {
+                    // Known now, before the refunds are made one by one after the commit, so the email states all of it.
+                    canceled["refund"] = toRefund.Sum(part => part.Amount);
+                }
+
+                audit.Record(AuditActions.SubscriptionCanceled, AuditSubject.Of(AuditSubjects.Subscription, subscription.Id), canceled, customerId: subscription.CustomerId);
             }
 
             await context.SaveChangesAsync(cancellationToken);

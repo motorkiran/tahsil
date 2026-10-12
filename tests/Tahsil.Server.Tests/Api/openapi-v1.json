@@ -7006,7 +7006,7 @@
           "Subscriptions"
         ],
         "summary": "Preview a change of a subscription",
-        "description": "Takes the body of a change of `items` and returns the invoice it would create now (lines, totals, tax and the balance it would apply), the lines it would leave for the next renewal, and the next renewal, without changing anything.\n\nRequires the `tahsil.subscriptions:read` permission.",
+        "description": "Takes the body of a change of `items`, with a `coupon` or `promotionCode` to discount it by, and returns the invoice it would create now (lines, totals, tax and the balance it would apply), the lines it would leave for the next renewal, and the next renewal, without changing or redeeming anything.\n\nRequires the `tahsil.subscriptions:read` permission.",
         "operationId": "PreviewSubscriptionChange",
         "parameters": [
           {

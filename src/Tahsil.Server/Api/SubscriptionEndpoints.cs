@@ -83,7 +83,7 @@ internal static class SubscriptionEndpoints
         subscriptions.MapPost("{id:guid}/preview", async (Guid id, UpdateSubscriptionRequest request, PreviewSubscriptionChangeHandler handler, CancellationToken cancellationToken) =>
             (await handler.HandleAsync(id, request, cancellationToken)).ToOk())
             .WithName("PreviewSubscriptionChange").WithSummary("Preview a change of a subscription")
-            .WithDescription("Takes the body of a change of `items` and returns the invoice it would create now (lines, totals, tax and the balance it would apply), the lines it would leave for the next renewal, and the next renewal, without changing anything.")
+            .WithDescription("Takes the body of a change of `items`, with a `coupon` or `promotionCode` to discount it by, and returns the invoice it would create now (lines, totals, tax and the balance it would apply), the lines it would leave for the next renewal, and the next renewal, without changing or redeeming anything.")
             .ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict)
             .RequirePermission(TahsilPermissions.SubscriptionsRead);
         return api;

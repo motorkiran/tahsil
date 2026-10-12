@@ -243,6 +243,8 @@ public sealed class CheckoutCompletion(
             return;
         }
 
-        audit.Record(AuditActions.InvoicePaid, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: invoice.CustomerId);
+        var paid = InvoiceFinalizer.Details(invoice);
+        paid["checkoutSessionId"] = session.Id;
+        audit.Record(AuditActions.InvoicePaid, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), paid, customerId: invoice.CustomerId);
     }
 }

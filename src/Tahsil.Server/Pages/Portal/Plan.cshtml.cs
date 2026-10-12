@@ -31,6 +31,9 @@ public sealed class PlanModel(
     [BindProperty]
     public int Quantity { get; set; }
 
+    [BindProperty]
+    public string? PromotionCode { get; set; }
+
     public async Task<IActionResult> OnGetAsync(string token, Guid id, CancellationToken cancellationToken)
     {
         if (await LoadAsync(token, id, cancellationToken) is { } answered)
@@ -50,7 +53,7 @@ public sealed class PlanModel(
             return answered;
         }
 
-        var quote = await plans.PreviewAsync(View.Session, id, Price, Quantity, View.Locale, cancellationToken);
+        var quote = await plans.PreviewAsync(View.Session, id, Price, Quantity, PromotionCode, View.Locale, HttpContext.Connection.RemoteIpAddress, cancellationToken);
         if (quote.IsFailure)
         {
             return Refused(quote.Error);
@@ -68,7 +71,7 @@ public sealed class PlanModel(
         }
 
         var changed = await plans.ConfirmAsync(
-            View.Session, id, Price, Quantity, View.Locale, HttpContext.Connection.RemoteIpAddress, Request.Headers.UserAgent.ToString(), cancellationToken);
+            View.Session, id, Price, Quantity, PromotionCode, View.Locale, HttpContext.Connection.RemoteIpAddress, Request.Headers.UserAgent.ToString(), cancellationToken);
         if (changed.IsFailure)
         {
             return Refused(changed.Error);
@@ -96,13 +99,17 @@ public sealed class PlanModel(
 
     private PageResult Refused(Domain.Common.Error error)
     {
+        // Whether a code exists is not told (CPN §7).
+        var limited = error.Code == CheckoutPageErrors.PromotionCodeRateLimited.Code;
         ErrorMessage = error.Code switch
         {
             "portal.nothing_changes" => localizer["This is your current plan."],
             "portal.plan_not_offered" => localizer["This plan or quantity is not offered."],
+            _ when limited => localizer["Too many codes were tried. Please try again later."],
+            _ when error.Code.StartsWith("promotion_code.", StringComparison.Ordinal) || error.Code.StartsWith("coupon.", StringComparison.Ordinal) => localizer["This code cannot be used."],
             _ => localizer["The plan could not be changed. Please try again."],
         };
-        Response.StatusCode = StatusCodes.Status400BadRequest;
+        Response.StatusCode = limited ? StatusCodes.Status429TooManyRequests : StatusCodes.Status400BadRequest;
         return Page();
     }
 }

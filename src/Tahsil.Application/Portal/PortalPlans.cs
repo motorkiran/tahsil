@@ -22,19 +22,20 @@ namespace Tahsil.Application.Portal;
 /// <summary>A price a customer may switch to (PRT-5): its name, how often it bills, and one unit's amount per period with tax.</summary>
 public sealed record PlanOffer(Guid PriceId, string Name, string Recurrence, long Amount, bool IsCurrent);
 
-/// <summary>What a customer may change a subscription to: the prices on offer and the quantities allowed.</summary>
-public sealed record PlanChoices(Subscription Subscription, int Quantity, IReadOnlyList<PlanOffer> Offers, int MinimumQuantity, int MaximumQuantity)
+/// <summary>What a customer may change a subscription to: the prices on offer, the quantities allowed, and whether a code may be entered.</summary>
+public sealed record PlanChoices(Subscription Subscription, int Quantity, IReadOnlyList<PlanOffer> Offers, int MinimumQuantity, int MaximumQuantity, bool TakesCodes)
 {
     public bool OffersQuantity => MaximumQuantity > MinimumQuantity;
 }
 
 /// <summary>
 /// A plan change before it is confirmed (PRT-5 to PRT-7): when it takes effect, what is charged or credited now, the
-/// next renewal, and the button that names the obligation.
+/// next renewal, and the button that names the obligation; with the promotion code entered, the amounts are discounted.
 /// </summary>
 public sealed record PlanChangeQuote(
     PlanOffer Offer,
     int Quantity,
+    string? PromotionCode,
     bool Upgrade,
     bool Now,
     DateTimeOffset EffectiveAt,
@@ -68,6 +69,7 @@ public sealed class PortalPlans(
     SubscriptionChanges changes,
     PreviewSubscriptionChangeHandler previews,
     UpdateSubscriptionHandler updates,
+    PromotionCodeLimiter codeLimiter,
     IOutbox outbox,
     IOptions<PortalOptions> portal,
     IOptions<BillingOptions> billing,
@@ -123,13 +125,28 @@ public sealed class PortalPlans(
 
         // The quantity they have stays possible, whatever the limits say now.
         return new PlanChoices(
-            subscription, quantity, offers, Math.Min(options.QuantityLimits.Minimum, quantity), Math.Max(options.QuantityLimits.Maximum, quantity));
+            subscription,
+            quantity,
+            offers,
+            Math.Min(options.QuantityLimits.Minimum, quantity),
+            Math.Max(options.QuantityLimits.Maximum, quantity),
+            options.IsEnabled(PortalFeatures.PromotionCodes));
     }
 
-    /// <summary>What switching to <paramref name="priceId"/> with <paramref name="quantity"/> would do (PRT-5, PRT-6).</summary>
-    public async Task<Result<PlanChangeQuote>> PreviewAsync(PortalSession session, Guid subscriptionId, Guid priceId, int quantity, string locale, CancellationToken cancellationToken)
+    /// <summary>
+    /// What switching to <paramref name="priceId"/> with <paramref name="quantity"/>, and <paramref name="promotionCode"/>
+    /// when the portal takes codes, would do (PRT-5, PRT-6). Codes are limited per network like the checkout's (CPN §7).
+    /// </summary>
+    public async Task<Result<PlanChangeQuote>> PreviewAsync(
+        PortalSession session, Guid subscriptionId, Guid priceId, int quantity, string? promotionCode, string locale, IPAddress? address, CancellationToken cancellationToken)
     {
-        var planned = await PlanAsync(session, subscriptionId, priceId, quantity, locale, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(promotionCode) && portal.Value.IsEnabled(PortalFeatures.PromotionCodes)
+            && !codeLimiter.TryAttempt(CheckoutProtection.NetworkOf(address), clock.GetUtcNow()))
+        {
+            return CheckoutPageErrors.PromotionCodeRateLimited;
+        }
+
+        var planned = await PlanAsync(session, subscriptionId, priceId, quantity, promotionCode, locale, cancellationToken);
         return planned.IsFailure ? planned.Error : planned.Value.Quote;
     }
 
@@ -138,9 +155,17 @@ public sealed class PortalPlans(
     /// the card could not pay is paid on its own page.
     /// </summary>
     public async Task<Result<PlanChanged>> ConfirmAsync(
-        PortalSession session, Guid subscriptionId, Guid priceId, int quantity, string locale, IPAddress? address, string? userAgent, CancellationToken cancellationToken)
+        PortalSession session,
+        Guid subscriptionId,
+        Guid priceId,
+        int quantity,
+        string? promotionCode,
+        string locale,
+        IPAddress? address,
+        string? userAgent,
+        CancellationToken cancellationToken)
     {
-        var planned = await PlanAsync(session, subscriptionId, priceId, quantity, locale, cancellationToken);
+        var planned = await PlanAsync(session, subscriptionId, priceId, quantity, promotionCode, locale, cancellationToken);
         if (planned.IsFailure)
         {
             return planned.Error;
@@ -164,6 +189,7 @@ public sealed class PortalPlans(
                 ["nextRenewal"] = quote.NextRenewal?.Amount.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 ["nextRenewalAt"] = quote.NextRenewal?.At.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty,
                 ["previousPlan"] = quote.PreviousPlan,
+                ["promotionCode"] = quote.PromotionCode ?? string.Empty,
                 ["currency"] = quote.Currency,
             },
             session.Id,
@@ -184,7 +210,7 @@ public sealed class PortalPlans(
     }
 
     private async Task<Result<(PlanChangeQuote Quote, UpdateSubscriptionRequest Request)>> PlanAsync(
-        PortalSession session, Guid subscriptionId, Guid priceId, int quantity, string locale, CancellationToken cancellationToken)
+        PortalSession session, Guid subscriptionId, Guid priceId, int quantity, string? promotionCode, string locale, CancellationToken cancellationToken)
     {
         if (await ChoicesAsync(session, subscriptionId, locale, cancellationToken) is not { } choices
             || choices.Offers.FirstOrDefault(candidate => candidate.PriceId == priceId) is not { } offer
@@ -207,11 +233,13 @@ public sealed class PortalPlans(
         // An upgrade is charged now; a downgrade waits for the period's end, unless configured, or unless the interval
         // changes, which a renewal cannot do (PRT-6).
         var immediately = upgrade || portal.Value.DowngradesNow || price.Interval != subscription.Interval || price.IntervalCount != subscription.IntervalCount;
+        var code = choices.TakesCodes && !string.IsNullOrWhiteSpace(promotionCode) ? Domain.Coupons.PromotionCode.Normalize(promotionCode) : null;
         var request = new UpdateSubscriptionRequest
         {
             Items = [new SubscriptionItemRequest { Price = priceId.ToString(), Quantity = quantity }],
             Effective = immediately ? ChangeTiming.Now : ChangeTiming.PeriodEnd,
             ProrationBehavior = ProrationBehavior.AlwaysInvoice,
+            PromotionCode = code,
         };
         var preview = await previews.HandleAsync(subscriptionId, request, cancellationToken);
         if (preview.IsFailure)
@@ -233,7 +261,7 @@ public sealed class PortalPlans(
         var current = choices.Offers.First(candidate => candidate.IsCurrent);
         var previous = choices.Quantity > 1 ? $"{current.Name} × {choices.Quantity}" : current.Name;
         var chosen = quantity > 1 ? offer with { Name = $"{offer.Name} × {quantity}" } : offer;
-        return (new PlanChangeQuote(chosen, quantity, upgrade, immediately, effectiveAt, due, credit, preview.Value.NextRenewal, subscription.Currency, button, previous), request);
+        return (new PlanChangeQuote(chosen, quantity, code, upgrade, immediately, effectiveAt, due, credit, preview.Value.NextRenewal, subscription.Currency, button, previous), request);
     }
 }
 

@@ -57,7 +57,7 @@ public sealed class EmailTemplateTests(TahsilServerFixture server)
         ["payment-failed"] = () => With(Invoice(), ("failure", Map(("message", "Your card was declined."), ("new_card_needed", false), ("next_attempt", "2 May 2026")))),
         ["payment-action-required"] = () => With(Invoice()),
         ["dunning-final-reminder"] = () => With(Invoice(), ("cancel_date", "8 May 2026")),
-        ["subscription-canceled"] = () => With(("subscription", Map(("plan", "Team (Monthly) × 3"), ("ended_at", "1 May 2026"), ("reason", "payment_failed")))),
+        ["subscription-canceled"] = () => With(("subscription", Map(("plan", "Team (Monthly) × 3"), ("ended_at", "1 May 2026"), ("reason", "payment_failed"), ("refund", "₺100,00")))),
         ["refund-issued"] = () => With(("refund", Map(
             ("amount", "₺100,00"), ("payment_date", "1 April 2026"), ("payment_amount", "₺300,00"), ("card", "visa •••• 4242"), ("invoice_number", "INV-2026-000001"), ("void", false)))),
         ["price-change"] = () => With(("subscription", Map(

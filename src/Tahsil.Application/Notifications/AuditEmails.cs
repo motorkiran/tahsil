@@ -17,12 +17,21 @@ public static class AuditEmails
 
         var type = action switch
         {
-            // A checkout's invoice is confirmed by the order confirmation (NTF-3).
-            AuditActions.InvoicePaid when data?.GetValueOrDefault("billingReason") is not "checkout" => EmailTypes.Receipt,
+            // A checkout's invoice, a purchase's or a subscription's first, is confirmed by the order confirmation (NTF-3).
+            AuditActions.InvoicePaid when data?.ContainsKey("checkoutSessionId") != true => EmailTypes.Receipt,
             AuditActions.SubscriptionCanceled => EmailTypes.SubscriptionCanceled,
             AuditActions.RefundSucceeded => EmailTypes.RefundIssued,
             _ => null,
         };
-        return type is null ? null : new SendCustomerEmail(type, id, $"{type}:{id}");
+        if (type is null)
+        {
+            return null;
+        }
+
+        // A cancellation states what it refunds (NTF §1).
+        var refund = type == EmailTypes.SubscriptionCanceled && data?.GetValueOrDefault("refund") is long amount
+            ? new Dictionary<string, string> { ["refund"] = amount.ToString(System.Globalization.CultureInfo.InvariantCulture) }
+            : null;
+        return new SendCustomerEmail(type, id, $"{type}:{id}", refund);
     }
 }

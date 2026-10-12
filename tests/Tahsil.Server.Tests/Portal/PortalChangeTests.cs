@@ -89,6 +89,48 @@ public sealed class PortalChangeTests(TahsilServerFixture server)
     }
 
     [Fact]
+    [Trait("Requirement", "CPN-10")]
+    [Trait("Requirement", "PRT-5")]
+    public async Task APromotionCode_DiscountsThePlanChange_WhenThePortalTakesCodes()
+    {
+        await using var host = Host(new() { ["Tahsil:Portal:Features:promotion_codes"] = "true" });
+        using var api = await ClientAsync(host);
+        using (var coupon = await api.PostJsonAsync("/api/v1/coupons", new CreateCouponRequest { Key = "upgrade", Name = "Upgrade", PercentOff = 50, Duration = CouponDuration.Once }))
+        {
+            coupon.EnsureSuccessStatusCode();
+        }
+
+        using (var code = await api.PostJsonAsync("/api/v1/promotion-codes", new CreatePromotionCodeRequest { Coupon = "upgrade", Code = "UPGRADE50" }))
+        {
+            code.EnsureSuccessStatusCode();
+        }
+
+        var (customer, subscription, _) = await SubscriberAsync(api, "ada@example.com");
+        _time.Advance(TimeSpan.FromDays(15));
+        using var browser = Open(host);
+        var plan = await PlanUrlAsync(api, customer, subscription.Id);
+        var plus = (await GetAsync<PriceResponse>(api, "/api/v1/prices/team-plus-monthly-try")).Id;
+
+        var choices = await ParseAsync(await browser.GetAsync(plan, CancellationToken));
+        using var unknown = await PostHandlerAsync(browser, plan, "Preview", ("Price", plus.ToString()), ("Quantity", "1"), ("PromotionCode", "NOPE1"));
+        var preview = await ParseAsync(await PostHandlerAsync(browser, plan, "Preview", ("Price", plus.ToString()), ("Quantity", "1"), ("PromotionCode", " upgrade50 ")));
+        using var confirmed = await PostHandlerAsync(browser, plan, "Confirm", ("Price", plus.ToString()), ("Quantity", "1"), ("PromotionCode", "UPGRADE50"));
+
+        choices.QuerySelector("#promotion-code").ShouldNotBeNull();
+        (unknown.StatusCode, (await ParseAsync(unknown)).QuerySelector("#portal-error")!.TextContent).ShouldBe((HttpStatusCode.BadRequest, "This code cannot be used."));
+        (preview.QuerySelector("#promotion-code-applied")!.TextContent, preview.QuerySelector("#due-now")!.TextContent).ShouldBe(("UPGRADE50", "₺75.00"));
+        preview.QuerySelector("#next-renewal")!.TextContent.ShouldBe("₺600.00", "a coupon used once discounts the change's invoice only");
+        preview.QuerySelector("#confirm")!.TextContent.ShouldBe("Pay ₺75.00 and upgrade");
+        confirmed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var changed = await GetSubscriptionAsync(api, subscription.Id);
+        var invoice = await GetAsync<InvoiceResponse>(api, $"/api/v1/invoices/{changed.LatestInvoice!.Id}");
+        (invoice.Status, invoice.Total, invoice.Discounts.Single().Name).ShouldBe((InvoiceStatus.Paid, 7_500L, "Upgrade"));
+        (await GetAsync<CouponResponse>(api, "/api/v1/coupons/upgrade")).TimesRedeemed.ShouldBe(1);
+        var consent = await QueryAsync(host, context => context.ConsentRecords.SingleAsync(record => record.Type == ConsentType.PlanChange, CancellationToken));
+        (consent.TextShown, consent.Context["promotionCode"]).ShouldBe(("Pay ₺75.00 and upgrade", "UPGRADE50"));
+    }
+
+    [Fact]
     [Trait("Requirement", "PRT-2")]
     [Trait("Requirement", "PRT-3")]
     [Trait("Requirement", "PRT-6")]

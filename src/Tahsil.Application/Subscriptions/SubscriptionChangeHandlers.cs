@@ -298,7 +298,13 @@ public sealed class UpdateSubscriptionHandler(
 
 /// <summary>Shows what a change would do without doing it (SUB-24): the invoice it creates now, or the pending lines, and the next renewal.</summary>
 public sealed class PreviewSubscriptionChangeHandler(
-    ITahsilDbContext context, IAuthorizer authorizer, SubscriptionChanges changes, SubscriptionPreviews previews, IOptions<BillingOptions> billing, BillingClock clock)
+    ITahsilDbContext context,
+    IAuthorizer authorizer,
+    SubscriptionChanges changes,
+    SubscriptionPreviews previews,
+    Redemptions redemptions,
+    IOptions<BillingOptions> billing,
+    BillingClock clock)
 {
     public async Task<Result<SubscriptionPreviewResponse>> HandleAsync(Guid id, UpdateSubscriptionRequest request, CancellationToken cancellationToken)
     {
@@ -325,6 +331,19 @@ public sealed class PreviewSubscriptionChangeHandler(
         }
 
         var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == subscription.CustomerId, cancellationToken);
+        PreviewDiscount? discount = null;
+        if (request.HasCoupon || request.PromotionCode is not null)
+        {
+            // The discount the change would give, checked as redeeming it would be, without counting it.
+            var given = await DiscountAsync(subscription, request, items.Value, cancellationToken);
+            if (given.IsFailure)
+            {
+                return given.Error;
+            }
+
+            discount = given.Value;
+        }
+
         var now = clock.GetUtcNow();
         var zone = billing.Value.Zone;
         if (request.Effective == ChangeTiming.PeriodEnd || request.EffectiveAt is not null)
@@ -335,7 +354,7 @@ public sealed class PreviewSubscriptionChangeHandler(
                 return invalid.Error;
             }
 
-            var renewal = await previews.UpcomingAsync(subscription, customer, null, [], now, cancellationToken);
+            var renewal = await previews.UpcomingAsync(subscription, customer, null, [], discount, now, cancellationToken);
             return new SubscriptionPreviewResponse { Invoice = null, PendingLines = [], NextRenewal = Renewal(renewal) };
         }
 
@@ -346,10 +365,10 @@ public sealed class PreviewSubscriptionChangeHandler(
         }
 
         var invoice = plan.Invoiced && plan.Lines.Count > 0
-            ? await previews.InvoiceAsync(customer, subscription, ModelInvoices.BillingReason.SubscriptionUpdate, plan.Period, plan.Lines, now, cancellationToken)
+            ? await previews.InvoiceAsync(customer, subscription, ModelInvoices.BillingReason.SubscriptionUpdate, plan.Period, plan.Lines, discount, now, cancellationToken)
             : null;
         var pending = plan.Invoiced ? [] : plan.Lines;
-        var next = await previews.UpcomingAsync(subscription, customer, items.Value, pending, now, cancellationToken);
+        var next = await previews.UpcomingAsync(subscription, customer, items.Value, pending, invoice is not null && discount is { Once: true } ? new PreviewDiscount(null) : discount, now, cancellationToken);
         return new SubscriptionPreviewResponse
         {
             Invoice = invoice,
@@ -358,6 +377,30 @@ public sealed class PreviewSubscriptionChangeHandler(
                 null, null, line.PeriodStart, line.PeriodEnd))],
             NextRenewal = Renewal(next),
         };
+    }
+
+    private async Task<Result<PreviewDiscount>> DiscountAsync(
+        Subscription subscription, UpdateSubscriptionRequest request, IReadOnlyList<SubscriptionItemSpec> items, CancellationToken cancellationToken)
+    {
+        if (request.Coupon is null && request.PromotionCode is null)
+        {
+            return new PreviewDiscount(null);
+        }
+
+        var named = await redemptions.FindAsync(request.Coupon, request.PromotionCode, cancellationToken);
+        if (named.IsFailure)
+        {
+            return named.Error;
+        }
+
+        var allowed = await redemptions.CheckAsync(named.Value.CouponId, named.Value.CodeId, subscription.CustomerId, Redemptions.TargetOf(subscription.Currency, items), cancellationToken);
+        if (allowed.IsFailure)
+        {
+            return allowed.Error;
+        }
+
+        var duration = await context.Coupons.AsNoTracking().Where(coupon => coupon.Id == named.Value.CouponId).Select(coupon => coupon.Duration).SingleAsync(cancellationToken);
+        return new PreviewDiscount(allowed.Value.Discount, duration == Domain.Coupons.CouponDuration.Once);
     }
 
     private static UpcomingRenewalResponse? Renewal(InvoicePreviewResponse? renewal) =>
@@ -386,16 +429,34 @@ public sealed class UpcomingInvoiceHandler(ITahsilDbContext context, IAuthorizer
     }
 }
 
+/// <summary>
+/// The discount a preview uses instead of the subscription's own: the one a change gives, or none when it removes it;
+/// <paramref name="Once"/> when the first invoice it is finalized with uses it up (CPN-12).
+/// </summary>
+public sealed record PreviewDiscount(ModelInvoices.InvoiceDiscount? Discount, bool Once = false);
+
 /// <summary>Invoices built in memory, as they would be created now (SUB-24).</summary>
 public sealed class SubscriptionPreviews(
     ITahsilDbContext context, SubscriptionLines lines, InvoiceLines invoiceLines, InvoiceFinalizer finalizer, Redemptions redemptions, IOptions<BillingOptions> billing)
 {
+    public Task<InvoicePreviewResponse> InvoiceAsync(
+        Customer customer, Subscription subscription, ModelInvoices.BillingReason reason, BillingPeriod period, IReadOnlyList<ModelInvoices.InvoiceLineDraft> drafts, DateTimeOffset now, CancellationToken cancellationToken) =>
+        InvoiceAsync(customer, subscription, reason, period, drafts, null, now, cancellationToken);
+
+    /// <summary>An invoice of <paramref name="drafts"/>, discounted by <paramref name="discount"/> when given, else by the subscription's discount.</summary>
     public async Task<InvoicePreviewResponse> InvoiceAsync(
-        Customer customer, Subscription subscription, ModelInvoices.BillingReason reason, BillingPeriod period, IReadOnlyList<ModelInvoices.InvoiceLineDraft> drafts, DateTimeOffset now, CancellationToken cancellationToken)
+        Customer customer,
+        Subscription subscription,
+        ModelInvoices.BillingReason reason,
+        BillingPeriod period,
+        IReadOnlyList<ModelInvoices.InvoiceLineDraft> drafts,
+        PreviewDiscount? discount,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
     {
         var invoice = Invoice.CreateDraft(
             customer.Id, subscription.Currency, reason, subscription.CollectionMethod, subscription.DaysUntilDue, memo: null, autoAdvance: false, Metadata.Empty, now, subscription.Id, period,
-            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
+            discount: discount is { } given ? given.Discount : await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(drafts, customer.IsTaxExempt, now);
         return InvoiceMapper.Preview(invoice, await finalizer.PreviewBalanceAsync(customer.Id, subscription.Currency, invoice.Total, subscription.CollectionMethod, cancellationToken));
     }
@@ -405,11 +466,22 @@ public sealed class SubscriptionPreviews(
     /// takes effect then, or the current ones) for the period that starts then, and the subscription's pending items
     /// with <paramref name="pending"/>. None when the subscription ends before.
     /// </summary>
+    public Task<InvoicePreviewResponse?> UpcomingAsync(
+        Subscription subscription,
+        Customer customer,
+        IReadOnlyList<SubscriptionItemSpec>? items,
+        IReadOnlyList<ModelInvoices.InvoiceLineDraft> pending,
+        DateTimeOffset now,
+        CancellationToken cancellationToken) =>
+        UpcomingAsync(subscription, customer, items, pending, null, now, cancellationToken);
+
+    /// <inheritdoc cref="UpcomingAsync(Subscription, Customer, IReadOnlyList{SubscriptionItemSpec}?, IReadOnlyList{ModelInvoices.InvoiceLineDraft}, DateTimeOffset, CancellationToken)"/>
     public async Task<InvoicePreviewResponse?> UpcomingAsync(
         Subscription subscription,
         Customer customer,
         IReadOnlyList<SubscriptionItemSpec>? items,
         IReadOnlyList<ModelInvoices.InvoiceLineDraft> pending,
+        PreviewDiscount? discount,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
@@ -432,6 +504,6 @@ public sealed class SubscriptionPreviews(
             .ToListAsync(cancellationToken);
         drafts.AddRange(await invoiceLines.FromPendingItemsAsync(waiting, customer.Locale, cancellationToken));
         drafts.AddRange(pending);
-        return drafts.Count == 0 ? null : await InvoiceAsync(customer, subscription, ModelInvoices.BillingReason.SubscriptionCycle, next, drafts, now, cancellationToken);
+        return drafts.Count == 0 ? null : await InvoiceAsync(customer, subscription, ModelInvoices.BillingReason.SubscriptionCycle, next, drafts, discount, now, cancellationToken);
     }
 }

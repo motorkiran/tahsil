@@ -189,6 +189,9 @@ public sealed class SubscriptionCanceledComposer(ITahsilDbContext context, Subsc
                 ["ended_at"] = format.Date(end, customer),
                 ["scheduled"] = scheduled,
                 ["reason"] = System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(subscription.CancellationReason?.ToString() ?? "other"),
+                ["refund"] = long.TryParse(message.Data?.GetValueOrDefault("refund"), CultureInfo.InvariantCulture, out var refund) && refund > 0
+                    ? EmailFormat.Money(refund, subscription.Currency, customer)
+                    : null,
             },
             ["portal_url"] = scheduled ? portal.Create(customer.Id, null).AbsoluteUri : null,
         });
