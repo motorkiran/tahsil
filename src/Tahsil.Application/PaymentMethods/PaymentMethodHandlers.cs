@@ -114,12 +114,12 @@ public sealed class RemovePaymentMethodHandler(ITahsilDbContext context, IAuthor
 {
     public async Task<Result> HandleAsync(Guid id, CancellationToken cancellationToken)
     {
-        if (authorizer.Require(TahsilPermissions.CustomersWrite) is { IsFailure: true } denied)
+        if (authorizer.RequireOrCustomer(TahsilPermissions.CustomersWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
 
-        if (await context.PaymentMethods.SingleOrDefaultAsync(method => method.Id == id, cancellationToken) is not { } method)
+        if (await context.PaymentMethods.SingleOrDefaultAsync(method => method.Id == id, cancellationToken) is not { } method || !authorizer.Owns(method.CustomerId))
         {
             return PaymentMethodErrors.NotFound;
         }

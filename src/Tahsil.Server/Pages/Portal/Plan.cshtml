@@ -1,0 +1,71 @@
+@page "/portal/{token}/subscriptions/{id:guid}/change"
+@model Tahsil.Server.Pages.Portal.PlanModel
+@{
+    ViewData["Title"] = L["Change plan"];
+    var currency = Model.Choices.Subscription.Currency;
+}
+
+<h1 id="page-title">@L["Change plan"]</h1>
+
+@if (Model.ErrorMessage is { } error)
+{
+    <p class="alert alert-error" role="alert" id="portal-error">@error</p>
+}
+
+@if (Model.Quote is { } quote)
+{
+    <section id="preview" aria-labelledby="preview-title">
+        <h2 id="preview-title">@quote.Offer.Name@(quote.Quantity > 1 ? $" × {quote.Quantity}" : null)</h2>
+        <table class="lines">
+            <tbody>
+                <tr><td>@L["Takes effect"]</td><td class="amount" id="effective">@(quote.Now ? L["Now"] : Model.Date(quote.EffectiveAt))</td></tr>
+                <tr class="total"><th scope="row">@L["Charged now"]</th><td class="amount" id="due-now">@Model.Money(quote.DueNow, quote.Currency)</td></tr>
+                @if (quote.Credit > 0)
+                {
+                    <tr><td>@L["Credit for the unused time"]</td><td class="amount" id="credit">@Model.Money(quote.Credit, quote.Currency)</td></tr>
+                }
+                @if (quote.NextRenewal is { } renewal)
+                {
+                    <tr><td>@L["Next renewal on {0}", Model.Date(renewal.At)]</td><td class="amount" id="next-renewal">@Model.Money(renewal.Amount, quote.Currency)</td></tr>
+                }
+            </tbody>
+        </table>
+        <p class="hint">@L["Amounts include taxes."]</p>
+        <form method="post" asp-page-handler="Confirm" id="confirm-form">
+            <input type="hidden" name="Price" value="@quote.Offer.PriceId" />
+            <input type="hidden" name="Quantity" value="@quote.Quantity" />
+            <button class="button" type="submit" id="confirm">@quote.ButtonText</button>
+            <a class="button button-secondary" href="/portal/@Model.Token/subscriptions/@Model.Choices.Subscription.Id/change" id="back">@L["Choose another plan"]</a>
+        </form>
+    </section>
+}
+else
+{
+    <form method="post" asp-page-handler="Preview" id="plan-form">
+        <fieldset id="offers">
+            <legend>@L["Plan"]</legend>
+            @foreach (var offer in Model.Choices.Offers)
+            {
+                <label class="checkbox offer" data-price="@offer.PriceId">
+                    <input type="radio" name="Price" value="@offer.PriceId" checked="@(offer.PriceId == Model.Price)" />
+                    <span>@offer.Name: @Model.Money(offer.Amount, currency) (@offer.Recurrence)@if (offer.IsCurrent) { <span class="status">@L["Current plan"]</span> }</span>
+                </label>
+            }
+        </fieldset>
+        @if (Model.Choices.OffersQuantity)
+        {
+            <div class="field">
+                <label for="quantity">@L["Quantity"]</label>
+                <input type="number" id="quantity" name="Quantity" value="@Model.Quantity" min="@Model.Choices.MinimumQuantity" max="@Model.Choices.MaximumQuantity" step="1" required />
+            </div>
+        }
+        else
+        {
+            <input type="hidden" name="Quantity" value="@Model.Quantity" />
+        }
+        <p class="hint">@L["Prices include taxes. You see what changes before you confirm."]</p>
+        <button class="button" type="submit" id="preview-change">@L["Continue"]</button>
+    </form>
+}
+
+<p><a href="/portal/@Model.Token?done=overview" id="overview">@L["Back to billing"]</a></p>

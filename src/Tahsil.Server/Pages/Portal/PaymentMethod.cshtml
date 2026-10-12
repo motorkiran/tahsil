@@ -1,0 +1,85 @@
+@page "/portal/{token}/payment-method"
+@using Tahsil.Server.Ui
+@model Tahsil.Server.Pages.Portal.PaymentMethodModel
+@{
+    ViewData["Title"] = L["Payment method"];
+    var customer = Model.View.Customer;
+}
+
+<h1 id="page-title">@L["Payment method"]</h1>
+
+@if (Model.ErrorMessage is { } error)
+{
+    <p class="alert alert-error" role="alert" id="portal-error">@error</p>
+}
+@if (Model.Notice is { } notice)
+{
+    <p class="alert" role="status" id="portal-notice">@notice</p>
+}
+
+@if (Model.Embed is { } embed)
+{
+    <section id="payment" aria-label="@L["Card details"]">
+        @Html.Raw(embed.Html)
+        @foreach (var script in embed.Scripts)
+        {
+            <script src="@script" nonce="@HttpContext.GetCspNonce()"></script>
+        }
+    </section>
+}
+else
+{
+    <section id="cards" aria-labelledby="cards-title">
+        <h2 id="cards-title">@L["Saved cards"]</h2>
+        @if (Model.View.Cards.Count == 0)
+        {
+            <p class="hint">@L["You have no saved card."]</p>
+        }
+        <ul class="list">
+            @foreach (var card in Model.View.Cards)
+            {
+                var isDefault = customer.DefaultPaymentMethodId == card.Id;
+                <li class="card-row" data-id="@card.Id">
+                    <span>@card.Brand •••• @card.Last4@if (card is { ExpMonth: { } month, ExpYear: { } year }) { <span class="hint"> @L["expires {0}", $"{month:00}/{year}"]</span> }</span>
+                    @if (isDefault)
+                    {
+                        <span class="status">@L["Default"]</span>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="Default" class="inline-form">
+                            <input type="hidden" name="Card" value="@card.Id" />
+                            <button class="button button-secondary button-small make-default" type="submit">@L["Make default"]</button>
+                        </form>
+                        <form method="post" asp-page-handler="Remove" class="inline-form">
+                            <input type="hidden" name="Card" value="@card.Id" />
+                            <button class="button button-secondary button-small remove-card" type="submit">@L["Remove"]</button>
+                        </form>
+                    }
+                </li>
+            }
+        </ul>
+    </section>
+
+    <section id="add-card" aria-labelledby="add-card-title">
+        <h2 id="add-card-title">@L["Add a card"]</h2>
+        @if (Model.Setup.IsAvailable)
+        {
+            <form method="post" asp-page-handler="Add" id="add-card-form">
+                <p class="hint">@L["The new card becomes your default and pays for your subscriptions. Nothing is charged for saving it."]</p>
+                <label class="checkbox"><input type="checkbox" id="card-storage" name="CardStorage" value="true" required /> @Model.ConsentText</label>
+                <button class="button" type="submit" id="add">@L["Add a card"]</button>
+            </form>
+        }
+        else if (Model.Setup.InvoiceUrl is { } invoiceUrl)
+        {
+            <p id="pay-instead">@L["Pay your open invoice by card to update the card on file."] <a href="@invoiceUrl">@L["Pay the invoice"]</a></p>
+        }
+        else
+        {
+            <p id="next-payment">@L["Your card is updated when you make your next payment."]</p>
+        }
+    </section>
+}
+
+<p><a href="/portal/@Model.Token?done=overview" id="overview">@L["Back to billing"]</a></p>

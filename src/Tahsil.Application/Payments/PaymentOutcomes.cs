@@ -24,6 +24,7 @@ public sealed class PaymentOutcomes(
     IOutbox outbox,
     Attention attention,
     SavedCards cards,
+    PaymentMethods.DefaultCards defaults,
     Checkout.CheckoutCompletion checkout,
     Checkout.CheckoutProtection protection,
     Subscriptions.SubscriptionSettlement subscriptions,
@@ -86,6 +87,11 @@ public sealed class PaymentOutcomes(
             && await cards.SaveAsync(payment, card, now, cancellationToken) is { } method)
         {
             payment.AttachPaymentMethod(method.Id, now);
+            if (payment.PortalSessionId is not null)
+            {
+                // The portal's card update (PRT-11): the new card replaces the default (CUS-13).
+                await defaults.ReplaceAsync(payment.CustomerId, method.Id, now, cancellationToken);
+            }
         }
 
         if (outcome.ChargedAmount is { } charged && (charged.MinorUnits != payment.Amount || charged.Currency != payment.Currency))

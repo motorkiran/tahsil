@@ -67,6 +67,9 @@ public sealed class Payment : AggregateRoot
 
     public Guid? CheckoutSessionId { get; private init; }
 
+    /// <summary>The portal session in which the customer saved a card for itself (PRT-11); such a setup collects nothing.</summary>
+    public Guid? PortalSessionId { get; private init; }
+
     /// <summary>The network the customer paid from (an IPv4 address, or an IPv6 /64), to limit attempts per network (CHK-21).</summary>
     public string? ClientNetwork { get; private set; }
 
@@ -155,6 +158,17 @@ public sealed class Payment : AggregateRoot
     {
         var payment = New(
             customerId, invoiceId, checkoutSessionId, connectionId, null, amount, currency, purpose, PaymentInitiator.Customer, saveCard || purpose == PaymentPurpose.Setup, consentRecordId, actor, now);
+        payment.ExpiresAt = expiresAt;
+        payment.ReconcileAt = expiresAt;
+        payment.ClientNetwork = clientNetwork;
+        return payment;
+    }
+
+    /// <summary>The setup of a card the customer adds in the portal (PRT-11): nothing is charged, and the card is kept with their consent.</summary>
+    public static Payment ForCardUpdate(
+        Guid customerId, Guid portalSessionId, Guid connectionId, string currency, Guid consentRecordId, DateTimeOffset expiresAt, Actor actor, DateTimeOffset now, string? clientNetwork)
+    {
+        var payment = New(customerId, null, null, connectionId, null, 0, currency, PaymentPurpose.Setup, PaymentInitiator.Customer, true, consentRecordId, actor, now, portalSessionId: portalSessionId);
         payment.ExpiresAt = expiresAt;
         payment.ReconcileAt = expiresAt;
         payment.ClientNetwork = clientNetwork;
@@ -330,11 +344,12 @@ public sealed class Payment : AggregateRoot
         Actor actor,
         DateTimeOffset now,
         PaymentMethodKind method = PaymentMethodKind.Card,
-        OutOfBandDetails? outOfBand = null)
+        OutOfBandDetails? outOfBand = null,
+        Guid? portalSessionId = null)
     {
-        if (invoiceId is null && checkoutSessionId is null)
+        if (invoiceId is null && checkoutSessionId is null && portalSessionId is null)
         {
-            throw new ArgumentException("A payment collects an invoice or a checkout (DOM-16).", nameof(invoiceId));
+            throw new ArgumentException("A payment collects an invoice or a checkout, or saves a card in the portal (DOM-16).", nameof(invoiceId));
         }
 
         if (purpose == PaymentPurpose.Setup ? amount != 0 : amount <= 0)
@@ -350,6 +365,7 @@ public sealed class Payment : AggregateRoot
             CustomerId = customerId,
             InvoiceId = invoiceId,
             CheckoutSessionId = checkoutSessionId,
+            PortalSessionId = portalSessionId,
             ConnectionId = connectionId,
             PaymentMethodId = paymentMethodId,
             Amount = amount,

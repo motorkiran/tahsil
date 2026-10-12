@@ -117,13 +117,12 @@ public sealed class SubscriptionChanges(
 
     /// <summary>Whether the change raises an individual customer's recurring amount, per day (PRT-6), so they are told (SUB-34).</summary>
     public async Task<bool> RaisesPriceForIndividualAsync(
-        Subscription subscription, Customer customer, IReadOnlyList<SubscriptionItemSpec> after, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        if (customer.Type != CustomerType.Individual)
-        {
-            return false;
-        }
+        Subscription subscription, Customer customer, IReadOnlyList<SubscriptionItemSpec> after, DateTimeOffset now, CancellationToken cancellationToken) =>
+        customer.Type == CustomerType.Individual && await RaisesAmountAsync(subscription, after, now, cancellationToken);
 
+    /// <summary>Whether the change raises the recurring amount per day: an upgrade, as the portal calls it (PRT-6).</summary>
+    public async Task<bool> RaisesAmountAsync(Subscription subscription, IReadOnlyList<SubscriptionItemSpec> after, DateTimeOffset now, CancellationToken cancellationToken)
+    {
         var before = await lines.PricedAsync(subscription.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
         return PerDay(after, now) > PerDay(before, now);
     }

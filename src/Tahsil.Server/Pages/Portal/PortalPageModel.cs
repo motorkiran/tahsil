@@ -28,6 +28,13 @@ public abstract class PortalPageModel(PortalPages pages, RequestThrottle throttl
 
     protected PortalPages Pages => pages;
 
+    /// <summary>
+    /// Where a finished task leads (PRT-2): back to the application when the session was opened for that task, else to
+    /// the overview with <paramref name="notice"/>.
+    /// </summary>
+    protected IActionResult Done(Domain.Portal.PortalFlow task, string notice) =>
+        View.Session.Flow == task && ReturnUrl is { } returnUrl ? Redirect(returnUrl) : Redirect($"/portal/{Token}?done={notice}");
+
     public string Money(long amount, string currency) =>
         Formatting.Money(amount, currency, Domain.Money.Currency.TryGet(currency, out var known) ? known.Exponent : 2, Culture);
 

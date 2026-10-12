@@ -14,6 +14,9 @@ public enum ConsentType
     Marketing,
     Cancellation,
     Withdrawal,
+
+    /// <summary>A plan change confirmed in the portal, with the amounts shown (PRT-7).</summary>
+    PlanChange,
     Custom,
 }
 
@@ -117,6 +120,34 @@ public sealed class ConsentRecord
         using var gzip = new System.IO.Compression.GZipStream(new MemoryStream(RenderedDocument), System.IO.Compression.CompressionMode.Decompress);
         using var reader = new StreamReader(gzip, System.Text.Encoding.UTF8);
         return reader.ReadToEnd();
+    }
+
+    /// <summary>What a customer confirmed in the portal: the button or text as shown, and what it was about.</summary>
+    public static ConsentRecord ForPortal(
+        Guid customerId,
+        ConsentType type,
+        string textShown,
+        IReadOnlyDictionary<string, string> context,
+        Guid portalSessionId,
+        Guid? subscriptionId,
+        IPAddress? ipAddress,
+        string? userAgent,
+        DateTimeOffset acceptedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(textShown);
+        return new ConsentRecord
+        {
+            Id = Guid.CreateVersion7(acceptedAt),
+            CustomerId = customerId,
+            Type = type,
+            TextShown = textShown,
+            Context = context,
+            PortalSessionId = portalSessionId,
+            SubscriptionId = subscriptionId,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            AcceptedAt = acceptedAt,
+        };
     }
 
     public static ConsentRecord Create(

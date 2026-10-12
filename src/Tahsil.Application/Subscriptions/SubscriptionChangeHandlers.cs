@@ -42,7 +42,7 @@ public sealed class UpdateSubscriptionHandler(
     public async Task<Result<Versioned<SubscriptionResponse>>> HandleAsync(
         Guid id, UpdateSubscriptionRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
     {
-        if (authorizer.Require(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
+        if (authorizer.RequireOrCustomer(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
@@ -65,7 +65,8 @@ public sealed class UpdateSubscriptionHandler(
         await using (var transaction = await context.BeginTransactionAsync(cancellationToken))
         {
             await locks.LockSubscriptionAsync(id, cancellationToken);
-            if (await context.Subscriptions.Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } found)
+            if (await context.Subscriptions.Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } found
+                || !authorizer.Owns(found.CustomerId))
             {
                 return SubscriptionErrors.NotFound;
             }
@@ -253,7 +254,9 @@ public sealed class UpdateSubscriptionHandler(
 
         var scheduled = request.Effective == ChangeTiming.PeriodEnd || request.EffectiveAt is not null;
         var effectiveAt = scheduled ? request.EffectiveAt ?? subscription.CurrentPeriodEnd : now;
-        if (request.SkipNotice ? customer.Type != Domain.Customers.CustomerType.Company : await changes.NeedsNoticeAsync(subscription, customer, items.Value, effectiveAt, now, cancellationToken))
+        // The notice protects customers from the merchant's changes (SUB-34); a customer's own change in the portal needs none.
+        if (!authorizer.IsCustomer
+            && (request.SkipNotice ? customer.Type != Domain.Customers.CustomerType.Company : await changes.NeedsNoticeAsync(subscription, customer, items.Value, effectiveAt, now, cancellationToken)))
         {
             return SubscriptionErrors.PriceIncreaseNoticeRequired;
         }
@@ -266,7 +269,7 @@ public sealed class UpdateSubscriptionHandler(
                 return result.Error;
             }
 
-            if (await changes.RaisesPriceForIndividualAsync(subscription, customer, items.Value, now, cancellationToken))
+            if (!authorizer.IsCustomer && await changes.RaisesPriceForIndividualAsync(subscription, customer, items.Value, now, cancellationToken))
             {
                 // The customer is told of the higher price, its date, and how to cancel before it (SUB-34).
                 CustomerEmails.Enqueue(outbox, EmailTypes.PriceChange, subscription.Id, $"{subscription.Id}:{effectiveAt.ToUnixTimeSeconds()}");
@@ -299,12 +302,13 @@ public sealed class PreviewSubscriptionChangeHandler(
 {
     public async Task<Result<SubscriptionPreviewResponse>> HandleAsync(Guid id, UpdateSubscriptionRequest request, CancellationToken cancellationToken)
     {
-        if (authorizer.Require(TahsilPermissions.SubscriptionsRead) is { IsFailure: true } denied)
+        if (authorizer.RequireOrCustomer(TahsilPermissions.SubscriptionsRead) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
 
-        if (await context.Subscriptions.AsNoTracking().Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } subscription)
+        if (await context.Subscriptions.AsNoTracking().Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } subscription
+            || !authorizer.Owns(subscription.CustomerId))
         {
             return SubscriptionErrors.NotFound;
         }

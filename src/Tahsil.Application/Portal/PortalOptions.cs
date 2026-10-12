@@ -14,6 +14,17 @@ public sealed class PortalOptions
     /// <summary>Turns features on or off by name; those not named keep their defaults (<see cref="PortalFeatures"/>).</summary>
     public Dictionary<string, bool> Features { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The products, and of each the prices, a customer may switch among (PRT-5); none offers no other plan.</summary>
+    public List<PortalProductOptions> Products { get; set; } = [];
+
+    /// <summary>The quantities a customer may choose (PRT §2); the same minimum and maximum leaves quantities alone.</summary>
+    public PortalQuantityOptions QuantityLimits { get; set; } = new();
+
+    /// <summary>When a downgrade takes effect (PRT-6): <c>period_end</c>, or <c>now</c> with a credit for the unused time.</summary>
+    public string DowngradeTiming { get; set; } = "period_end";
+
+    internal bool DowngradesNow => DowngradeTiming == "now";
+
     public bool IsEnabled(string feature) => Features.TryGetValue(feature, out var enabled) ? enabled : PortalFeatures.Defaults[feature];
 
     internal bool HasValidLifetimes() =>
@@ -21,6 +32,26 @@ public sealed class PortalOptions
         && EmailLinkLifetime >= TimeSpan.FromHours(1) && EmailLinkLifetime <= TimeSpan.FromDays(30);
 
     internal bool HasKnownFeatures() => Features.Keys.All(PortalFeatures.Defaults.ContainsKey);
+
+    internal bool HasValidPlanChanges() =>
+        DowngradeTiming is "period_end" or "now"
+        && QuantityLimits is { Minimum: >= 1, Maximum: <= 10_000 } && QuantityLimits.Maximum >= QuantityLimits.Minimum
+        && Products.All(product => !string.IsNullOrWhiteSpace(product.Product));
+}
+
+/// <summary>A product offered for switching, by key, with the keys of its prices on offer; all of its prices when none are named.</summary>
+public sealed class PortalProductOptions
+{
+    public string Product { get; set; } = string.Empty;
+
+    public List<string> Prices { get; set; } = [];
+}
+
+public sealed class PortalQuantityOptions
+{
+    public int Minimum { get; set; } = 1;
+
+    public int Maximum { get; set; } = 1;
 }
 
 /// <summary>What customers can do in the portal (PRT §2), with whether it is on unless configured otherwise.</summary>

@@ -448,4 +448,97 @@
   <data name="Return to {0}" xml:space="preserve">
     <value>{0} sitesine dön</value>
   </data>
+  <data name="Change plan" xml:space="preserve">
+    <value>Planı değiştir</value>
+  </data>
+  <data name="Takes effect" xml:space="preserve">
+    <value>Geçerlilik</value>
+  </data>
+  <data name="Now" xml:space="preserve">
+    <value>Şimdi</value>
+  </data>
+  <data name="Charged now" xml:space="preserve">
+    <value>Şimdi tahsil edilecek</value>
+  </data>
+  <data name="Credit for the unused time" xml:space="preserve">
+    <value>Kullanılmayan süre için alacak</value>
+  </data>
+  <data name="Next renewal on {0}" xml:space="preserve">
+    <value>{0} tarihindeki sonraki yenileme</value>
+  </data>
+  <data name="Amounts include taxes." xml:space="preserve">
+    <value>Tutarlara vergiler dahildir.</value>
+  </data>
+  <data name="Choose another plan" xml:space="preserve">
+    <value>Başka bir plan seç</value>
+  </data>
+  <data name="Plan" xml:space="preserve">
+    <value>Plan</value>
+  </data>
+  <data name="Current plan" xml:space="preserve">
+    <value>Mevcut plan</value>
+  </data>
+  <data name="Prices include taxes. You see what changes before you confirm." xml:space="preserve">
+    <value>Fiyatlara vergiler dahildir. Onaylamadan önce nelerin değişeceğini görürsünüz.</value>
+  </data>
+  <data name="Back to billing" xml:space="preserve">
+    <value>Faturalandırmaya dön</value>
+  </data>
+  <data name="This is your current plan." xml:space="preserve">
+    <value>Bu sizin mevcut planınız.</value>
+  </data>
+  <data name="This plan or quantity is not offered." xml:space="preserve">
+    <value>Bu plan veya adet sunulmuyor.</value>
+  </data>
+  <data name="The plan could not be changed. Please try again." xml:space="preserve">
+    <value>Plan değiştirilemedi. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="Saved cards" xml:space="preserve">
+    <value>Kayıtlı kartlar</value>
+  </data>
+  <data name="Make default" xml:space="preserve">
+    <value>Varsayılan yap</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Kaldır</value>
+  </data>
+  <data name="Add a card" xml:space="preserve">
+    <value>Kart ekle</value>
+  </data>
+  <data name="The new card becomes your default and pays for your subscriptions. Nothing is charged for saving it." xml:space="preserve">
+    <value>Yeni kart varsayılanınız olur ve aboneliklerinizin ödemesinde kullanılır. Kaydetmek için ücret alınmaz.</value>
+  </data>
+  <data name="Pay your open invoice by card to update the card on file." xml:space="preserve">
+    <value>Kayıtlı kartı güncellemek için açık faturanızı kartla ödeyin.</value>
+  </data>
+  <data name="Pay the invoice" xml:space="preserve">
+    <value>Faturayı öde</value>
+  </data>
+  <data name="Your card is updated when you make your next payment." xml:space="preserve">
+    <value>Kartınız bir sonraki ödemenizde güncellenir.</value>
+  </data>
+  <data name="Your card was saved and is now your default." xml:space="preserve">
+    <value>Kartınız kaydedildi ve artık varsayılan kartınız.</value>
+  </data>
+  <data name="Your card is being confirmed. It appears here once it is saved." xml:space="preserve">
+    <value>Kartınız doğrulanıyor. Kaydedildiğinde burada görünür.</value>
+  </data>
+  <data name="The card could not be added. Please try again." xml:space="preserve">
+    <value>Kart eklenemedi. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="Make another card the default before removing this one." xml:space="preserve">
+    <value>Bu kartı kaldırmadan önce başka bir kartı varsayılan yapın.</value>
+  </data>
+  <data name="One moment…" xml:space="preserve">
+    <value>Bir saniye…</value>
+  </data>
+  <data name="Your plan change is confirmed." xml:space="preserve">
+    <value>Plan değişikliğiniz onaylandı.</value>
+  </data>
+  <data name="Your default card was changed." xml:space="preserve">
+    <value>Varsayılan kartınız değiştirildi.</value>
+  </data>
+  <data name="Manage cards" xml:space="preserve">
+    <value>Kartları yönet</value>
+  </data>
 </root>

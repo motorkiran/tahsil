@@ -16,6 +16,21 @@ public interface IAuthorizer
     /// callers use the API's own use cases instead.
     /// </summary>
     Result RequireCustomer(Guid customerId);
+
+    /// <summary>
+    /// For the use cases the customer portal shares with the API (PRT-3): requires <paramref name="permission"/>, or a
+    /// customer of a hosted page session, who is then held to their own records by <see cref="Owns"/>.
+    /// </summary>
+    Result RequireOrCustomer(string permission);
+
+    /// <summary>
+    /// Whether the caller may touch a record of <paramref name="customerId"/>: a customer of a hosted page session only
+    /// their own; callers who passed by a permission, any. A record that is not theirs does not exist for them.
+    /// </summary>
+    bool Owns(Guid customerId);
+
+    /// <summary>Whether a customer acts for themselves, on a hosted page.</summary>
+    bool IsCustomer { get; }
 }
 
 internal sealed class Authorizer(IRequestContext request) : IAuthorizer
@@ -27,6 +42,12 @@ internal sealed class Authorizer(IRequestContext request) : IAuthorizer
         AdminCaller caller when caller.Permissions.Contains(permission) => Result.Success(),
         _ => AuthErrors.MissingPermission(permission),
     };
+
+    public bool IsCustomer => request.Caller is CustomerCaller;
+
+    public Result RequireOrCustomer(string permission) => IsCustomer ? Result.Success() : Require(permission);
+
+    public bool Owns(Guid customerId) => request.Caller is not CustomerCaller caller || caller.CustomerId == customerId;
 
     public Result RequireCustomer(Guid customerId) => request.Caller switch
     {

@@ -15,7 +15,7 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.ToTable(table =>
         {
             // DOM-16: a payment collects an invoice or a checkout.
-            table.HasCheckConstraint("ck_payments_subject", "invoice_id IS NOT NULL OR checkout_session_id IS NOT NULL");
+            table.HasCheckConstraint("ck_payments_subject", "invoice_id IS NOT NULL OR checkout_session_id IS NOT NULL OR portal_session_id IS NOT NULL");
             table.HasCheckConstraint("ck_payments_amount", "amount > 0 OR (purpose = 'setup' AND amount = 0)");
         });
         builder.Property(payment => payment.Id).ValueGeneratedNever();

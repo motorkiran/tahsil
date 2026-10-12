@@ -2141,6 +2141,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("payment_method_id");
 
+                    b.Property<Guid?>("PortalSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("portal_session_id");
+
                     b.Property<string>("ProviderData")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -2252,7 +2256,7 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_payments_amount", "amount > 0 OR (purpose = 'setup' AND amount = 0)");
 
-                            t.HasCheckConstraint("ck_payments_subject", "invoice_id IS NOT NULL OR checkout_session_id IS NOT NULL");
+                            t.HasCheckConstraint("ck_payments_subject", "invoice_id IS NOT NULL OR checkout_session_id IS NOT NULL OR portal_session_id IS NOT NULL");
                         });
                 });
 

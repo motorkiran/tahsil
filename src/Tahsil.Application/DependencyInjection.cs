@@ -229,6 +229,8 @@ public static class DependencyInjection
         services.AddScoped<GetWebhookDeliveryHandler>();
         services.AddScoped<RedeliverWebhookHandler>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
+        services.AddScoped<DefaultCards>();
+        services.AddScoped<IOutboxMessageHandler<RetryWaitingInvoices>, WaitingInvoiceRetrier>();
         services.AddOptions<Notifications.NotificationOptions>()
             .BindConfiguration(Notifications.NotificationOptions.SectionName)
             .Validate(
@@ -241,10 +243,15 @@ public static class DependencyInjection
             .Validate(
                 options => options.HasKnownFeatures(),
                 $"{Portal.PortalOptions.SectionName}:Features names only {string.Join(", ", Portal.PortalFeatures.Defaults.Keys)}.")
+            .Validate(
+                options => options.HasValidPlanChanges(),
+                $"{Portal.PortalOptions.SectionName}: DowngradeTiming is period_end or now, QuantityLimits are 1 to 10000 with Minimum up to Maximum, and each of Products names its product.")
             .ValidateOnStart();
         services.AddScoped<Portal.CreatePortalSessionHandler>();
         services.AddScoped<Portal.PortalLinks>();
         services.AddScoped<Portal.PortalPages>();
+        services.AddScoped<Portal.PortalPlans>();
+        services.AddScoped<Portal.PortalCards>();
         services.AddScoped<IOutboxMessageHandler<Notifications.SendOrderConfirmation>, Notifications.OrderConfirmationSender>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();

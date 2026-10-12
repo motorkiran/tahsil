@@ -9,6 +9,10 @@
 
 <h1 id="page-title">@L["Billing"]</h1>
 <p class="lead">@L["Your billing with {0}", Model.Merchant.DisplayName ?? string.Empty]</p>
+@if (Model.Notice is { } notice)
+{
+    <p class="alert" role="status" id="portal-notice">@notice</p>
+}
 
 @if (Model.View.Has(PortalFeatures.Subscriptions))
 {
@@ -52,6 +56,10 @@
                             <p class="hint discount">@L["Discount: {0}", discount.Coupon.Name]</p>
                         }
                     </div>
+                    @if (Model.View.Has(PortalFeatures.PlanChange) && subscription is { CancelAt: null, Status: SubscriptionStatus.Active or SubscriptionStatus.Trialing, Items: [{ Quantity: not null }] })
+                    {
+                        <a class="button button-secondary button-small change-plan" href="/portal/@Model.Token/subscriptions/@subscription.Id/change">@L["Change plan"]</a>
+                    }
                 </li>
             }
         </ul>
@@ -78,6 +86,7 @@
                 </li>
             }
         </ul>
+        <p><a class="button button-secondary button-small" href="/portal/@Model.Token/payment-method" id="manage-cards">@L["Manage cards"]</a></p>
     </section>
 }
 

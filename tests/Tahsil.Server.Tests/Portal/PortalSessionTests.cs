@@ -160,12 +160,12 @@ public sealed partial class PortalSessionTests(TahsilServerFixture server)
         using var browser = Open(host);
         _time.Advance(TimeSpan.FromDays(6));
         using var inTime = await browser.GetAsync(link, CancellationToken);
-        var page = await ParseAsync(inTime);
+        var page = await ParseAsync(await browser.GetAsync(new Uri($"{link}?done=overview"), CancellationToken));
         _time.Advance(TimeSpan.FromDays(2));
         using var late = await browser.GetAsync(link, CancellationToken);
 
         failed.Text.ShouldContain("Kartımı güncelle: ");
-        inTime.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (inTime.StatusCode, inTime.Headers.Location?.OriginalString).ShouldBe((HttpStatusCode.Redirect, $"{link.AbsolutePath}/payment-method"), "the link opens on its task");
         page.QuerySelector("#subscriptions .status")!.TextContent.ShouldBe("Ödeme gecikti");
         page.QuerySelector("#return").ShouldBeNull("the email's session has no application to return to");
         late.StatusCode.ShouldBe(HttpStatusCode.NotFound);
