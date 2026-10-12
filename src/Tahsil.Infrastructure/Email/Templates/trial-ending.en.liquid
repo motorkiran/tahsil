@@ -3,6 +3,7 @@
 <p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
 <p>Your {{ merchant.name }} trial ({{ subscription.plan }}) ends on {{ subscription.trial_end }}.</p>
 {% if subscription.with_card %}<p><strong>When the trial ends, on {{ subscription.trial_end }}, {{ subscription.first_charge }} will be charged to your saved card</strong>, and your subscription renews every period. If you do not want to continue, you can cancel at any time before then; you will not be charged.</p>{% else %}<p>To keep your subscription, add a payment method before the trial ends. Otherwise your subscription ends with the trial and you are not charged.</p>{% endif %}
+{% if portal_url %}<p><a href="{{ portal_url }}">{% if subscription.with_card %}Cancel my subscription{% else %}Add a payment method{% endif %}</a></p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
 {%- endcapture -%}
 {%- capture text -%}
@@ -12,5 +13,7 @@ Your {{ merchant.name }} trial ({{ subscription.plan }}) ends on {{ subscription
 
 {% if subscription.with_card %}When the trial ends, on {{ subscription.trial_end }}, {{ subscription.first_charge }} will be charged to your saved card, and your subscription renews every period. If you do not want to continue, you can cancel at any time before then; you will not be charged.{% else %}To keep your subscription, add a payment method before the trial ends. Otherwise your subscription ends with the trial and you are not charged.{% endif %}
 
-You receive this email because of your subscription with {{ merchant.name }}.
+{% if portal_url %}{% if subscription.with_card %}Cancel my subscription{% else %}Add a payment method{% endif %}: {{ portal_url }}
+
+{% endif %}You receive this email because of your subscription with {{ merchant.name }}.
 {%- endcapture -%}

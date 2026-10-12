@@ -3,6 +3,7 @@
 <p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
 <p>Your card {{ card.name }} expires{% if card.expiry %} at the end of {{ card.expiry }}{% endif %}. It pays for these subscriptions: {{ plans | join: ", " }}.</p>
 <p>Please add your new card so that your payments continue.</p>
+{% if portal_url %}<p><a href="{{ portal_url }}">Add my new card</a></p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
 {%- endcapture -%}
 {%- capture text -%}
@@ -12,5 +13,7 @@ Your card {{ card.name }} expires{% if card.expiry %} at the end of {{ card.expi
 
 Please add your new card so that your payments continue.
 
-You receive this email because of your subscription with {{ merchant.name }}.
+{% if portal_url %}Add my new card: {{ portal_url }}
+
+{% endif %}You receive this email because of your subscription with {{ merchant.name }}.
 {%- endcapture -%}

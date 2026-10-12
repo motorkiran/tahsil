@@ -19,4 +19,10 @@
         <a class="button button-secondary" href="@Model.RetryUrl">@L["Try again"]</a>
     </div>
 }
+@if (Model.Return is { Url: { } returnUrl } back)
+{
+    <div class="actions">
+        <a class="button" href="@returnUrl" id="return">@L["Return to {0}", back.Merchant ?? string.Empty]</a>
+    </div>
+}
 <p class="trace">@L["Reference"]: <span translate="no">@Model.TraceId</span></p>

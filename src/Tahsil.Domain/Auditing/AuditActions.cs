@@ -27,6 +27,9 @@ public static class AuditActions
     public const string CustomerUpdated = "customer.updated";
     public const string CustomerDeleted = "customer.deleted";
 
+    /// <summary>The application opened the portal for a customer (PRT-1); the subject is the customer.</summary>
+    public const string PortalSessionCreated = "portal_session.created";
+
     public const string ConnectionCreated = "connection.created";
     public const string ConnectionUpdated = "connection.updated";
     public const string ConnectionDeleted = "connection.deleted";

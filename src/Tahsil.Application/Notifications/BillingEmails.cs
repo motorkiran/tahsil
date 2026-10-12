@@ -67,7 +67,7 @@ public sealed class ReceiptComposer(ITahsilDbContext context, InvoiceLinks links
 /// An automatic payment failed for the customer (DUN §7): why, what happens next, and the invoice page to pay with
 /// another card; or, for <see cref="EmailTypes.PaymentActionRequired"/>, that the bank wants the customer.
 /// </summary>
-public sealed class PaymentFailedComposer(ITahsilDbContext context, InvoiceLinks links, EmailFormat format) : ICustomerEmailComposer
+public sealed class PaymentFailedComposer(ITahsilDbContext context, InvoiceLinks links, EmailFormat format, Portal.PortalLinks portal) : ICustomerEmailComposer
 {
     public string Type => EmailTypes.PaymentFailed;
 
@@ -83,6 +83,7 @@ public sealed class PaymentFailedComposer(ITahsilDbContext context, InvoiceLinks
         var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == invoice.CustomerId, cancellationToken);
         return new ComposedEmail(customer, "payment-failed", new Dictionary<string, object?>(StringComparer.Ordinal)
         {
+            ["portal_url"] = portal.Create(customer.Id, Domain.Portal.PortalFlow.PaymentMethodUpdate).AbsoluteUri,
             ["invoice"] = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["number"] = invoice.Number,
@@ -216,7 +217,7 @@ public sealed class RefundIssuedComposer(ITahsilDbContext context, EmailFormat f
 }
 
 /// <summary>A higher price takes effect at a renewal (SUB-34): the old and new amounts, the date, and how to cancel.</summary>
-public sealed class PriceChangeComposer(ITahsilDbContext context, SubscriptionLines lines, EmailFormat format) : ICustomerEmailComposer
+public sealed class PriceChangeComposer(ITahsilDbContext context, SubscriptionLines lines, EmailFormat format, Portal.PortalLinks portal) : ICustomerEmailComposer
 {
     public string Type => EmailTypes.PriceChange;
 
@@ -233,6 +234,7 @@ public sealed class PriceChangeComposer(ITahsilDbContext context, SubscriptionLi
         var after = change.Items.Select(item => (item.PriceId, item.Quantity)).ToList();
         return new ComposedEmail(customer, "price-change", new Dictionary<string, object?>(StringComparer.Ordinal)
         {
+            ["portal_url"] = portal.Create(customer.Id, Domain.Portal.PortalFlow.SubscriptionCancel, subscription.Id).AbsoluteUri,
             ["subscription"] = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["plan"] = await SubscriptionCanceledComposer.PlanAsync(lines, before, cancellationToken),

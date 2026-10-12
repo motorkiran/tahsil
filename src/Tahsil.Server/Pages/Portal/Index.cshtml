@@ -1,0 +1,126 @@
+@page "/portal/{token}"
+@using Tahsil.Application.Portal
+@using Tahsil.Contracts
+@model Tahsil.Server.Pages.Portal.IndexModel
+@{
+    ViewData["Title"] = L["Billing"];
+    var customer = Model.View.Customer;
+}
+
+<h1 id="page-title">@L["Billing"]</h1>
+<p class="lead">@L["Your billing with {0}", Model.Merchant.DisplayName ?? string.Empty]</p>
+
+@if (Model.View.Has(PortalFeatures.Subscriptions))
+{
+    <section id="subscriptions" aria-labelledby="subscriptions-title">
+        <h2 id="subscriptions-title">@L["Subscriptions"]</h2>
+        @if (Model.View.Subscriptions.Count == 0)
+        {
+            <p class="hint">@L["You have no subscriptions."]</p>
+        }
+        <ul class="list">
+            @foreach (var (subscription, upcoming) in Model.View.Subscriptions)
+            {
+                <li class="subscription" data-id="@subscription.Id">
+                    <div>
+                        <strong class="plan">@string.Join(", ", subscription.Items.Select(item => item.Quantity is > 1 ? $"{item.Price.Product.Name} × {item.Quantity}" : item.Price.Product.Name))</strong>
+                        <span class="status status-@subscription.Status.ToString().ToLowerInvariant()">@(subscription.Status switch
+                        {
+                            SubscriptionStatus.Trialing => L["Trial"],
+                            SubscriptionStatus.PastDue => L["Payment overdue"],
+                            SubscriptionStatus.Incomplete => L["Awaiting payment"],
+                            _ => L["Active"],
+                        })</span>
+                        @if (subscription.Status == SubscriptionStatus.Trialing && subscription.TrialEnd is { } trialEnd)
+                        {
+                            <p class="hint trial">@L["Your trial ends on {0}.", Model.Date(trialEnd)]</p>
+                        }
+                        @if (subscription.CancelAt is { } cancelAt)
+                        {
+                            <p class="hint ends">@L["Ends on {0}.", Model.Date(cancelAt)]</p>
+                        }
+                        else if (upcoming is not null)
+                        {
+                            <p class="hint renewal">@L["Renews on {0} for {1}, taxes included.", Model.Date(upcoming.PeriodStart ?? subscription.CurrentPeriodEnd), Model.Money(upcoming.Total, upcoming.Currency)]</p>
+                        }
+                        @if (subscription.ScheduledChange is { } change)
+                        {
+                            <p class="hint scheduled">@L["Your plan changes on {0}.", Model.Date(change.EffectiveAt)]</p>
+                        }
+                        @if (subscription.Discount is { } discount)
+                        {
+                            <p class="hint discount">@L["Discount: {0}", discount.Coupon.Name]</p>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@if (Model.View.Has(PortalFeatures.PaymentMethod))
+{
+    <section id="payment-methods" aria-labelledby="payment-methods-title">
+        <h2 id="payment-methods-title">@L["Payment method"]</h2>
+        @if (Model.View.Cards.Count == 0)
+        {
+            <p class="hint">@L["You have no saved card."]</p>
+        }
+        <ul class="list">
+            @foreach (var card in Model.View.Cards)
+            {
+                <li class="card-row" data-id="@card.Id">
+                    <span>@card.Brand •••• @card.Last4@if (card is { ExpMonth: { } month, ExpYear: { } year }) { <span class="hint"> @L["expires {0}", $"{month:00}/{year}"]</span> }</span>
+                    @if (customer.DefaultPaymentMethodId == card.Id)
+                    {
+                        <span class="status">@L["Default"]</span>
+                    }
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@if (Model.View.Has(PortalFeatures.Invoices))
+{
+    <section id="invoices" aria-labelledby="invoices-title">
+        <h2 id="invoices-title">@L["Invoices"]</h2>
+        @if (Model.View.Invoices.Count == 0)
+        {
+            <p class="hint">@L["You have no invoices yet."]</p>
+        }
+        <ul class="list">
+            @foreach (var (invoice, url) in Model.View.Invoices)
+            {
+                <li class="invoice-row" data-id="@invoice.Id">
+                    <span><a href="@url">@invoice.Number</a> <span class="hint">@(invoice.FinalizedAt is { } issued ? Model.Date(issued) : null)</span></span>
+                    <span class="amount">@Model.Money(invoice.Total, invoice.Currency)</span>
+                    <span class="status status-@invoice.Status.ToString().ToLowerInvariant()">@(invoice.Status == Tahsil.Domain.Invoices.InvoiceStatus.Paid ? L["Paid"] : L["Due"])</span>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@if (Model.View.Has(PortalFeatures.BillingDetails))
+{
+    <section id="billing-details" aria-labelledby="billing-details-title">
+        <h2 id="billing-details-title">@L["Billing details"]</h2>
+        <p>@customer.Name<br />@customer.Email</p>
+        @if (customer.Address is { } address)
+        {
+            <p class="hint">@string.Join(", ", new[] { address.Line1, address.Line2, address.District, address.City, address.PostalCode, address.Country }.Where(part => !string.IsNullOrWhiteSpace(part)))</p>
+        }
+    </section>
+}
+
+@if (Model.ReturnUrl is { } returnUrl)
+{
+    <p><a href="@returnUrl" id="return">@L["Return to {0}", Model.Merchant.DisplayName ?? string.Empty]</a></p>
+}
+
+<footer class="merchant" id="merchant">
+    <p>@Model.Merchant.LegalName@if (Model.Merchant.MersisNumber is { } mersis) { <span> · MERSİS @mersis</span> }</p>
+    <p>@Model.Merchant.Address</p>
+    <p>@Model.Merchant.Phone · @Model.Merchant.Email</p>
+</footer>

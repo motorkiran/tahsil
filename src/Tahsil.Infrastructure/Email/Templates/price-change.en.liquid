@@ -3,6 +3,7 @@
 <p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
 <p>From {{ subscription.effective_date }}, your {{ merchant.name }} subscription ({{ subscription.plan }}) costs {{ subscription.new_amount }} per period instead of {{ subscription.old_amount }}{% if subscription.new_plan != subscription.plan %} ({{ subscription.new_plan }}){% endif %}.</p>
 <p>If you do not accept the change, you can cancel your subscription at any time before {{ subscription.effective_date }}; you will not be charged the new price.</p>
+{% if portal_url %}<p><a href="{{ portal_url }}">Manage or cancel my subscription</a></p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
 {%- endcapture -%}
 {%- capture text -%}
@@ -12,5 +13,7 @@ From {{ subscription.effective_date }}, your {{ merchant.name }} subscription ({
 
 If you do not accept the change, you can cancel your subscription at any time before {{ subscription.effective_date }}; you will not be charged the new price.
 
-You receive this email because of your subscription with {{ merchant.name }}.
+{% if portal_url %}Manage or cancel my subscription: {{ portal_url }}
+
+{% endif %}You receive this email because of your subscription with {{ merchant.name }}.
 {%- endcapture -%}

@@ -36,9 +36,12 @@ public sealed class RequestThrottle : IDisposable
         }.ToFrozenDictionary();
     }
 
-    public bool TryAcquire(ThrottledAction action, HttpContext context)
+    public bool TryAcquire(ThrottledAction action, HttpContext context) => TryAcquire(action, PartitionKey(context));
+
+    /// <summary>The same limit for something else than an address, such as a portal session.</summary>
+    public bool TryAcquire(ThrottledAction action, string key)
     {
-        using var lease = _limiters[action].AttemptAcquire(PartitionKey(context));
+        using var lease = _limiters[action].AttemptAcquire(key);
         return lease.IsAcquired;
     }
 

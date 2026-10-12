@@ -3,6 +3,7 @@
 <p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
 <p>{{ card.name }} kartınızın süresi{% if card.expiry %} {{ card.expiry }} sonunda{% endif %} doluyor. Bu kart şu aboneliklerinizin ödemesinde kullanılıyor: {{ plans | join: ", " }}.</p>
 <p>Ödemelerinizin aksamaması için yeni kartınızı ekleyin.</p>
+{% if portal_url %}<p><a href="{{ portal_url }}">Yeni kartımı ekle</a></p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
 {%- endcapture -%}
 {%- capture text -%}
@@ -12,5 +13,7 @@ Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
 
 Ödemelerinizin aksamaması için yeni kartınızı ekleyin.
 
-Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{% if portal_url %}Yeni kartımı ekle: {{ portal_url }}
+
+{% endif %}Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
 {%- endcapture -%}

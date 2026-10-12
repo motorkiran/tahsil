@@ -9,7 +9,8 @@ namespace Tahsil.Application.Notifications;
 /// The trial ends soon (SUB-16): with a card, the amount and date of the first charge and how to cancel before it;
 /// without one, how to keep the subscription.
 /// </summary>
-public sealed class TrialEndingComposer(ITahsilDbContext context, SubscriptionLines lines, SubscriptionPreviews previews, EmailFormat format, BillingClock clock)
+public sealed class TrialEndingComposer(
+    ITahsilDbContext context, SubscriptionLines lines, SubscriptionPreviews previews, EmailFormat format, Portal.PortalLinks portal, BillingClock clock)
     : ICustomerEmailComposer
 {
     public string Type => EmailTypes.TrialEnding;
@@ -24,13 +25,18 @@ public sealed class TrialEndingComposer(ITahsilDbContext context, SubscriptionLi
 
         var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == subscription.CustomerId, cancellationToken);
         var first = await previews.UpcomingAsync(subscription, customer, null, [], clock.GetUtcNow(), cancellationToken);
+        var withCard = message.Data?.GetValueOrDefault("mandatory") == "true";
         return new ComposedEmail(customer, "trial-ending", new Dictionary<string, object?>(StringComparer.Ordinal)
         {
+            // SUB-16: a trial with a card leads to its cancellation, one without to adding a card (PRT-4).
+            ["portal_url"] = (withCard
+                ? portal.Create(customer.Id, Domain.Portal.PortalFlow.SubscriptionCancel, subscription.Id)
+                : portal.Create(customer.Id, Domain.Portal.PortalFlow.PaymentMethodUpdate)).AbsoluteUri,
             ["subscription"] = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["plan"] = await SubscriptionCanceledComposer.PlanAsync(lines, subscription.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken),
                 ["trial_end"] = format.Date(trialEnd, customer),
-                ["with_card"] = message.Data?.GetValueOrDefault("mandatory") == "true",
+                ["with_card"] = withCard,
                 ["first_charge"] = first is null ? null : EmailFormat.Money(first.Total, subscription.Currency, customer),
             },
         });
@@ -65,7 +71,7 @@ public sealed class UpcomingRenewalComposer(ITahsilDbContext context, Subscripti
 }
 
 /// <summary>A card a subscription uses expires soon (CUS-15): which card, and which subscriptions it pays.</summary>
-public sealed class CardExpiringComposer(ITahsilDbContext context, SubscriptionLines lines, Reminders reminders) : ICustomerEmailComposer
+public sealed class CardExpiringComposer(ITahsilDbContext context, SubscriptionLines lines, Reminders reminders, Portal.PortalLinks portal) : ICustomerEmailComposer
 {
     public string Type => EmailTypes.CardExpiring;
 
@@ -86,6 +92,7 @@ public sealed class CardExpiringComposer(ITahsilDbContext context, SubscriptionL
 
         return new ComposedEmail(customer, "card-expiring", new Dictionary<string, object?>(StringComparer.Ordinal)
         {
+            ["portal_url"] = portal.Create(customer.Id, Domain.Portal.PortalFlow.PaymentMethodUpdate).AbsoluteUri,
             ["card"] = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["name"] = $"{card.Brand} •••• {card.Last4}",

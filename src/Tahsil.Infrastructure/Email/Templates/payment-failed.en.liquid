@@ -4,6 +4,7 @@
 <p>The payment of {{ invoice.amount }} for invoice {{ invoice.number }} from {{ merchant.name }} failed: {{ failure.message }}</p>
 {% if failure.new_card_needed %}<p>We will not try this card again. Please pay with another card.</p>{% elsif failure.next_attempt %}<p>We will try again on {{ failure.next_attempt }}. You can also pay now with another card.</p>{% endif %}
 {% if invoice.hosted_url %}<p><a href="{{ invoice.hosted_url }}" style="display:inline-block;padding:10px 18px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px;">Pay the invoice</a></p>{% endif %}
+{% if portal_url %}<p><a href="{{ portal_url }}">Update my card</a></p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription or invoice with {{ merchant.name }}.</p>
 {%- endcapture -%}
 {%- capture text -%}
@@ -17,5 +18,7 @@ We will try again on {{ failure.next_attempt }}. You can also pay now with anoth
 {% endif %}{% if invoice.hosted_url %}
 Pay the invoice: {{ invoice.hosted_url }}
 {% endif %}
-You receive this email because of your subscription or invoice with {{ merchant.name }}.
+{% if portal_url %}Update my card: {{ portal_url }}
+
+{% endif %}You receive this email because of your subscription or invoice with {{ merchant.name }}.
 {%- endcapture -%}

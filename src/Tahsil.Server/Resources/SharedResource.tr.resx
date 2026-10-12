@@ -388,4 +388,64 @@
   <data name="The discount does not apply to you and was removed. Check the total and continue." xml:space="preserve">
     <value>İndirim sizin için geçerli değil ve kaldırıldı. Toplamı kontrol edip devam edin.</value>
   </data>
+  <data name="Billing" xml:space="preserve">
+    <value>Faturalandırma</value>
+  </data>
+  <data name="Your billing with {0}" xml:space="preserve">
+    <value>{0} ile faturalandırmanız</value>
+  </data>
+  <data name="Subscriptions" xml:space="preserve">
+    <value>Abonelikler</value>
+  </data>
+  <data name="You have no subscriptions." xml:space="preserve">
+    <value>Aboneliğiniz yok.</value>
+  </data>
+  <data name="Trial" xml:space="preserve">
+    <value>Deneme</value>
+  </data>
+  <data name="Payment overdue" xml:space="preserve">
+    <value>Ödeme gecikti</value>
+  </data>
+  <data name="Awaiting payment" xml:space="preserve">
+    <value>Ödeme bekleniyor</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Etkin</value>
+  </data>
+  <data name="Ends on {0}." xml:space="preserve">
+    <value>{0} tarihinde sona erer.</value>
+  </data>
+  <data name="Renews on {0} for {1}, taxes included." xml:space="preserve">
+    <value>{0} tarihinde, vergiler dahil {1} ile yenilenir.</value>
+  </data>
+  <data name="Your plan changes on {0}." xml:space="preserve">
+    <value>Planınız {0} tarihinde değişir.</value>
+  </data>
+  <data name="Discount: {0}" xml:space="preserve">
+    <value>İndirim: {0}</value>
+  </data>
+  <data name="Payment method" xml:space="preserve">
+    <value>Ödeme yöntemi</value>
+  </data>
+  <data name="You have no saved card." xml:space="preserve">
+    <value>Kayıtlı kartınız yok.</value>
+  </data>
+  <data name="expires {0}" xml:space="preserve">
+    <value>son kullanma {0}</value>
+  </data>
+  <data name="Default" xml:space="preserve">
+    <value>Varsayılan</value>
+  </data>
+  <data name="Invoices" xml:space="preserve">
+    <value>Faturalar</value>
+  </data>
+  <data name="You have no invoices yet." xml:space="preserve">
+    <value>Henüz faturanız yok.</value>
+  </data>
+  <data name="Billing details" xml:space="preserve">
+    <value>Fatura bilgileri</value>
+  </data>
+  <data name="Return to {0}" xml:space="preserve">
+    <value>{0} sitesine dön</value>
+  </data>
 </root>

@@ -2585,6 +2585,67 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Portal.PortalSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Flow")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("flow");
+
+                    b.Property<Guid?>("FlowSubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flow_subscription_id");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("locale");
+
+                    b.Property<string>("ReturnUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("return_url");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_portal_sessions");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("ix_portal_sessions_customer_id");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_portal_sessions_expires_at");
+
+                    b.HasIndex("FlowSubscriptionId")
+                        .HasDatabaseName("ix_portal_sessions_flow_subscription_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_portal_sessions_token_hash");
+
+                    b.ToTable("portal_sessions", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3548,6 +3609,22 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_refunds_payments_payment_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Portal.PortalSession", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_portal_sessions_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithMany()
+                        .HasForeignKey("FlowSubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_portal_sessions_subscriptions_flow_subscription_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>

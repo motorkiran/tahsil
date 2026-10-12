@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IIdempotency, IdempotencyRecorder>();
         services.AddSingleton<IdempotencyStore>();
         AddHostedSingleton<IdempotencyCleanup>(services);
+        AddHostedSingleton<Portal.PortalSessionCleanup>(services);
 
         return services;
     }

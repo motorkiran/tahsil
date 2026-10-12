@@ -4,6 +4,7 @@
 <p>{{ merchant.name }} için {{ invoice.number }} numaralı faturanın {{ invoice.amount }} tutarındaki ödemesi alınamadı: {{ failure.message }}</p>
 {% if failure.new_card_needed %}<p>Bu kartla tekrar denemeyeceğiz. Lütfen başka bir kartla ödeyin.</p>{% elsif failure.next_attempt %}<p>Ödemeyi {{ failure.next_attempt }} tarihinde tekrar deneyeceğiz. Dilerseniz şimdi başka bir kartla ödeyebilirsiniz.</p>{% endif %}
 {% if invoice.hosted_url %}<p><a href="{{ invoice.hosted_url }}" style="display:inline-block;padding:10px 18px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px;">Faturayı öde</a></p>{% endif %}
+{% if portal_url %}<p><a href="{{ portal_url }}">Kartımı güncelle</a></p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz veya faturanız nedeniyle alıyorsunuz.</p>
 {%- endcapture -%}
 {%- capture text -%}
@@ -17,5 +18,7 @@ Bu kartla tekrar denemeyeceğiz. Lütfen başka bir kartla ödeyin.
 {% endif %}{% if invoice.hosted_url %}
 Faturayı öde: {{ invoice.hosted_url }}
 {% endif %}
-Bu e-postayı {{ merchant.name }} aboneliğiniz veya faturanız nedeniyle alıyorsunuz.
+{% if portal_url %}Kartımı güncelle: {{ portal_url }}
+
+{% endif %}Bu e-postayı {{ merchant.name }} aboneliğiniz veya faturanız nedeniyle alıyorsunuz.
 {%- endcapture -%}

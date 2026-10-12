@@ -6357,6 +6357,86 @@
         ]
       }
     },
+    "/api/v1/portal-sessions": {
+      "post": {
+        "tags": [
+          "Customer portal"
+        ],
+        "summary": "Create a portal session",
+        "description": "For a customer the application has authenticated: redirect them to `url`, where they manage their subscriptions, card, invoices and billing details. The session works for that customer alone, as often as they like until `expiresAt` (`Tahsil:Portal:SessionLifetime`, an hour by default). `url` is given now only; create another session when it is lost. `flow` opens the portal on one task.\n\nRequires the `tahsil.checkout:write` permission.",
+        "operationId": "CreatePortalSession",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Makes the request safe to retry: a repeat with the same key within 24 hours gets the first response, marked `Idempotent-Replayed: true`. 1 to 255 printable ASCII characters, such as a UUID.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePortalSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.checkout:write`."
+          },
+          "409": {
+            "description": "A request with the same idempotency key is still running (`idempotency.in_progress`)."
+          },
+          "422": {
+            "description": "The idempotency key was used for a different request (`idempotency.key_reused`)."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/subscriptions": {
       "post": {
         "tags": [
@@ -9180,6 +9260,49 @@
           }
         }
       },
+      "CreatePortalSessionRequest": {
+        "required": [
+          "customer",
+          "returnUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "returnUrl": {
+            "type": "string",
+            "description": "Where the portal's \"Return\" link leads, such as the application's billing page."
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "`tr` or `en`; the customer's language when omitted."
+          },
+          "flow": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PortalFlow"
+              }
+            ]
+          },
+          "flowSubscription": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For `subscription_update` and `subscription_cancel`: the customer's subscription.",
+            "format": "uuid"
+          }
+        },
+        "description": "A portal session for a customer the application has authenticated."
+      },
       "CreatePriceRequest": {
         "required": [
           "product",
@@ -11964,6 +12087,80 @@
           "failed",
           "canceled"
         ]
+      },
+      "PortalFlow": {
+        "enum": [
+          "payment_method_update",
+          "subscription_update",
+          "subscription_cancel",
+          null
+        ]
+      },
+      "PortalSessionResponse": {
+        "required": [
+          "id",
+          "url",
+          "customerId",
+          "returnUrl",
+          "locale",
+          "flow",
+          "flowSubscription",
+          "expiresAt",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "returnUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "flow": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PortalFlow"
+              }
+            ]
+          },
+          "flowSubscription": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "A portal session. `url` is given once, when the session is created: Tahsil keeps only its hash."
       },
       "PriceInterval": {
         "enum": [
@@ -14776,6 +14973,9 @@
     },
     {
       "name": "Checkout"
+    },
+    {
+      "name": "Customer portal"
     },
     {
       "name": "Subscriptions"

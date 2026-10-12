@@ -80,6 +80,7 @@ internal static class TahsilApi
             .MapRefundEndpoints()
             .MapWebhookEndpoints()
             .MapCheckoutEndpoints()
+            .MapPortalEndpoints()
             .MapSubscriptionEndpoints()
             .MapPaymentMethodEndpoints()
             .MapProvisioningEndpoints()

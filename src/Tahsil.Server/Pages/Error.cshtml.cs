@@ -14,7 +14,13 @@ namespace Tahsil.Server.Pages;
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 public sealed class ErrorModel : PageModel
 {
+    /// <summary>The request item in which a page leaves a <see cref="ReturnLink"/> for the error it answers with.</summary>
+    public const string ReturnLinkKey = "Tahsil.ReturnLink";
+
     public int Status { get; private set; }
+
+    /// <summary>Where the person can go on, such as back to the application from an expired portal link.</summary>
+    public ReturnLink? Return => HttpContext.Items[ReturnLinkKey] as ReturnLink;
 
     public string TraceId { get; private set; } = string.Empty;
 
@@ -46,3 +52,6 @@ public sealed class ErrorModel : PageModel
         }
     }
 }
+
+/// <summary>A link back to the merchant's application.</summary>
+public sealed record ReturnLink(string? Url, string? Merchant);

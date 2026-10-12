@@ -235,6 +235,16 @@ public static class DependencyInjection
                 options => options.HasValidNotices(),
                 $"{Notifications.NotificationOptions.SectionName}: TrialEndingNoticeDays is 1 to 30, CardExpiringNoticeDays 1 to 90, and each of UpcomingRenewalNoticeDays 0 to 60.")
             .ValidateOnStart();
+        services.AddOptions<Portal.PortalOptions>()
+            .BindConfiguration(Portal.PortalOptions.SectionName)
+            .Validate(options => options.HasValidLifetimes(), $"{Portal.PortalOptions.SectionName}: SessionLifetime is 5 minutes to 1 day, and EmailLinkLifetime 1 hour to 30 days.")
+            .Validate(
+                options => options.HasKnownFeatures(),
+                $"{Portal.PortalOptions.SectionName}:Features names only {string.Join(", ", Portal.PortalFeatures.Defaults.Keys)}.")
+            .ValidateOnStart();
+        services.AddScoped<Portal.CreatePortalSessionHandler>();
+        services.AddScoped<Portal.PortalLinks>();
+        services.AddScoped<Portal.PortalPages>();
         services.AddScoped<IOutboxMessageHandler<Notifications.SendOrderConfirmation>, Notifications.OrderConfirmationSender>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();

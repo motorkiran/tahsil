@@ -30,6 +30,8 @@ public interface ITahsilDbContext
 
     DbSet<Domain.Coupons.Discount> Discounts { get; }
 
+    DbSet<Domain.Portal.PortalSession> PortalSessions { get; }
+
     DbSet<Customer> Customers { get; }
 
     DbSet<ProviderConnection> ProviderConnections { get; }
