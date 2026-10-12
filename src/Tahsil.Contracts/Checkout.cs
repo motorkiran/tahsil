@@ -9,7 +9,54 @@ public enum CheckoutMode
 
     /// <summary>Saves a card without selling anything; needs <c>currency</c>.</summary>
     Setup,
+
+    /// <summary>Sells recurring prices with one interval, and one-time prices on the first invoice.</summary>
+    Subscription,
 }
+
+public enum PaymentMethodCollectionMode
+{
+    /// <summary>A trial collects no card; the customer adds one before it ends.</summary>
+    IfRequired,
+
+    /// <summary>A trial collects a card, charged when it ends.</summary>
+    Always,
+}
+
+/// <summary>The subscription a subscription session creates.</summary>
+public sealed record CheckoutSubscriptionData
+{
+    /// <summary>Days of trial, counted from completion; <c>0</c> turns off the prices' default trial.</summary>
+    public int? TrialDays { get; init; }
+
+    /// <summary>The end of the trial; takes precedence over <c>trialDays</c>.</summary>
+    public DateTimeOffset? TrialEnd { get; init; }
+
+    public PaymentMethodCollectionMode PaymentMethodCollection { get; init; } = PaymentMethodCollectionMode.IfRequired;
+
+    /// <summary>
+    /// For a connection that cannot save cards, whose subscriptions are invoiced: days from an invoice's finalization
+    /// to its due date, 0 by default.
+    /// </summary>
+    public int? DaysUntilDue { get; init; }
+
+    public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// The subscription the session creates: its trial, whether the trial collects a card, and how its invoices are
+/// collected (<c>send_invoice</c> when the connection cannot save cards).
+/// </summary>
+public sealed record CheckoutSubscriptionResponse(
+    int? TrialDays,
+    DateTimeOffset? TrialEnd,
+    PaymentMethodCollectionMode PaymentMethodCollection,
+    CollectionMethod CollectionMethod,
+    int? DaysUntilDue,
+    IReadOnlyDictionary<string, string> Metadata);
+
+/// <summary>What each renewal bills: a period of the recurring items, every <c>intervalCount</c> <c>interval</c>s.</summary>
+public sealed record CheckoutRecurringResponse(PriceInterval Interval, int IntervalCount, CheckoutQuoteResponse Period);
 
 public enum CheckoutStatus
 {
@@ -33,7 +80,8 @@ public sealed record CheckoutItemRequest
     [Required]
     public required string Price { get; init; }
 
-    public int Quantity { get; init; } = 1;
+    /// <summary>1 when omitted; none for metered prices.</summary>
+    public int? Quantity { get; init; }
 }
 
 /// <summary>A customer to create when they submit the checkout form; one with the same external ID is reused.</summary>
@@ -65,8 +113,11 @@ public sealed record CreateCheckoutSessionRequest
 
     public CheckoutCustomerDetails? CustomerDetails { get; init; }
 
-    /// <summary>What is sold, in one currency; none in setup mode.</summary>
+    /// <summary>What is sold, in one currency; none in setup mode. Metered prices take no quantity.</summary>
     public IReadOnlyList<CheckoutItemRequest>? Items { get; init; }
+
+    /// <summary>For subscription sessions: the subscription to create.</summary>
+    public CheckoutSubscriptionData? Subscription { get; init; }
 
     /// <summary>Required in setup mode; otherwise the items' currency.</summary>
     public string? Currency { get; init; }
@@ -107,7 +158,11 @@ public sealed record CheckoutQuoteLineResponse(
 
 /// <summary>The first invoice as computed for the customer, which is what they pay; never taken from the browser.</summary>
 public sealed record CheckoutQuoteResponse(
-    IReadOnlyList<CheckoutQuoteLineResponse> Lines, long Subtotal, long DiscountTotal, long TaxTotal, long TotalExcludingTax, long Total, long AmountDue);
+    IReadOnlyList<CheckoutQuoteLineResponse> Lines, long Subtotal, long DiscountTotal, long TaxTotal, long TotalExcludingTax, long Total, long AmountDue)
+{
+    /// <summary>For subscriptions: what each renewal bills.</summary>
+    public CheckoutRecurringResponse? Recurring { get; init; }
+}
 
 public sealed record CheckoutSessionResponse
 {
@@ -127,6 +182,8 @@ public sealed record CheckoutSessionResponse
     public required string Currency { get; init; }
 
     public required CheckoutQuoteResponse Quote { get; init; }
+
+    public required CheckoutSubscriptionResponse? Subscription { get; init; }
 
     public required bool AllowPromotionCodes { get; init; }
 
@@ -153,6 +210,8 @@ public sealed record CheckoutSessionResponse
     public required Guid? PaymentId { get; init; }
 
     public required Guid? PaymentMethodId { get; init; }
+
+    public required Guid? SubscriptionId { get; init; }
 
     public required DateTimeOffset CreatedAt { get; init; }
 }

@@ -1,5 +1,7 @@
 using System.Buffers.Text;
+using System.Globalization;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Catalog;
@@ -12,7 +14,10 @@ using Tahsil.Contracts;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Common;
 using Tahsil.Domain.Invoices;
+using Tahsil.Domain.Money;
+using Tahsil.Domain.Subscriptions;
 using Tahsil.Providers.Abstractions;
+using CollectionMethod = Tahsil.Domain.Invoices.CollectionMethod;
 using Model = Tahsil.Domain.Checkout;
 using ModelCustomers = Tahsil.Domain.Customers;
 
@@ -22,16 +27,18 @@ namespace Tahsil.Application.Checkout;
 /// Creates a checkout session (CHK §1): the items and the customer are checked, the currency must be routed to a
 /// connection that can do what the session needs, and the quote is computed now; the browser never supplies amounts.
 /// </summary>
-public sealed class CreateCheckoutSessionHandler(
+public sealed partial class CreateCheckoutSessionHandler(
     ITahsilDbContext context,
     IAuthorizer authorizer,
     IAuditLog audit,
     IIdempotency idempotency,
     InvoiceLines lines,
+    Subscriptions.SubscriptionLines subscriptionLines,
     ProviderRegistry registry,
     CustomerMapper customers,
     CheckoutMapper mapper,
     IOptions<CheckoutOptions> checkout,
+    IOptions<BillingOptions> billing,
     IOptions<ServerOptions> server,
     BillingClock clock)
 {
@@ -55,20 +62,37 @@ public sealed class CreateCheckoutSessionHandler(
         }
 
         var locale = request.Locale ?? customer?.Locale ?? details?.Locale ?? server.Value.DefaultLocale;
-        var sold = request.Mode == CheckoutMode.Payment ? await ItemsAsync(request, locale, cancellationToken) : SetupCurrency(request);
+        var now = clock.GetUtcNow();
+        if (request.Mode != CheckoutMode.Subscription && request.Subscription is not null)
+        {
+            return Model.CheckoutErrors.Invalid("subscription", "Only subscription sessions describe a subscription.");
+        }
+
+        var sold = request.Mode switch
+        {
+            CheckoutMode.Payment => await ItemsAsync(request, locale, cancellationToken),
+            CheckoutMode.Subscription => await SubscriptionItemsAsync(request, locale, now, cancellationToken),
+            _ => SetupCurrency(request),
+        };
         if (sold.IsFailure)
         {
             return sold.Error;
         }
 
-        var (currency, items, drafts) = sold.Value;
-        var quote = Model.CheckoutQuote.Of(drafts, customer?.IsTaxExempt ?? false);
-        if (await ConnectionCheckAsync(request.Mode, currency, quote, cancellationToken) is { } unsupported)
+        var (currency, items, drafts, recurring) = sold.Value;
+        var taxExempt = customer?.IsTaxExempt ?? false;
+        var quote = Model.CheckoutQuote.Of(drafts, taxExempt) with
         {
-            return unsupported;
+            Recurring = recurring is { } period ? new Model.CheckoutRecurring(period.Interval, period.IntervalCount, Model.CheckoutQuote.Of(period.Lines, taxExempt)) : null,
+        };
+        var subscription = recurring is null ? null : Subscription(request.Subscription, recurring);
+        var connection = await ConnectionCheckAsync(request.Mode, currency, quote, subscription, cancellationToken);
+        if (connection.IsFailure)
+        {
+            return connection.Error;
         }
 
-        var now = clock.GetUtcNow();
+        subscription = connection.Value;
         TimeSpan lifetime = Model.CheckoutSession.MaximumLifetime;
         if (request.ExpiresIn is { } expiresIn)
         {
@@ -101,7 +125,8 @@ public sealed class CreateCheckoutSessionHandler(
                 request.ClientReferenceId,
                 request.Metadata,
                 server.Value.IsTestMode),
-            now);
+            now,
+            subscription);
         if (created.IsFailure)
         {
             return created.Error;
@@ -183,7 +208,7 @@ public sealed class CreateCheckoutSessionHandler(
     }
 
     /// <summary>The one-time prices sold, in one currency (CHK-1), with their lines in the page's language.</summary>
-    private async Task<Result<(string Currency, List<Model.CheckoutItem> Items, List<InvoiceLineDraft> Drafts)>> ItemsAsync(
+    private async Task<Result<Sale>> ItemsAsync(
         CreateCheckoutSessionRequest request, string locale, CancellationToken cancellationToken)
     {
         if (request.Items is not { Count: > 0 and <= Model.CheckoutSession.MaxItems } requested)
@@ -219,20 +244,120 @@ public sealed class CreateCheckoutSessionHandler(
                 return Model.CheckoutErrors.InvalidItems($"{field}.price", $"All items are in one currency; this price is in {price.Currency}, not {currency}.");
             }
 
-            if (item.Quantity is < 1 or > 10_000)
+            var quantity = item.Quantity ?? 1;
+            if (quantity is < 1 or > 10_000)
             {
                 return Model.CheckoutErrors.InvalidItems($"{field}.quantity", "The quantity is a whole number from 1 to 10,000.");
             }
 
-            items.Add(new Model.CheckoutItem(price.Id, item.Quantity));
-            drafts.Add(await lines.FromPriceAsync(price, item.Quantity, null, locale, cancellationToken));
+            items.Add(new Model.CheckoutItem(price.Id, quantity));
+            drafts.Add(await lines.FromPriceAsync(price, quantity, null, locale, cancellationToken));
         }
 
-        return (currency!, items, drafts);
+        return new Sale(currency!, items, drafts, null);
+    }
+
+    /// <summary>
+    /// The recurring prices of a subscription session, which follow the rules of subscriptions (CHK-1, SUB-1), and
+    /// one-time prices for its first invoice. Without a trial, the quote is the first invoice; with one, nothing is due
+    /// now and one-time prices have no invoice to join. Either way, the quote shows what each renewal bills (CHK-7).
+    /// </summary>
+    private async Task<Result<Sale>> SubscriptionItemsAsync(CreateCheckoutSessionRequest request, string locale, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (request.Items is not { Count: > 0 } requested)
+        {
+            return Model.CheckoutErrors.InvalidItems("items", "A subscription session sells at least one recurring price.");
+        }
+
+        var specs = new List<SubscriptionItemSpec>();
+        var specIndexes = new List<int>();
+        var oneTime = new List<(Domain.Catalog.Price Price, int Quantity, string Field)>();
+        foreach (var (index, item) in requested.Index())
+        {
+            var field = $"items[{index}]";
+            if (await context.FindPriceAsync(item.Price, cancellationToken) is not { } price)
+            {
+                return Model.CheckoutErrors.InvalidItems($"{field}.price", "No price has this ID or lookup key.");
+            }
+
+            if (price.Type == Domain.Catalog.PriceType.OneTime)
+            {
+                oneTime.Add((price, item.Quantity ?? 1, field));
+                continue;
+            }
+
+            var product = await context.Products.AsNoTracking().SingleAsync(row => row.Id == price.ProductId, cancellationToken);
+            specs.Add(new SubscriptionItemSpec(price, product, price.UsageType == Domain.Catalog.UsageType.Metered ? item.Quantity : item.Quantity ?? 1));
+            specIndexes.Add(index);
+        }
+
+        if (specs.Count == 0)
+        {
+            return Model.CheckoutErrors.InvalidItems("items", "A subscription session sells at least one recurring price.");
+        }
+
+        if (SubscriptionItems.Validate(specs, request.Currency?.ToUpperInvariant()) is { } invalid)
+        {
+            // The rules count the recurring items only; the error names the item as the request has it.
+            var field = invalid.Field is { } named && ItemField().Match(named) is { Success: true } match
+                ? $"items[{specIndexes[int.Parse(match.Groups["index"].Value, CultureInfo.InvariantCulture)]}]{match.Groups["rest"].Value}"
+                : "items";
+            return Model.CheckoutErrors.InvalidItems(field, invalid.Message);
+        }
+
+        var data = request.Subscription ?? new CheckoutSubscriptionData();
+        if (data.TrialDays is < 0 or > Subscriptions.CreateSubscriptionHandler.MaxTrialDays
+            || data.TrialEnd <= now || data.TrialEnd > now.AddDays(Subscriptions.CreateSubscriptionHandler.MaxTrialDays))
+        {
+            return Model.CheckoutErrors.Invalid(
+                data.TrialEnd is null ? "subscription.trialDays" : "subscription.trialEnd", $"A trial ends in the future, at most {Subscriptions.CreateSubscriptionHandler.MaxTrialDays} days away.");
+        }
+
+        var zone = billing.Value.Zone;
+        var first = specs[0].Price;
+        // The prices' default trial is made explicit, so that it is counted from completion like a requested one.
+        var trialDays = data.TrialEnd is null ? data.TrialDays ?? specs.Max(spec => (int?)spec.Price.TrialDays) ?? 0 : (int?)null;
+        var trial = SubscriptionTrial.Resolve(data.TrialEnd, trialDays, specs.Select(spec => spec.Price), zone, now) is not null;
+        var period = BillingPeriods.Period(now, first.Interval!.Value, first.IntervalCount!.Value, 0, zone);
+        var recurring = await subscriptionLines.LicensedAsync(specs, period, period, locale, cancellationToken);
+        var drafts = new List<InvoiceLineDraft>();
+        foreach (var (price, quantity, field) in oneTime)
+        {
+            if (trial)
+            {
+                return Model.CheckoutErrors.InvalidItems($"{field}.price", "One-time prices join the first invoice, and a trial has none.");
+            }
+
+            if (price.IsArchived || price.Currency != first.Currency || quantity is < 1 or > 10_000)
+            {
+                return Model.CheckoutErrors.InvalidItems($"{field}.price", $"A one-time price is active, in {first.Currency}, with a quantity from 1 to 10,000.");
+            }
+
+            drafts.Add(await lines.FromPriceAsync(price, quantity, null, locale, cancellationToken));
+        }
+
+        var items = specs.Select(spec => new Model.CheckoutItem(spec.Price.Id, spec.Quantity))
+            .Concat(oneTime.Select(item => new Model.CheckoutItem(item.Price.Id, item.Quantity)))
+            .ToList();
+        return new Sale(
+            first.Currency, items, trial ? [] : [.. recurring, .. drafts], new RecurringSale(first.Interval.Value, first.IntervalCount.Value, recurring, trialDays, data.TrialEnd));
+    }
+
+    /// <summary>The subscription to create, as asked; the connection decides how its invoices are collected.</summary>
+    private static Model.CheckoutSubscription Subscription(CheckoutSubscriptionData? requested, RecurringSale recurring)
+    {
+        var data = requested ?? new CheckoutSubscriptionData();
+        return new Model.CheckoutSubscription(
+            recurring.TrialDays,
+            recurring.TrialEnd,
+            data.PaymentMethodCollection == PaymentMethodCollectionMode.Always,
+            CollectionMethod.ChargeAutomatically,
+            data.DaysUntilDue,
+            data.Metadata ?? Metadata.Empty);
     }
 
     /// <summary>A setup session saves a card for a currency and sells nothing.</summary>
-    private static Result<(string Currency, List<Model.CheckoutItem> Items, List<InvoiceLineDraft> Drafts)> SetupCurrency(CreateCheckoutSessionRequest request)
+    private static Result<Sale> SetupCurrency(CreateCheckoutSessionRequest request)
     {
         if (request.Items is { Count: > 0 })
         {
@@ -241,15 +366,17 @@ public sealed class CreateCheckoutSessionHandler(
 
         var currency = request.Currency?.ToUpperInvariant();
         return currency is not null && Domain.Money.Currency.TryGet(currency, out _)
-            ? (currency, [], [])
+            ? new Sale(currency, [], [], null)
             : Model.CheckoutErrors.Invalid("currency", "A setup session needs the ISO 4217 currency of the card's future payments.");
     }
 
     /// <summary>
-    /// The currency's routed connection must be able to do what the session needs (CHK-3): save cards for setup, and
-    /// take the amount due for payments.
+    /// The currency's routed connection must be able to do what the session needs (CHK-3): save cards for setup and for
+    /// a trial that collects one, and take the amount due for payments. A subscription whose connection cannot save
+    /// cards is collected by invoices sent to the customer instead; returns the subscription as it will be collected.
     /// </summary>
-    private async Task<Error?> ConnectionCheckAsync(CheckoutMode mode, string currency, Model.CheckoutQuote quote, CancellationToken cancellationToken)
+    private async Task<Result<Model.CheckoutSubscription?>> ConnectionCheckAsync(
+        CheckoutMode mode, string currency, Model.CheckoutQuote quote, Model.CheckoutSubscription? subscription, CancellationToken cancellationToken)
     {
         if (await context.RoutedConnectionAsync(currency, cancellationToken) is not { } connection
             || registry.Find(connection.Provider) is not { } provider)
@@ -262,20 +389,32 @@ public sealed class CreateCheckoutSessionHandler(
             return Model.CheckoutErrors.Paused;
         }
 
-        if (mode == CheckoutMode.Setup)
+        // Verification charges (ADP-15) come with the providers that need them; until then, setup needs native support.
+        var capabilities = provider.CapabilitiesFor(connection.Settings);
+        var setsUp = capabilities.SavesCards != CardSaving.None && capabilities.Setup == CardSetup.Native;
+        if (mode == CheckoutMode.Setup || subscription is { CollectsCardForTrial: true, HasTrial: true })
         {
-            // Verification charges (ADP-15) come with the providers that need them; until then, setup needs native support.
-            var capabilities = provider.CapabilitiesFor(connection.Settings);
-            return capabilities.SavesCards == CardSaving.None || capabilities.Setup != CardSetup.Native
-                ? Model.CheckoutErrors.NotSupportedByConnection("save cards without a payment")
-                : null;
+            return setsUp ? subscription : Model.CheckoutErrors.NotSupportedByConnection("save cards without a payment");
+        }
+
+        if (subscription is not null && capabilities.SavesCards == CardSaving.None)
+        {
+            subscription = subscription with { CollectionMethod = CollectionMethod.SendInvoice, DaysUntilDue = subscription.DaysUntilDue ?? 0 };
         }
 
         var minimum = Math.Max(1, provider.Descriptor.MinimumAmounts.GetValueOrDefault(currency));
-        return quote.AmountDue < minimum
-            ? Model.CheckoutErrors.InvalidItems("items", $"The total due is below the smallest amount the provider takes ({minimum} minor units).")
-            : null;
+        return subscription is { NeedsPayment: false } || quote.AmountDue >= minimum
+            ? subscription
+            : Model.CheckoutErrors.InvalidItems("items", $"The total due is below the smallest amount the provider takes ({minimum} minor units).");
     }
+
+    [GeneratedRegex(@"^items\[(?<index>\d+)\](?<rest>.*)$")]
+    private static partial Regex ItemField();
+
+    /// <summary>What a session sells: its currency and items, the lines due now, and for subscriptions what renewals bill.</summary>
+    private sealed record Sale(string Currency, List<Model.CheckoutItem> Items, List<InvoiceLineDraft> Drafts, RecurringSale? Recurring);
+
+    private sealed record RecurringSale(Domain.Catalog.PriceInterval Interval, int IntervalCount, List<InvoiceLineDraft> Lines, int? TrialDays, DateTimeOffset? TrialEnd);
 }
 
 public sealed class GetCheckoutSessionHandler(ITahsilDbContext context, IAuthorizer authorizer, CheckoutMapper mapper)
@@ -434,15 +573,21 @@ public sealed class CheckoutMapper(ISecretEncryption encryption, IPublicUrls url
             }
             : null,
         Currency = session.Currency,
-        Quote = new CheckoutQuoteResponse(
-            [.. session.Quote.Lines.Select(line => new CheckoutQuoteLineResponse(
-                line.PriceId, line.Description, line.Quantity, line.UnitAmountDecimal, line.Amount, line.DiscountAmount, line.TaxPercentage, line.TaxInclusive, line.TaxAmount, line.Total))],
-            session.Quote.Subtotal,
-            session.Quote.DiscountTotal,
-            session.Quote.TaxTotal,
-            session.Quote.TotalExcludingTax,
-            session.Quote.Total,
-            session.Quote.AmountDue),
+        Quote = Quote(session.Quote) with
+        {
+            Recurring = session.Quote.Recurring is { } recurring
+                ? new CheckoutRecurringResponse(recurring.Interval.Map<PriceInterval>(), recurring.IntervalCount, Quote(recurring.Period))
+                : null,
+        },
+        Subscription = session.Subscription is { } subscription
+            ? new CheckoutSubscriptionResponse(
+                subscription.TrialDays,
+                subscription.TrialEnd,
+                subscription.CollectsCardForTrial ? PaymentMethodCollectionMode.Always : PaymentMethodCollectionMode.IfRequired,
+                subscription.CollectionMethod.Map<Contracts.CollectionMethod>(),
+                subscription.DaysUntilDue,
+                subscription.Metadata)
+            : null,
         AllowPromotionCodes = session.AllowPromotionCodes,
         BillingDetailsCollection = session.BillingDetailsCollection.Map<BillingDetailsCollectionMode>(),
         Locale = session.Locale,
@@ -456,6 +601,17 @@ public sealed class CheckoutMapper(ISecretEncryption encryption, IPublicUrls url
         InvoiceId = session.InvoiceId,
         PaymentId = session.PaymentId,
         PaymentMethodId = session.PaymentMethodId,
+        SubscriptionId = session.SubscriptionId,
         CreatedAt = session.CreatedAt,
     };
+
+    private static CheckoutQuoteResponse Quote(Model.CheckoutQuote quote) => new(
+        [.. quote.Lines.Select(line => new CheckoutQuoteLineResponse(
+            line.PriceId, line.Description, line.Quantity, line.UnitAmountDecimal, line.Amount, line.DiscountAmount, line.TaxPercentage, line.TaxInclusive, line.TaxAmount, line.Total))],
+        quote.Subtotal,
+        quote.DiscountTotal,
+        quote.TaxTotal,
+        quote.TotalExcludingTax,
+        quote.Total,
+        quote.AmountDue);
 }

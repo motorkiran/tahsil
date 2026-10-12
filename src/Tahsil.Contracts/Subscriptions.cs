@@ -89,7 +89,7 @@ public sealed record CreateSubscriptionRequest
 
     public TrialEndBehavior TrialEndBehavior { get; init; } = TrialEndBehavior.Cancel;
 
-    /// <summary>For <c>send_invoice</c>: days from an invoice's finalization to its due date, 1 to 365.</summary>
+    /// <summary>For <c>send_invoice</c>: days from an invoice's finalization to its due date, 0 to 365.</summary>
     public int? DaysUntilDue { get; init; }
 
     /// <summary>
@@ -164,7 +164,7 @@ public sealed record UpdateSubscriptionRequest
     /// <summary>For active subscriptions; applies from the next invoice.</summary>
     public CollectionMethod? CollectionMethod { get; init; }
 
-    /// <summary>With <c>collectionMethod: send_invoice</c>: days from finalization to the due date, 1 to 365.</summary>
+    /// <summary>With <c>collectionMethod: send_invoice</c>: days from finalization to the due date, 0 to 365.</summary>
     public int? DaysUntilDue { get; init; }
 
     /// <summary>Only <c>null</c>, which drops the scheduled change.</summary>

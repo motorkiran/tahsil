@@ -1,8 +1,11 @@
-{%- capture subject -%}{% if order.mode == "setup" %}Kartınız kaydedildi{% else %}Siparişiniz alındı{% if order.number %} ({{ order.number }}){% endif %}{% endif %}{%- endcapture -%}
+{%- capture subject -%}{% if order.mode == "setup" %}Kartınız kaydedildi{% elsif order.mode == "subscription" %}Aboneliğiniz başladı{% if order.number %} ({{ order.number }}){% endif %}{% else %}Siparişiniz alındı{% if order.number %} ({{ order.number }}){% endif %}{% endif %}{%- endcapture -%}
 {%- capture html -%}
 <p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
 {% if order.mode == "setup" %}
 <p>{{ order.card }} kartınız {{ merchant.name }} için sonraki ödemelerinizde kullanılmak üzere {{ order.date }} tarihinde kaydedildi. Şimdi bir ücret alınmadı.</p>
+{% elsif order.subscription.trial_end %}
+<p>{{ order.subscription.plan }} deneme süreniz {{ order.date }} tarihinde başladı ve {{ order.subscription.trial_end }} tarihinde sona erer. Şimdi bir ücret alınmadı.</p>
+{% if order.card %}<p>{{ order.card }} kartınızdan {{ order.subscription.trial_end }} tarihinden itibaren, iptal edene kadar {{ order.subscription.recurrence }} {{ order.subscription.amount }} tahsil edilir.</p>{% else %}<p>Devam etmek için bu tarihten önce bir kart ekleyin; ardından {{ order.subscription.recurrence }} {{ order.subscription.amount }} tahsil edilir.</p>{% endif %}
 {% else %}
 <p>{{ order.date }} tarihli siparişiniz için ödemeniz alındı. Teşekkür ederiz.</p>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0;border-collapse:collapse;">
@@ -11,6 +14,8 @@
 <tr><td style="padding:6px 0;font-weight:600;">Ödenen tutar</td><td align="right" style="padding:6px 0;font-weight:600;">{{ order.total }}</td></tr>
 </table>
 {% if order.number %}<p>Fatura numarası: {{ order.number }}</p>{% endif %}
+{% if order.subscription %}<p>{{ order.subscription.plan }} aboneliğiniz {{ order.subscription.recurrence }} {{ order.subscription.amount }} ile yenilenir; bir sonraki yenileme {{ order.subscription.next_charge }} tarihinde.{% if order.subscription.invoiced %} Faturaları size e-postayla gönderilir.{% endif %}</p>
+{% if order.subscription.card_missing %}<p><strong>Kartınız kaydedilmedi.</strong> Aboneliğinizin yenilenmesi için {{ order.subscription.next_charge }} tarihinden önce bir kart ekleyin.</p>{% endif %}{% endif %}
 {% endif %}
 {% if documents.size > 0 %}<p>Kabul ettiğiniz belgeler ekte: {{ documents | join: ", " }}.</p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">Satıcı: {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSİS {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}. Bu e-postayı {{ merchant.name }} üzerinden yaptığınız işlem nedeniyle alıyorsunuz.</p>
@@ -19,13 +24,17 @@
 Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
 
 {% if order.mode == "setup" %}{{ order.card }} kartınız {{ merchant.name }} için sonraki ödemelerinizde kullanılmak üzere {{ order.date }} tarihinde kaydedildi. Şimdi bir ücret alınmadı.
+{% elsif order.subscription.trial_end %}{{ order.subscription.plan }} deneme süreniz {{ order.date }} tarihinde başladı ve {{ order.subscription.trial_end }} tarihinde sona erer. Şimdi bir ücret alınmadı.
+{% if order.card %}{{ order.card }} kartınızdan {{ order.subscription.trial_end }} tarihinden itibaren, iptal edene kadar {{ order.subscription.recurrence }} {{ order.subscription.amount }} tahsil edilir.{% else %}Devam etmek için bu tarihten önce bir kart ekleyin; ardından {{ order.subscription.recurrence }} {{ order.subscription.amount }} tahsil edilir.{% endif %}
 {% else %}{{ order.date }} tarihli siparişiniz için ödemeniz alındı. Teşekkür ederiz.
 
 {% for item in order.items %}{{ item.description }}: {{ item.amount }}
 {% endfor %}{% if order.tax %}Dahil olan vergi: {{ order.tax }}
 {% endif %}Ödenen tutar: {{ order.total }}
 {% if order.number %}Fatura numarası: {{ order.number }}
-{% endif %}{% endif %}
+{% endif %}{% if order.subscription %}{{ order.subscription.plan }} aboneliğiniz {{ order.subscription.recurrence }} {{ order.subscription.amount }} ile yenilenir; bir sonraki yenileme {{ order.subscription.next_charge }} tarihinde.{% if order.subscription.invoiced %} Faturaları size e-postayla gönderilir.{% endif %}
+{% if order.subscription.card_missing %}Kartınız kaydedilmedi. Aboneliğinizin yenilenmesi için {{ order.subscription.next_charge }} tarihinden önce bir kart ekleyin.
+{% endif %}{% endif %}{% endif %}
 {% if documents.size > 0 %}Kabul ettiğiniz belgeler ekte: {{ documents | join: ", " }}.
 {% endif %}
 Satıcı: {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSİS {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}. Bu e-postayı {{ merchant.name }} üzerinden yaptığınız işlem nedeniyle alıyorsunuz.

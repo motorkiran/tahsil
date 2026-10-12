@@ -13,7 +13,7 @@ public static class SubscriptionErrors
         "subscription.not_resumable", "Only a subscription with a scheduled cancellation can be resumed, before it ends.");
 
     public static readonly Error InvalidDaysUntilDue = Error.Validation(
-        "subscription.invalid", "Invoices sent to the customer are due in 1 to 365 days.", "daysUntilDue");
+        "subscription.invalid", "Invoices sent to the customer are due in 0 to 365 days.", "daysUntilDue");
 
     public static readonly Error PaymentMethodRequired = Error.Validation(
         "subscription.payment_method_required",

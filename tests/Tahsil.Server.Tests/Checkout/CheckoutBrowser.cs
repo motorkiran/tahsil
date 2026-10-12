@@ -49,11 +49,15 @@ internal static partial class CheckoutBrowser
         return SimulatorToken().Match(page.QuerySelector("#payment iframe")!.GetAttribute("src")!).Groups["token"].Value;
     }
 
-    /// <summary>Pays on the simulator's card page in the embed, then follows the provider's return to Tahsil.</summary>
-    public static async Task<HttpResponseMessage> PayOnTheEmbedAsync(WebApplicationFactory<Program> host, HttpClient browser, HttpResponseMessage submitted, string card)
+    /// <summary>
+    /// Pays on the simulator's card page in the embed, ticking its own box to save the card where the connection asks,
+    /// then follows the provider's return to Tahsil.
+    /// </summary>
+    public static async Task<HttpResponseMessage> PayOnTheEmbedAsync(
+        WebApplicationFactory<Program> host, HttpClient browser, HttpResponseMessage submitted, string card, bool saveCard = false)
     {
         var token = await SimulatorTokenAsync(submitted);
-        var result = await host.Services.GetRequiredService<SimulatorBank>().SubmitCardAsync(token, new CardEntryForm(card, "12/30", "123", SaveCard: false), CancellationToken);
+        var result = await host.Services.GetRequiredService<SimulatorBank>().SubmitCardAsync(token, new CardEntryForm(card, "12/30", "123", saveCard), CancellationToken);
         return await browser.GetAsync(result.ShouldBeOfType<CardPageResult.Redirect>().Url, CancellationToken);
     }
 

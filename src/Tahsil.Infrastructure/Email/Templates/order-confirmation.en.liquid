@@ -1,8 +1,11 @@
-{%- capture subject -%}{% if order.mode == "setup" %}Your card is saved{% else %}Your order is confirmed{% if order.number %} ({{ order.number }}){% endif %}{% endif %}{%- endcapture -%}
+{%- capture subject -%}{% if order.mode == "setup" %}Your card is saved{% elsif order.mode == "subscription" %}Your subscription is confirmed{% if order.number %} ({{ order.number }}){% endif %}{% else %}Your order is confirmed{% if order.number %} ({{ order.number }}){% endif %}{% endif %}{%- endcapture -%}
 {%- capture html -%}
 <p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
 {% if order.mode == "setup" %}
 <p>Your card {{ order.card }} was saved on {{ order.date }} for your future payments to {{ merchant.name }}. Nothing was charged.</p>
+{% elsif order.subscription.trial_end %}
+<p>Your {{ order.subscription.plan }} trial started on {{ order.date }} and ends on {{ order.subscription.trial_end }}. Nothing was charged.</p>
+{% if order.card %}<p>Your card {{ order.card }} is charged {{ order.subscription.amount }} {{ order.subscription.recurrence }} from {{ order.subscription.trial_end }}, until you cancel.</p>{% else %}<p>Add a card before then to continue; {{ order.subscription.amount }} is then charged {{ order.subscription.recurrence }}.</p>{% endif %}
 {% else %}
 <p>We received your payment for your order of {{ order.date }}. Thank you.</p>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0;border-collapse:collapse;">
@@ -11,6 +14,8 @@
 <tr><td style="padding:6px 0;font-weight:600;">Paid</td><td align="right" style="padding:6px 0;font-weight:600;">{{ order.total }}</td></tr>
 </table>
 {% if order.number %}<p>Invoice number: {{ order.number }}</p>{% endif %}
+{% if order.subscription %}<p>Your {{ order.subscription.plan }} subscription renews {{ order.subscription.recurrence }} for {{ order.subscription.amount }}; the next renewal is on {{ order.subscription.next_charge }}.{% if order.subscription.invoiced %} Its invoices are emailed to you.{% endif %}</p>
+{% if order.subscription.card_missing %}<p><strong>Your card was not saved.</strong> Add a card before {{ order.subscription.next_charge }} so that your subscription renews.</p>{% endif %}{% endif %}
 {% endif %}
 {% if documents.size > 0 %}<p>The documents you accepted are attached: {{ documents | join: ", " }}.</p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">Seller: {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSIS {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}. You receive this email because of your purchase from {{ merchant.name }}.</p>
@@ -19,13 +24,17 @@
 Hello{% if customer.name %} {{ customer.name }}{% endif %},
 
 {% if order.mode == "setup" %}Your card {{ order.card }} was saved on {{ order.date }} for your future payments to {{ merchant.name }}. Nothing was charged.
+{% elsif order.subscription.trial_end %}Your {{ order.subscription.plan }} trial started on {{ order.date }} and ends on {{ order.subscription.trial_end }}. Nothing was charged.
+{% if order.card %}Your card {{ order.card }} is charged {{ order.subscription.amount }} {{ order.subscription.recurrence }} from {{ order.subscription.trial_end }}, until you cancel.{% else %}Add a card before then to continue; {{ order.subscription.amount }} is then charged {{ order.subscription.recurrence }}.{% endif %}
 {% else %}We received your payment for your order of {{ order.date }}. Thank you.
 
 {% for item in order.items %}{{ item.description }}: {{ item.amount }}
 {% endfor %}{% if order.tax %}Tax included: {{ order.tax }}
 {% endif %}Paid: {{ order.total }}
 {% if order.number %}Invoice number: {{ order.number }}
-{% endif %}{% endif %}
+{% endif %}{% if order.subscription %}Your {{ order.subscription.plan }} subscription renews {{ order.subscription.recurrence }} for {{ order.subscription.amount }}; the next renewal is on {{ order.subscription.next_charge }}.{% if order.subscription.invoiced %} Its invoices are emailed to you.{% endif %}
+{% if order.subscription.card_missing %}Your card was not saved. Add a card before {{ order.subscription.next_charge }} so that your subscription renews.
+{% endif %}{% endif %}{% endif %}
 {% if documents.size > 0 %}The documents you accepted are attached: {{ documents | join: ", " }}.
 {% endif %}
 Seller: {{ merchant.legal_name }}{% if merchant.mersis_number %}, MERSIS {{ merchant.mersis_number }}{% endif %}, {{ merchant.address }}, {{ merchant.phone }}, {{ merchant.email }}. You receive this email because of your purchase from {{ merchant.name }}.

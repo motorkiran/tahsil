@@ -623,6 +623,14 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("status");
 
+                    b.Property<string>("Subscription")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("subscription_data");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
                     b.Property<string>("SuccessUrl")
                         .IsRequired()
                         .HasMaxLength(2000)

@@ -48,13 +48,16 @@ public sealed partial class OrderConfirmationSender(
         }
 
         var locale = customer.Locale;
-        var payment = await context.Payments.AsNoTracking().SingleAsync(row => row.Id == session.PaymentId, cancellationToken);
+
+        // A trial without a card completed without a payment (CHK-25).
+        var payment = session.PaymentId is { } paymentId ? await context.Payments.AsNoTracking().SingleAsync(row => row.Id == paymentId, cancellationToken) : null;
         var invoice = session.InvoiceId is { } invoiceId ? await context.Invoices.AsNoTracking().SingleAsync(row => row.Id == invoiceId, cancellationToken) : null;
         var card = session.PaymentMethodId is { } methodId ? await context.PaymentMethods.AsNoTracking().SingleAsync(row => row.Id == methodId, cancellationToken) : null;
 
         // The documents accepted with the attempt that succeeded: recorded with its write-ahead, at its instant.
+        var acceptedAt = payment?.CreatedAt ?? session.CompletedAt;
         var documents = await context.ConsentRecords.AsNoTracking()
-            .Where(record => record.CheckoutSessionId == session.Id && record.DocumentKey != null && record.AcceptedAt == payment.CreatedAt)
+            .Where(record => record.CheckoutSessionId == session.Id && record.DocumentKey != null && record.AcceptedAt == acceptedAt)
             .OrderBy(record => record.DocumentKey)
             .ToListAsync(cancellationToken);
         var titles = documents.Select(record => LegalDocumentOptions.InLocale(
@@ -87,9 +90,10 @@ public sealed partial class OrderConfirmationSender(
                     ["amount"] = Money(line.Total),
                 }).ToList(),
                 ["tax"] = session.Quote.TaxTotal > 0 ? Money(session.Quote.TaxTotal) : null,
-                ["total"] = Money(payment.Amount),
+                ["total"] = Money(payment?.Amount ?? 0),
                 ["card"] = card is null ? null : $"{card.Brand} •••• {card.Last4}",
                 ["reference"] = session.ClientReferenceId,
+                ["subscription"] = await SubscriptionAsync(session, locale, Money, cancellationToken),
             },
             ["documents"] = titles,
         }, cancellationToken);
@@ -122,6 +126,39 @@ public sealed partial class OrderConfirmationSender(
 
             return sender.IsConfigured ? null : "email_not_configured";
         }
+    }
+
+    /// <summary>
+    /// What a subscription session's email says of the subscription: the plan, what renewals charge and when, the
+    /// trial's end, and whether the customer must add a card for the renewal (CHK-24) or is sent invoices.
+    /// </summary>
+    private async Task<Dictionary<string, object?>?> SubscriptionAsync(Domain.Checkout.CheckoutSession session, string locale, Func<long, string> money, CancellationToken cancellationToken)
+    {
+        if (session.SubscriptionId is not { } subscriptionId || session.Quote.Recurring is not { } recurring)
+        {
+            return null;
+        }
+
+        var subscription = await context.Subscriptions.AsNoTracking().Include(row => row.Items).SingleAsync(row => row.Id == subscriptionId, cancellationToken);
+        var priceIds = subscription.Items.Select(item => item.PriceId).ToList();
+        var plans = await context.Prices.AsNoTracking()
+            .Where(price => priceIds.Contains(price.Id))
+            .Join(context.Products.AsNoTracking(), price => price.ProductId, product => product.Id, (_, product) => product.Name)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var culture = Formatting.CultureFor(locale);
+        var trialEnd = subscription.Status == Domain.Subscriptions.SubscriptionStatus.Trialing ? subscription.TrialEnd : null;
+        var automatic = subscription.CollectionMethod == Domain.Invoices.CollectionMethod.ChargeAutomatically;
+        return new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["plan"] = string.Join(", ", plans.Order(StringComparer.Ordinal)),
+            ["recurrence"] = Catalog.PriceDisplay.Recurrence(recurring.Interval.Map<Contracts.PriceInterval>(), recurring.IntervalCount, locale),
+            ["amount"] = money(recurring.Period.Total),
+            ["trial_end"] = trialEnd is { } end ? Formatting.Date(end, billing.Value.Zone, culture) : null,
+            ["next_charge"] = Formatting.Date(trialEnd ?? subscription.CurrentPeriodEnd, billing.Value.Zone, culture),
+            ["card_missing"] = automatic && subscription.DefaultPaymentMethodId is null,
+            ["invoiced"] = !automatic,
+        };
     }
 
     [LoggerMessage(LogLevel.Debug, "Customer {CustomerId} has no email address; their order confirmation is skipped")]

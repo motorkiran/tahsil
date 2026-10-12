@@ -196,7 +196,7 @@ public sealed class Subscription : AggregateRoot
         }
 
         if (terms.CollectionMethod == CollectionMethod.SendInvoice
-            ? terms.DaysUntilDue is not (>= 1 and <= Invoice.MaxDaysUntilDue)
+            ? terms.DaysUntilDue is not (>= 0 and <= Invoice.MaxDaysUntilDue)
             : terms.DaysUntilDue is not null)
         {
             return SubscriptionErrors.InvalidDaysUntilDue;
@@ -551,7 +551,7 @@ public sealed class Subscription : AggregateRoot
             return SubscriptionErrors.InvalidState(Status, "given another collection method");
         }
 
-        if (collectionMethod == CollectionMethod.SendInvoice ? daysUntilDue is not (>= 1 and <= Invoice.MaxDaysUntilDue) : daysUntilDue is not null)
+        if (collectionMethod == CollectionMethod.SendInvoice ? daysUntilDue is not (>= 0 and <= Invoice.MaxDaysUntilDue) : daysUntilDue is not null)
         {
             return SubscriptionErrors.InvalidDaysUntilDue;
         }

@@ -26,8 +26,12 @@ public sealed record CheckoutQuote(
 {
     public static CheckoutQuote Empty { get; } = new([], 0, 0, 0, 0, 0, 0);
 
+    /// <summary>For subscriptions: what each renewal bills, after the first invoice or the trial (CHK-7).</summary>
+    public CheckoutRecurring? Recurring { get; init; }
+
     /// <summary>The same lines for a customer who is, or is not, tax exempt (CHK-7).</summary>
-    public CheckoutQuote ForTaxExemption(bool taxExempt) => Of(Drafts(), taxExempt);
+    public CheckoutQuote ForTaxExemption(bool taxExempt) =>
+        Of(Drafts(), taxExempt) with { Recurring = Recurring is { } recurring ? recurring with { Period = recurring.Period.ForTaxExemption(taxExempt) } : null };
 
     /// <summary>The invoice lines of the quote, as the checkout's invoice gets them when it completes (CHK-23).</summary>
     public IReadOnlyList<InvoiceLineDraft> Drafts() =>
@@ -70,3 +74,6 @@ public sealed record CheckoutQuote(
         return new CheckoutQuote(lines, totals.Subtotal, totals.DiscountTotal, totals.TaxTotal, totals.TotalExcludingTax, totals.Total, Math.Max(totals.Total, 0));
     }
 }
+
+/// <summary>A period of a subscription's recurring items, every <see cref="IntervalCount"/> <see cref="Interval"/>s.</summary>
+public sealed record CheckoutRecurring(Catalog.PriceInterval Interval, int IntervalCount, CheckoutQuote Period);

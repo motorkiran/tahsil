@@ -49,6 +49,10 @@ internal sealed class CheckoutSessionConfiguration : IEntityTypeConfiguration<Ch
         builder.Property(session => session.Quote)
             .HasColumnType("jsonb")
             .HasConversion(new JsonValueConverter<CheckoutQuote>(), JsonValueConverter<CheckoutQuote>.Comparer);
+        builder.Property(session => session.Subscription)
+            .HasColumnName("subscription_data")
+            .HasColumnType("jsonb")
+            .HasConversion(new JsonValueConverter<CheckoutSubscription?>(), JsonValueConverter<CheckoutSubscription?>.Comparer);
         builder.Property(session => session.Documents)
             .HasColumnName("consents")
             .HasColumnType("jsonb")

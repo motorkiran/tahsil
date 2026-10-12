@@ -1,22 +1,39 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Application.Invoices;
 using Tahsil.Application.Payments;
+using Tahsil.Application.Subscriptions;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Checkout;
 using Tahsil.Domain.Common;
 using Tahsil.Domain.Invoices;
+using Tahsil.Domain.Money;
 using Tahsil.Domain.Payments;
+using Tahsil.Domain.Subscriptions;
 
 namespace Tahsil.Application.Checkout;
 
 /// <summary>
 /// Completes a checkout session when its payment succeeds (CHK-23), in the transaction that applies the outcome, so
 /// whichever path brings the success (return, notification, reconciliation) completes it once: a paid invoice of the
-/// quote's lines for <c>payment</c>, the saved card for <c>setup</c>, then <c>checkout.completed</c>.
+/// quote's lines for <c>payment</c>, the subscription with its paid first invoice for <c>subscription</c>, the saved
+/// card for <c>setup</c>, then <c>checkout.completed</c>. A trial without a card completes when the form is submitted
+/// (CHK-25).
 /// </summary>
-public sealed class CheckoutCompletion(ITahsilDbContext context, IBillingLocks locks, InvoiceFinalizer finalizer, IAuditLog audit, IOutbox outbox, Attention attention)
+public sealed class CheckoutCompletion(
+    ITahsilDbContext context,
+    IBillingLocks locks,
+    InvoiceFinalizer finalizer,
+    InvoiceLines invoiceLines,
+    SubscriptionLines subscriptionLines,
+    SubscriptionSettlement settlement,
+    IAuditLog audit,
+    IOutbox outbox,
+    Attention attention,
+    IOptions<BillingOptions> billing,
+    IOptions<SubscriptionOptions> subscriptions)
 {
     /// <summary>Called with the payment and its lock held, after the payment succeeded and its card was saved.</summary>
     public async Task CompleteAsync(Payment payment, DateTimeOffset now, CancellationToken cancellationToken)
@@ -40,19 +57,41 @@ public sealed class CheckoutCompletion(ITahsilDbContext context, IBillingLocks l
             return;
         }
 
-        if (session.Mode == CheckoutMode.Setup && payment.PaymentMethodId is null)
+        if (payment.Purpose == PaymentPurpose.Setup && payment.PaymentMethodId is null)
         {
             // CHK-24: the provider saved no card; the session stays open for another try.
             return;
         }
 
         Guid? invoiceId = null;
+        Guid? subscriptionId = null;
         if (session.Mode == CheckoutMode.Payment)
         {
             invoiceId = await PaidInvoiceAsync(session, payment, now, cancellationToken);
         }
+        else if (session.Mode == CheckoutMode.Subscription)
+        {
+            // CHK-24: without a saved card, the subscription is created anyway; its renewal asks for one (DUN-3).
+            (subscriptionId, invoiceId) = await SubscribeAsync(session, payment.CustomerId, payment, now, cancellationToken);
+        }
 
-        session.Complete(payment.Id, invoiceId, payment.PaymentMethodId, now);
+        Finish(session, payment.Id, invoiceId, payment.PaymentMethodId, subscriptionId, now);
+    }
+
+    /// <summary>
+    /// Completes a subscription session whose trial collects no card, without a payment (CHK-25); called when the form
+    /// is submitted, with the session's lock held. Returns the trialing subscription.
+    /// </summary>
+    public async Task<Guid> CompleteTrialAsync(CheckoutSession session, Guid customerId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var (subscriptionId, _) = await SubscribeAsync(session, customerId, null, now, cancellationToken);
+        Finish(session, null, null, null, subscriptionId, now);
+        return subscriptionId;
+    }
+
+    private void Finish(CheckoutSession session, Guid? paymentId, Guid? invoiceId, Guid? paymentMethodId, Guid? subscriptionId, DateTimeOffset now)
+    {
+        session.Complete(paymentId, invoiceId, paymentMethodId, subscriptionId, now);
         outbox.Enqueue(new Notifications.SendOrderConfirmation(session.Id));
         audit.Record(
             AuditActions.CheckoutCompleted,
@@ -61,11 +100,85 @@ public sealed class CheckoutCompletion(ITahsilDbContext context, IBillingLocks l
             {
                 ["mode"] = session.Mode.ToString().ToLowerInvariant(),
                 ["clientReferenceId"] = session.ClientReferenceId,
-                ["subscriptionId"] = null,
+                ["subscriptionId"] = subscriptionId,
                 ["invoiceId"] = invoiceId,
-                ["paymentMethodId"] = payment.PaymentMethodId,
+                ["paymentMethodId"] = paymentMethodId,
             },
             customerId: session.CustomerId);
+    }
+
+    /// <summary>
+    /// The subscription of a subscription session (CHK-23): trialing from now, or with its first period's invoice of
+    /// the recurring and one-time items, paid by <paramref name="payment"/>.
+    /// </summary>
+    private async Task<(Guid SubscriptionId, Guid? InvoiceId)> SubscribeAsync(
+        CheckoutSession session, Guid customerId, Payment? payment, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var terms = session.Subscription ?? throw new InvalidOperationException("A subscription session describes its subscription.");
+        var items = await subscriptionLines.PricedAsync(session.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
+        var recurring = items.Where(item => item.Price.Type == Domain.Catalog.PriceType.Recurring).ToList();
+        var zone = billing.Value.Zone;
+        var trialEnd = SubscriptionTrial.Resolve(terms.TrialEnd, terms.TrialDays, recurring.Select(item => item.Price), zone, now);
+        var created = Subscription.Create(
+            customerId,
+            recurring,
+            new SubscriptionTerms
+            {
+                CollectionMethod = terms.CollectionMethod,
+                DaysUntilDue = terms.DaysUntilDue,
+                DefaultPaymentMethodId = payment?.PaymentMethodId,
+                TrialEnd = trialEnd,
+                TrialEndBehavior = TrialEndBehavior.Cancel,
+                CheckoutSessionId = session.Id,
+                Metadata = terms.Metadata,
+            },
+            zone,
+            subscriptions.Value.IncompleteExpiry,
+            now);
+        if (created.IsFailure)
+        {
+            // The items were checked when the session was created; a change of the catalog since needs an operator.
+            throw new InvalidOperationException($"The subscription of checkout session {session.Id} cannot be created: {created.Error.Message}");
+        }
+
+        var subscription = created.Value;
+        context.Subscriptions.Add(subscription);
+        audit.Record(AuditActions.SubscriptionCreated, AuditSubject.Of(AuditSubjects.Subscription, subscription.Id), new Dictionary<string, object?>
+        {
+            ["status"] = SubscriptionMapper.Wire(subscription.Status),
+            ["items"] = subscription.Items.Select(item => new Dictionary<string, object?> { ["price"] = item.PriceId, ["quantity"] = item.Quantity }).ToList(),
+            ["currentPeriodEnd"] = subscription.CurrentPeriodEnd,
+            ["trialEnd"] = subscription.TrialEnd,
+            ["checkoutSessionId"] = session.Id,
+        }, customerId: customerId);
+        if (trialEnd is not null || payment is null)
+        {
+            return (subscription.Id, null);
+        }
+
+        // Saved first, so that what follows the first invoice's payment finds it.
+        await context.SaveChangesAsync(cancellationToken);
+        var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == customerId, cancellationToken);
+        var period = new BillingPeriod(subscription.CurrentPeriodStart, subscription.CurrentPeriodEnd);
+        var lines = await subscriptionLines.LicensedAsync(subscription, period, customer.Locale, cancellationToken);
+        foreach (var item in items.Where(item => item.Price.Type == Domain.Catalog.PriceType.OneTime))
+        {
+            lines.Add(await invoiceLines.FromPriceAsync(item.Price, item.Quantity ?? 1, null, customer.Locale, cancellationToken));
+        }
+
+        // Collected by the checkout's payment, whatever the subscription's later invoices are.
+        var invoice = Invoice.CreateDraft(
+            customerId, session.Currency, BillingReason.SubscriptionCreate, CollectionMethod.ChargeAutomatically, null, null, false, Metadata.Empty, now, subscription.Id, period).Value;
+        invoice.AddLines(lines, customer.IsTaxExempt, now);
+        context.Invoices.Add(invoice);
+        subscription.SetLatestInvoice(invoice.Id, now);
+        await SettleAsync(session, invoice, payment, now, cancellationToken);
+        if (invoice.Status == InvoiceStatus.Paid)
+        {
+            await settlement.InvoicePaidAsync(invoice, now, cancellationToken);
+        }
+
+        return (subscription.Id, invoice.Id);
     }
 
     /// <summary>The invoice of the quote, finalized and paid by the payment (<c>billing_reason = checkout</c>).</summary>
@@ -75,6 +188,13 @@ public sealed class CheckoutCompletion(ITahsilDbContext context, IBillingLocks l
         var invoice = Invoice.CreateDraft(payment.CustomerId, session.Currency, BillingReason.Checkout, CollectionMethod.ChargeAutomatically, null, null, false, session.Metadata, now).Value;
         invoice.AddLines(session.Quote.Drafts(), customer.IsTaxExempt, now);
         context.Invoices.Add(invoice);
+        await SettleAsync(session, invoice, payment, now, cancellationToken);
+        return invoice.Id;
+    }
+
+    /// <summary>Finalizes a checkout's invoice and applies the payment to it; the payment already paid it, so no balance applies.</summary>
+    private async Task SettleAsync(CheckoutSession session, Invoice invoice, Payment payment, DateTimeOffset now, CancellationToken cancellationToken)
+    {
         if (await finalizer.FinalizeAsync(invoice, cancellationToken, applyBalance: false) is { IsFailure: true } failed)
         {
             throw new InvalidOperationException($"The invoice of checkout session {session.Id} cannot be finalized: {failed.Error.Message}");
@@ -89,10 +209,9 @@ public sealed class CheckoutCompletion(ITahsilDbContext context, IBillingLocks l
                 ["expected"] = $"{invoice.AmountDue.ToString(CultureInfo.InvariantCulture)} {invoice.Currency}",
                 ["charged"] = $"{payment.Amount.ToString(CultureInfo.InvariantCulture)} {payment.Currency}",
             }, now, cancellationToken);
-            return invoice.Id;
+            return;
         }
 
         audit.Record(AuditActions.InvoicePaid, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: invoice.CustomerId);
-        return invoice.Id;
     }
 }

@@ -19,7 +19,12 @@ public sealed record SimulatorSettings(CardSetup Setup, RefundSupport Refunds, C
             "partial_after_settlement_day" => RefundSupport.PartialAfterSettlementDay,
             _ => RefundSupport.Partial,
         },
-        settings.GetValueOrDefault("savesCards") == "during_payment_when_customer_agrees" ? CardSaving.DuringPaymentWhenCustomerAgrees : CardSaving.DuringPayment);
+        settings.GetValueOrDefault("savesCards") switch
+        {
+            "during_payment_when_customer_agrees" => CardSaving.DuringPaymentWhenCustomerAgrees,
+            "none" => CardSaving.None,
+            _ => CardSaving.DuringPayment,
+        });
 }
 
 /// <summary>
@@ -107,9 +112,9 @@ public sealed class SimulatorProvider(SimulatorBank bank, Uri publicUrl) : IPaym
                 Key = "savesCards",
                 Label = "Saving cards during a payment",
                 Type = FieldType.Choice,
-                Choices = ["during_payment", "during_payment_when_customer_agrees"],
+                Choices = ["during_payment", "during_payment_when_customer_agrees", "none"],
                 Default = "during_payment",
-                Description = "Mimics providers whose page asks the customer whether to save the card.",
+                Description = "Mimics providers whose page asks the customer whether to save the card, or that save no cards at all.",
             },
         ],
         Currencies = new HashSet<string>(CurrencyCodes.Split(' '), StringComparer.Ordinal),

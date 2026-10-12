@@ -79,6 +79,17 @@ public sealed class LegalDocumentModels(IOptions<MerchantOptions> merchant, IOpt
                 ["currency"] = session.Currency,
             },
             ["mode"] = session.Mode.ToString().ToLowerInvariant(),
+            ["subscription"] = session.Subscription is { } subscription && session.Quote.Recurring is { } recurring
+                ? new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["recurrence"] = Catalog.PriceDisplay.Recurrence(recurring.Interval.Map<Contracts.PriceInterval>(), recurring.IntervalCount, locale),
+                    ["amount"] = Money(recurring.Period.Total),
+                    ["trial_days"] = subscription.TrialDays > 0 ? subscription.TrialDays : null,
+                    ["trial_end"] = subscription.TrialEnd is { } trialEnd ? Formatting.Date(trialEnd, billing.Value.Zone, culture) : null,
+                    ["card_for_trial"] = subscription.CollectsCardForTrial,
+                    ["invoiced"] = subscription.CollectionMethod == Domain.Invoices.CollectionMethod.SendInvoice,
+                }
+                : null,
             ["date"] = Formatting.Date(clock.GetUtcNow(), billing.Value.Zone, culture),
             ["session_id"] = session.Id.ToString(),
         };

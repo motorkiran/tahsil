@@ -19,6 +19,7 @@ public sealed class IndexModel(
     CheckoutPages pages,
     IOptions<CheckoutPageOptions> pageOptions,
     IOptions<MerchantOptions> merchant,
+    IOptions<Application.Invoices.BillingOptions> billing,
     Microsoft.Extensions.Localization.IStringLocalizer<SharedResource> localizer) : HostedPageModel, IContentSecurityPolicySources
 {
     public CheckoutView View { get; private set; } = null!;
@@ -40,16 +41,32 @@ public sealed class IndexModel(
 
     public bool IsSetup => View.Session.Mode == CheckoutMode.Setup;
 
+    /// <summary>For subscription sessions: the subscription, as the session creates it.</summary>
+    public CheckoutSubscription? Subscription => View.Session.Subscription;
+
     public bool OffersImmediateStart => !IsSetup && pageOptions.Value.ImmediateStartConsent.Enabled;
 
     public string ImmediateStartText => CheckoutTexts.ImmediateStart(pageOptions.Value, View.Locale);
 
-    public string CardStorageText => CheckoutTexts.CardStorage(Merchant.DisplayName ?? string.Empty, View.Locale);
+    /// <summary>Whether the page asks to save the card for future charges, in a box of its own (CHK-13).</summary>
+    public bool SavesCard => CheckoutPages.SavesCard(View.Session);
 
-    public string PayButtonText => CheckoutTexts.PayButton(pageOptions.Value, View.Locale, IsSetup ? "setup" : "payment", Money(View.Session.Quote.AmountDue));
+    public string CardStorageText => pages.CardStorageText(View);
+
+    public string PayButtonText => CheckoutTexts.PayButton(pageOptions.Value, View.Locale, ButtonMode, Money(View.Session.Quote.AmountDue));
 
     public string Money(long amount) => Formatting.Money(
         amount, View.Session.Currency, Domain.Money.Currency.TryGet(View.Session.Currency, out var currency) ? currency.Exponent : 2, Culture);
+
+    public string Date(DateTimeOffset instant) => Formatting.Date(instant, billing.Value.Zone, Culture);
+
+    private string ButtonMode => Subscription switch
+    {
+        null => IsSetup ? "setup" : "payment",
+        { HasTrial: false } => "subscription",
+        { CollectsCardForTrial: true } => "trial_with_card",
+        _ => "trial",
+    };
 
     public async Task<IActionResult> OnGetAsync(string token, string? failed, CancellationToken cancellationToken)
     {
@@ -108,7 +125,13 @@ public sealed class IndexModel(
             return Page();
         }
 
-        switch (started.Value.Presentation)
+        if (started.Value.CompletedUrl is { } completed)
+        {
+            // A trial without a card needs no payment; the session completed with the form (CHK-25).
+            return Redirect(completed);
+        }
+
+        switch (started.Value.Payment!.Presentation)
         {
             case Presentation.Redirect redirect:
                 return Redirect(redirect.Url.AbsoluteUri);

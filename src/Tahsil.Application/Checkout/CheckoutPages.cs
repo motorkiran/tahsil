@@ -29,13 +29,21 @@ public interface IPageCaller
 /// <param name="Documents">The legal documents of the page, with their current configuration.</param>
 /// <param name="ContentSecurity">The provider's sources for the page's content security policy (FND-42).</param>
 /// <param name="CollectsAddress">Whether the form asks for the address and phone (CHK-10).</param>
+/// <param name="Subscription">For subscription sessions, the terms the page states.</param>
 public sealed record CheckoutView(
     CheckoutSession Session,
     Customer? Customer,
     string Locale,
     IReadOnlyList<(CheckoutDocument Session, LegalDocumentOptions Options)> Documents,
     ContentSecuritySources ContentSecurity,
-    bool CollectsAddress);
+    bool CollectsAddress,
+    CheckoutSubscriptionView? Subscription);
+
+/// <summary>
+/// A subscription session's terms as the page states them (CHK-8, CHK-13): the plan, how often and how much renewals
+/// charge, the trial's end, and the first automatic charge, as they would be if the customer subscribed now.
+/// </summary>
+public sealed record CheckoutSubscriptionView(string Plan, string Recurrence, long Amount, DateTimeOffset? TrialEnd, DateTimeOffset FirstCharge);
 
 /// <summary>What the customer submits on the page.</summary>
 public sealed record CheckoutSubmission(
@@ -59,6 +67,9 @@ public enum CheckoutReturnState
     Pending,
     Failed,
 }
+
+/// <summary>What submitting the form started: a payment, or for a trial without a card the completed session's success page (CHK-25).</summary>
+public sealed record CheckoutSubmitted(StartedPayment? Payment, string? CompletedUrl);
 
 /// <summary>How a payment attempt ended for the page, with where to go next.</summary>
 public sealed record CheckoutReturn(CheckoutReturnState State, string? RedirectUrl, string? FailureCode);
@@ -88,11 +99,13 @@ public sealed class CheckoutPages(
     LegalDocumentModels models,
     IAuditLog audit,
     CheckoutProtection protection,
+    CheckoutCompletion completion,
     IPublicUrls urls,
     IOptions<CheckoutOptions> options,
     IOptions<CheckoutPageOptions> pageOptions,
     IOptions<MerchantOptions> merchant,
     IOptions<PaymentOptions> paymentOptions,
+    IOptions<BillingOptions> billing,
     IOptions<ServerOptions> server,
     BillingClock clock)
 {
@@ -138,7 +151,54 @@ public sealed class CheckoutPages(
             locale,
             Documents(session),
             sources.Of(connection),
-            session.BillingDetailsCollection == BillingDetailsCollectionMode.Required || requiredFields.Contains(CustomerField.Address) || requiredFields.Contains(CustomerField.Phone));
+            session.BillingDetailsCollection == BillingDetailsCollectionMode.Required || requiredFields.Contains(CustomerField.Address) || requiredFields.Contains(CustomerField.Phone),
+            await SubscriptionViewAsync(session, locale, cancellationToken));
+    }
+
+    /// <summary>
+    /// The text of the box to save the card (CHK-13), shown and recorded alike: for a subscription, the amount, how
+    /// often, the first automatic charge and that it can be canceled.
+    /// </summary>
+    public string CardStorageText(CheckoutView view)
+    {
+        var merchantName = merchant.Value.DisplayName ?? string.Empty;
+        if (view.Subscription is not { } subscription)
+        {
+            return CheckoutTexts.CardStorage(merchantName, view.Locale);
+        }
+
+        var culture = Formatting.CultureFor(view.Locale);
+        var exponent = Domain.Money.Currency.TryGet(view.Session.Currency, out var currency) ? currency.Exponent : 2;
+        return CheckoutTexts.SubscriptionCardStorage(
+            subscription.Plan,
+            Formatting.Money(subscription.Amount, view.Session.Currency, exponent, culture),
+            subscription.Recurrence,
+            Formatting.Date(subscription.FirstCharge, billing.Value.Zone, culture),
+            view.Locale);
+    }
+
+    private async Task<CheckoutSubscriptionView?> SubscriptionViewAsync(CheckoutSession session, string locale, CancellationToken cancellationToken)
+    {
+        if (session.Subscription is not { } terms || session.Quote.Recurring is not { } recurring)
+        {
+            return null;
+        }
+
+        var priceIds = session.Items.Select(item => item.PriceId).ToList();
+        var prices = await context.Prices.AsNoTracking()
+            .Where(price => priceIds.Contains(price.Id) && price.Type == Domain.Catalog.PriceType.Recurring)
+            .ToListAsync(cancellationToken);
+        var productIds = prices.Select(price => price.ProductId).Distinct().ToList();
+        var products = await context.Products.AsNoTracking().Where(product => productIds.Contains(product.Id)).Select(product => product.Name).ToListAsync(cancellationToken);
+        var now = clock.GetUtcNow();
+        var zone = billing.Value.Zone;
+        var trialEnd = Domain.Subscriptions.SubscriptionTrial.Resolve(terms.TrialEnd, terms.TrialDays, prices, zone, now);
+        return new CheckoutSubscriptionView(
+            string.Join(", ", products.Order(StringComparer.Ordinal)),
+            Catalog.PriceDisplay.Recurrence(recurring.Interval.Map<Contracts.PriceInterval>(), recurring.IntervalCount, locale),
+            recurring.Period.Total,
+            trialEnd,
+            trialEnd ?? Domain.Money.BillingPeriods.Period(now, recurring.Interval, recurring.IntervalCount, 0, zone).End);
     }
 
     /// <summary>A legal document of the page, rendered with what is known of the customer.</summary>
@@ -152,7 +212,7 @@ public sealed class CheckoutPages(
     /// Submits the form (CHK-18): the details and consents are checked, the customer is created or updated (CHK-2), the
     /// accepted documents are recorded with the attempt (CHK-16), and the payment is written ahead and started (PAY-8).
     /// </summary>
-    public async Task<Result<StartedPayment>> SubmitAsync(string token, CheckoutSubmission submission, CancellationToken cancellationToken)
+    public async Task<Result<CheckoutSubmitted>> SubmitAsync(string token, CheckoutSubmission submission, CancellationToken cancellationToken)
     {
         if (await FindAsync(token, cancellationToken) is not { Status: CheckoutStatus.Open } found
             || await ViewAsync(found, submission.Locale, cancellationToken) is not { } view)
@@ -168,26 +228,34 @@ public sealed class CheckoutPages(
 
         var documents = view.Documents.Where(document => document.Session.CustomerTypes.Contains(submission.Type)).ToList();
         if (documents.Any(document => document.Session.RequiresAcceptance && !submission.AcceptedDocuments.Contains(document.Session.Key))
-            || (found.Mode == CheckoutMode.Setup && !submission.CardStorage))
+            || (SavesCard(found) && !submission.CardStorage))
         {
             return CheckoutPageErrors.ConsentRequired;
         }
 
-        var written = await WriteAheadAsync(found.Id, details.Value, documents, submission, cancellationToken);
+        var written = await WriteAheadAsync(found.Id, details.Value, documents, submission, CardStorageText(view), cancellationToken);
         if (written.IsFailure)
         {
             return written.Error;
         }
 
-        var (payment, connection) = written.Value;
-        return await payments.StartWrittenAsync(
+        if (written.Value is not var (payment, connection))
+        {
+            return new CheckoutSubmitted(null, found.SuccessUrlFor());
+        }
+
+        var started = await payments.StartWrittenAsync(
             payment,
             connection,
             urls.Build($"checkout/{token}/return/{payment.Id}"),
             urls.Build($"checkout/{token}"),
             submission.IpAddress?.ToString(),
             cancellationToken);
+        return started.IsFailure ? started.Error : new CheckoutSubmitted(started.Value, null);
     }
+
+    /// <summary>Whether the session saves the card for future charges, which the customer agrees to in a box of its own (CHK-13).</summary>
+    public static bool SavesCard(CheckoutSession session) => session.Mode == CheckoutMode.Setup || session.Subscription is { SavesCard: true };
 
     /// <summary>The provider sent the customer back (CHK-19): the payment is completed, which completes the session when it succeeded.</summary>
     public async Task<CheckoutReturn?> ReturnAsync(string token, Guid paymentId, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
@@ -274,11 +342,16 @@ public sealed class CheckoutPages(
         return Customer.Validate(details) is { } invalid ? invalid : details;
     }
 
-    private async Task<Result<(Payment Payment, ProviderConnection Connection)>> WriteAheadAsync(
+    /// <summary>
+    /// Records the customer and their consents with the attempt, and writes the payment ahead (PAY-8); a trial without a
+    /// card has nothing to pay and completes the session instead, returning no payment (CHK-25).
+    /// </summary>
+    private async Task<Result<(Payment Payment, ProviderConnection Connection)?>> WriteAheadAsync(
         Guid sessionId,
         CustomerDetails details,
         IReadOnlyList<(CheckoutDocument Session, LegalDocumentOptions Options)> documents,
         CheckoutSubmission submission,
+        string cardStorageText,
         CancellationToken cancellationToken)
     {
         await using var transaction = await context.BeginTransactionAsync(cancellationToken);
@@ -348,23 +421,32 @@ public sealed class CheckoutPages(
                 customer.Value.Id, ConsentType.ImmediateStart, CheckoutTexts.ImmediateStart(pageOptions.Value, submission.Locale), evidence, submission.IpAddress, submission.UserAgent, now, session.Id));
         }
 
-        ConsentRecord? cardStorage = null;
-        if (session.Mode == CheckoutMode.Setup)
+        if (session.Subscription is { NeedsPayment: false })
         {
-            cardStorage = ConsentRecord.Create(
-                customer.Value.Id, ConsentType.CardStorage, CheckoutTexts.CardStorage(merchant.Value.DisplayName ?? string.Empty, submission.Locale), evidence, submission.IpAddress, submission.UserAgent, now, session.Id);
+            await completion.CompleteTrialAsync(session, customer.Value.Id, now, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Result.Success<(Payment, ProviderConnection)?>(null);
+        }
+
+        ConsentRecord? cardStorage = null;
+        if (SavesCard(session))
+        {
+            cardStorage = ConsentRecord.Create(customer.Value.Id, ConsentType.CardStorage, cardStorageText, evidence, submission.IpAddress, submission.UserAgent, now, session.Id);
             context.ConsentRecords.Add(cardStorage);
         }
 
+        // A setup saves a card for nothing now: for setup sessions and for a trial that collects a card (CHK-14).
+        var setup = session.Mode == CheckoutMode.Setup || session.Subscription is { HasTrial: true };
         var payment = Payment.ForCustomer(
             customer.Value.Id,
             null,
             session.Id,
             connection.Id,
-            session.Mode == CheckoutMode.Setup ? 0 : session.Quote.AmountDue,
+            setup ? 0 : session.Quote.AmountDue,
             session.Currency,
-            session.Mode == CheckoutMode.Setup ? PaymentPurpose.Setup : PaymentPurpose.Charge,
-            saveCard: session.Mode == CheckoutMode.Setup,
+            setup ? PaymentPurpose.Setup : PaymentPurpose.Charge,
+            saveCard: SavesCard(session),
             cardStorage?.Id,
             now + paymentOptions.Value.CustomerActionTimeout,
             new CustomerCaller(customer.Value.Id, CustomerSessionKind.Checkout, session.Id).ToActor(),

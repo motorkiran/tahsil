@@ -45,6 +45,14 @@ public static class CheckoutTexts
         ? $"Kartımın {merchant} tarafından kaydedilmesini ve sonraki ödemelerimde kullanılmasını kabul ediyorum. Kayıtlı kartımı istediğim zaman kaldırabilirim."
         : $"I agree that {merchant} saves my card and charges it for my future payments. I can remove the saved card at any time.";
 
+    /// <summary>
+    /// The consent to save the card for a subscription's renewals (CHK-13): the amount, how often, the date of the first
+    /// automatic charge, and that the subscription can be canceled at any time.
+    /// </summary>
+    public static string SubscriptionCardStorage(string plan, string amount, string recurrence, string firstCharge, string locale) => locale == "tr"
+        ? $"Kartımın kaydedilmesini ve {plan} aboneliğim için {recurrence} {amount} tahsil edilmesini kabul ediyorum. İlk otomatik tahsilat {firstCharge}. Aboneliğimi istediğim zaman iptal edebilirim."
+        : $"I agree that my card is saved and charged {amount} {recurrence} for my {plan} subscription. The first automatic charge is on {firstCharge}. I can cancel my subscription at any time.";
+
     /// <summary>The pay button names the obligation (CHK-17).</summary>
     public static string PayButton(CheckoutPageOptions options, string locale, string mode, string amount)
     {
@@ -57,6 +65,12 @@ public static class CheckoutTexts
         {
             ("setup", "tr") => "Kartımı kaydet",
             ("setup", _) => "Save my card",
+            ("subscription", "tr") => $"{amount} öde ve abone ol",
+            ("subscription", _) => $"Pay {amount} and subscribe",
+            ("trial_with_card", "tr") => "Kartımı kaydet ve denemeyi başlat",
+            ("trial_with_card", _) => "Save my card and start the trial",
+            ("trial", "tr") => "Denemeyi başlat",
+            ("trial", _) => "Start the trial",
             (_, "tr") => $"{amount} öde",
             _ => $"Pay {amount}",
         };

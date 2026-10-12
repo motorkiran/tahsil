@@ -352,4 +352,22 @@
   <data name="Amount" xml:space="preserve">
     <value>Tutar</value>
   </data>
+  <data name="Your trial ends on {0}." xml:space="preserve">
+    <value>Deneme süreniz {0} tarihinde sona erer.</value>
+  </data>
+  <data name="Add a card before then to continue." xml:space="preserve">
+    <value>Devam etmek için bu tarihten önce bir kart ekleyin.</value>
+  </data>
+  <data name="Then {0} {1} from {2}, until you cancel." xml:space="preserve">
+    <value>Ardından {2} tarihinden itibaren, iptal edene kadar {1} {0}.</value>
+  </data>
+  <data name="Renewal invoices are emailed to you and paid on their page." xml:space="preserve">
+    <value>Yenileme faturaları size e-postayla gönderilir ve kendi sayfalarında ödenir.</value>
+  </data>
+  <data name="You pay {0} now, including taxes, by card." xml:space="preserve">
+    <value>Şimdi kartla, vergiler dahil {0} ödersiniz.</value>
+  </data>
+  <data name="Nothing is charged now." xml:space="preserve">
+    <value>Şimdi bir ödeme alınmaz.</value>
+  </data>
 </root>

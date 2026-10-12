@@ -165,7 +165,7 @@ public sealed class SubscriptionTests
 
     [Theory]
     [InlineData(CollectionMethod.SendInvoice, null)]
-    [InlineData(CollectionMethod.SendInvoice, 0)]
+    [InlineData(CollectionMethod.SendInvoice, -1)]
     [InlineData(CollectionMethod.SendInvoice, 366)]
     [InlineData(CollectionMethod.ChargeAutomatically, 7)]
     public void DaysUntilDue_GoWithSentInvoicesOnly(CollectionMethod method, int? days) =>

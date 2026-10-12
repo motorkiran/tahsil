@@ -7831,9 +7831,11 @@
           "quantity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
+            "description": "1 when omitted; none for metered prices.",
             "format": "int32"
           }
         }
@@ -7841,7 +7843,8 @@
       "CheckoutMode": {
         "enum": [
           "payment",
-          "setup"
+          "setup",
+          "subscription"
         ]
       },
       "CheckoutQuoteLineResponse": {
@@ -7997,9 +8000,45 @@
               "string"
             ],
             "format": "int64"
+          },
+          "recurring": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For subscriptions: what each renewal bills.",
+                "$ref": "#/components/schemas/CheckoutRecurringResponse"
+              }
+            ]
           }
         },
         "description": "The first invoice as computed for the customer, which is what they pay; never taken from the browser."
+      },
+      "CheckoutRecurringResponse": {
+        "required": [
+          "interval",
+          "intervalCount",
+          "period"
+        ],
+        "type": "object",
+        "properties": {
+          "interval": {
+            "$ref": "#/components/schemas/PriceInterval"
+          },
+          "intervalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "period": {
+            "$ref": "#/components/schemas/CheckoutQuoteResponse"
+          }
+        },
+        "description": "What each renewal bills: a period of the recurring items, every `intervalCount``interval`s."
       },
       "CheckoutSessionResponse": {
         "required": [
@@ -8011,6 +8050,7 @@
           "customerDetails",
           "currency",
           "quote",
+          "subscription",
           "allowPromotionCodes",
           "billingDetailsCollection",
           "locale",
@@ -8024,6 +8064,7 @@
           "invoiceId",
           "paymentId",
           "paymentMethodId",
+          "subscriptionId",
           "createdAt"
         ],
         "type": "object",
@@ -8068,6 +8109,16 @@
           },
           "quote": {
             "$ref": "#/components/schemas/CheckoutQuoteResponse"
+          },
+          "subscription": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CheckoutSubscriptionResponse"
+              }
+            ]
           },
           "allowPromotionCodes": {
             "type": "boolean"
@@ -8141,6 +8192,13 @@
             ],
             "format": "uuid"
           },
+          "subscriptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -8153,6 +8211,103 @@
           "complete",
           "expired"
         ]
+      },
+      "CheckoutSubscriptionData": {
+        "type": "object",
+        "properties": {
+          "trialDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Days of trial, counted from completion; `0` turns off the prices' default trial.",
+            "format": "int32"
+          },
+          "trialEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The end of the trial; takes precedence over `trialDays`.",
+            "format": "date-time"
+          },
+          "paymentMethodCollection": {
+            "$ref": "#/components/schemas/PaymentMethodCollectionMode"
+          },
+          "daysUntilDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "For a connection that cannot save cards, whose subscriptions are invoiced: days from an invoice's finalization\nto its due date, 0 by default.",
+            "format": "int32"
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "The subscription a subscription session creates."
+      },
+      "CheckoutSubscriptionResponse": {
+        "required": [
+          "trialDays",
+          "trialEnd",
+          "paymentMethodCollection",
+          "collectionMethod",
+          "daysUntilDue",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "trialDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "trialEnd": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "paymentMethodCollection": {
+            "$ref": "#/components/schemas/PaymentMethodCollectionMode"
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
+          },
+          "daysUntilDue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "The subscription the session creates: its trial, whether the trial collects a card, and how its invoices are\ncollected (`send_invoice` when the connection cannot save cards)."
       },
       "CollectionMethod": {
         "enum": [
@@ -8512,7 +8667,18 @@
             "items": {
               "$ref": "#/components/schemas/CheckoutItemRequest"
             },
-            "description": "What is sold, in one currency; none in setup mode."
+            "description": "What is sold, in one currency; none in setup mode. Metered prices take no quantity."
+          },
+          "subscription": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For subscription sessions: the subscription to create.",
+                "$ref": "#/components/schemas/CheckoutSubscriptionData"
+              }
+            ]
           },
           "currency": {
             "type": [
@@ -9367,7 +9533,7 @@
               "integer",
               "string"
             ],
-            "description": "For `send_invoice`: days from an invoice's finalization to its due date, 1 to 365.",
+            "description": "For `send_invoice`: days from an invoice's finalization to its due date, 0 to 365.",
             "format": "int32"
           },
           "billingCycleAnchor": {
@@ -11414,6 +11580,12 @@
           "customer",
           "merchant",
           "operator"
+        ]
+      },
+      "PaymentMethodCollectionMode": {
+        "enum": [
+          "if_required",
+          "always"
         ]
       },
       "PaymentMethodKind": {
@@ -14235,7 +14407,7 @@
               "integer",
               "string"
             ],
-            "description": "With `collectionMethod: send_invoice`: days from finalization to the due date, 1 to 365.",
+            "description": "With `collectionMethod: send_invoice`: days from finalization to the due date, 0 to 365.",
             "format": "int32"
           },
           "scheduledChange": {

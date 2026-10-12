@@ -1,5 +1,6 @@
 using Tahsil.Domain.Common;
 using Tahsil.Domain.Customers;
+using Tahsil.Domain.Invoices;
 
 namespace Tahsil.Domain.Checkout;
 
@@ -10,6 +11,9 @@ public enum CheckoutMode
 
     /// <summary>Saves a card without selling anything.</summary>
     Setup,
+
+    /// <summary>Sells recurring prices, and one-time prices on the first invoice.</summary>
+    Subscription,
 }
 
 public enum CheckoutStatus
@@ -31,8 +35,29 @@ public enum BillingDetailsCollectionMode
 /// <summary>A legal document the session shows, resolved from configuration when it is created (CHK-11).</summary>
 public sealed record CheckoutDocument(string Key, string Version, string Type, bool RequiresAcceptance, IReadOnlyList<CustomerType> CustomerTypes);
 
-/// <summary>An item the session sells.</summary>
-public sealed record CheckoutItem(Guid PriceId, int Quantity);
+/// <summary>An item the session sells; metered prices have no quantity.</summary>
+public sealed record CheckoutItem(Guid PriceId, int? Quantity);
+
+/// <summary>
+/// The subscription a subscription session creates (CHK-1, CHK-3, CHK-14): its trial, counted from completion, whether
+/// the trial collects a card, and how its invoices are collected, which depends on whether the connection saves cards.
+/// </summary>
+public sealed record CheckoutSubscription(
+    int? TrialDays,
+    DateTimeOffset? TrialEnd,
+    bool CollectsCardForTrial,
+    CollectionMethod CollectionMethod,
+    int? DaysUntilDue,
+    IReadOnlyDictionary<string, string> Metadata)
+{
+    public bool HasTrial => TrialEnd is not null || TrialDays > 0;
+
+    /// <summary>Whether submitting the form pays or saves a card; a trial without a card completes without either (CHK-25).</summary>
+    public bool NeedsPayment => !HasTrial || CollectsCardForTrial;
+
+    /// <summary>Whether the session saves the card for future charges, which the customer agrees to separately (CHK-13).</summary>
+    public bool SavesCard => CollectionMethod == CollectionMethod.ChargeAutomatically && NeedsPayment;
+}
 
 /// <summary>A customer the session creates when its form is submitted, with the details given at creation (CHK-2).</summary>
 public sealed record CheckoutCustomer(
@@ -83,6 +108,9 @@ public sealed class CheckoutSession : AggregateRoot
 
     public CheckoutQuote Quote { get; private set; } = CheckoutQuote.Empty;
 
+    /// <summary>For subscription sessions: the subscription to create.</summary>
+    public CheckoutSubscription? Subscription { get; private init; }
+
     /// <summary>The legal documents of the page, with the versions in force when the session was created.</summary>
     public List<CheckoutDocument> Documents { get; private init; } = [];
 
@@ -112,6 +140,9 @@ public sealed class CheckoutSession : AggregateRoot
 
     public Guid? PaymentId { get; private set; }
 
+    /// <summary>The subscription a subscription session created.</summary>
+    public Guid? SubscriptionId { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private init; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -128,6 +159,7 @@ public sealed class CheckoutSession : AggregateRoot
     /// <param name="documents">The legal documents of the page.</param>
     /// <param name="terms">The page's terms and the application's references.</param>
     /// <param name="now">The time.</param>
+    /// <param name="subscription">For subscription sessions, the subscription to create.</param>
     public static Result<CheckoutSession> Create(
         CheckoutMode mode,
         byte[] tokenHash,
@@ -139,8 +171,14 @@ public sealed class CheckoutSession : AggregateRoot
         CheckoutQuote quote,
         IReadOnlyList<CheckoutDocument> documents,
         CheckoutTerms terms,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CheckoutSubscription? subscription = null)
     {
+        if ((mode == CheckoutMode.Subscription) != (subscription is not null))
+        {
+            throw new ArgumentException("Subscription sessions, and only they, describe a subscription.", nameof(subscription));
+        }
+
         if (terms.Lifetime < MinimumLifetime || terms.Lifetime > MaximumLifetime)
         {
             return CheckoutErrors.InvalidLifetime;
@@ -182,6 +220,7 @@ public sealed class CheckoutSession : AggregateRoot
             AllowPromotionCodes = terms.AllowPromotionCodes,
             BillingDetailsCollection = terms.BillingDetailsCollection,
             Quote = quote,
+            Subscription = subscription,
             Documents = [.. documents],
             Locale = terms.Locale,
             SuccessUrl = terms.SuccessUrl,
@@ -220,8 +259,11 @@ public sealed class CheckoutSession : AggregateRoot
         UpdatedAt = now;
     }
 
-    /// <summary>A verified successful payment completed the session (DOM-10, CHK-23), in the transaction that created what it sold.</summary>
-    public Result Complete(Guid paymentId, Guid? invoiceId, Guid? paymentMethodId, DateTimeOffset now)
+    /// <summary>
+    /// A verified successful payment completed the session (DOM-10, CHK-23), in the transaction that created what it
+    /// sold; a trial without a card completes without a payment (CHK-25).
+    /// </summary>
+    public Result Complete(Guid? paymentId, Guid? invoiceId, Guid? paymentMethodId, Guid? subscriptionId, DateTimeOffset now)
     {
         if (Status != CheckoutStatus.Open)
         {
@@ -232,6 +274,7 @@ public sealed class CheckoutSession : AggregateRoot
         PaymentId = paymentId;
         InvoiceId = invoiceId;
         PaymentMethodId = paymentMethodId;
+        SubscriptionId = subscriptionId;
         CompletedAt = now;
         UpdatedAt = now;
         return Result.Success();
