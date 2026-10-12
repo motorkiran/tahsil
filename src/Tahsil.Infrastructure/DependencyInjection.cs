@@ -37,6 +37,7 @@ public static class DependencyInjection
         AddProviders(services);
         AddBilling(services);
         AddWebhooks(services);
+        AddKimlik(services);
         AddWorkers(services);
         AddOutbox(services);
         AddAuditing(services);
@@ -127,6 +128,17 @@ public static class DependencyInjection
             .ConfigurePrimaryHttpMessageHandler(provider => WebhookHttpClient.Handler(provider.GetRequiredService<IOptions<WebhookOptions>>().Value.AllowPrivateNetworks));
         AddHostedSingleton<WebhookDeliveryService>(services);
         AddHostedSingleton<WebhookDeliveryCleanup>(services);
+    }
+
+    private static void AddKimlik(IServiceCollection services)
+    {
+        services.AddSingleton<Kimlik.KimlikTokens>();
+        services.AddScoped<Application.Kimlik.IKimlikClient, Kimlik.KimlikClient>();
+        services.AddHttpClient(Kimlik.KimlikClient.HttpClientName).ConfigureHttpClient((provider, client) =>
+        {
+            client.BaseAddress = provider.GetRequiredService<IOptions<Application.Kimlik.KimlikOptions>>().Value.Authority;
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
     }
 
     private static void AddBilling(IServiceCollection services)

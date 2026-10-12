@@ -239,6 +239,12 @@ public static class DependencyInjection
                 options => options.HasValidNotices(),
                 $"{Notifications.NotificationOptions.SectionName}: TrialEndingNoticeDays is 1 to 30, CardExpiringNoticeDays 1 to 90, and each of UpcomingRenewalNoticeDays 0 to 60.")
             .ValidateOnStart();
+        services.AddOptions<Kimlik.KimlikOptions>()
+            .BindConfiguration(Kimlik.KimlikOptions.SectionName)
+            .Validate(
+                options => options.IsValid(),
+                $"{Kimlik.KimlikOptions.SectionName}: when Enabled, Authority is an absolute URL ending with '/', ClientId, ClientSecret and a whsec_ WebhookSecret are set, SyncBuffer is 0 to 7 days, PastDueAccess is keep_until_final_action or end_immediately, and ReconcileInterval is at least 5 minutes.")
+            .ValidateOnStart();
         services.AddOptions<Portal.PortalOptions>()
             .BindConfiguration(Portal.PortalOptions.SectionName)
             .Validate(options => options.HasValidLifetimes(), $"{Portal.PortalOptions.SectionName}: SessionLifetime is 5 minutes to 1 day, and EmailLinkLifetime 1 hour to 30 days.")
