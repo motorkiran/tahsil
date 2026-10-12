@@ -11,7 +11,7 @@ using Model = Tahsil.Domain.Customers;
 namespace Tahsil.Application.Customers;
 
 public sealed class CreateCustomerHandler(
-    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IIdempotency idempotency, CustomerMapper mapper, BillingClock clock)
+    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IIdempotency idempotency, CustomerMapper mapper, Kimlik.KimlikReferences kimlik, BillingClock clock)
 {
     public async Task<Result<Versioned<CustomerResponse>>> HandleAsync(CreateCustomerRequest request, CancellationToken cancellationToken)
     {
@@ -30,6 +30,11 @@ public sealed class CreateCustomerHandler(
         if (await CustomerConflicts.FindAsync(context, customer, cancellationToken) is { } conflict)
         {
             return conflict;
+        }
+
+        if (await kimlik.CheckSubscriberAsync(customer.KimlikSubscriber, cancellationToken) is { IsFailure: true } unknown)
+        {
+            return unknown.Error;
         }
 
         context.Customers.Add(customer);
@@ -105,7 +110,8 @@ public sealed class UpsertCustomerHandler(
     }
 }
 
-public sealed class UpdateCustomerHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, CustomerMapper mapper, BillingClock clock)
+public sealed class UpdateCustomerHandler(
+    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, CustomerMapper mapper, Kimlik.KimlikReferences kimlik, BillingClock clock)
 {
     public async Task<Result<Versioned<CustomerResponse>>> HandleAsync(
         Guid id, UpdateCustomerRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
@@ -126,6 +132,7 @@ public sealed class UpdateCustomerHandler(ITahsilDbContext context, IAuthorizer 
         }
 
         var before = mapper.ToResponse(customer);
+        var link = customer.KimlikSubscriber;
         var updated = customer.Update(mapper.Merge(customer, request), mapper.EncryptTaxId, clock.GetUtcNow());
         if (updated.IsFailure)
         {
@@ -135,6 +142,20 @@ public sealed class UpdateCustomerHandler(ITahsilDbContext context, IAuthorizer 
         if (await CustomerConflicts.FindAsync(context, customer, cancellationToken) is { } conflict)
         {
             return conflict;
+        }
+
+        if (customer.KimlikSubscriber != link)
+        {
+            // Kimlik keeps one subscription per subscriber, so a mirrored subscription keeps its subscriber (CUS-3).
+            if (await KimlikLinks.IsLockedAsync(context, customer.Id, cancellationToken))
+            {
+                return Model.CustomerErrors.KimlikLinkLocked;
+            }
+
+            if (await kimlik.CheckSubscriberAsync(customer.KimlikSubscriber, cancellationToken) is { IsFailure: true } unknown)
+            {
+                return unknown.Error;
+            }
         }
 
         var after = mapper.ToResponse(customer);
@@ -347,6 +368,20 @@ public sealed class ExportCustomerHandler(
 
         return new CustomerExportResponse(mapper.ToResponse(customer, await context.BalancesOfAsync(customer.Id, cancellationToken)), trail, clock.GetUtcNow());
     }
+}
+
+/// <summary>When a customer's Kimlik link may change (CUS-3).</summary>
+internal static class KimlikLinks
+{
+    /// <summary>Whether the customer has a subscription that is not over to a product with a Kimlik plan.</summary>
+    public static Task<bool> IsLockedAsync(ITahsilDbContext context, Guid customerId, CancellationToken cancellationToken) =>
+        context.Subscriptions.AnyAsync(
+            subscription => subscription.CustomerId == customerId
+                && subscription.Status != Tahsil.Domain.Subscriptions.SubscriptionStatus.Canceled
+                && subscription.Status != Tahsil.Domain.Subscriptions.SubscriptionStatus.IncompleteExpired
+                && subscription.Items.Any(item => context.Prices.Any(price => price.Id == item.PriceId
+                    && context.Products.Any(product => product.Id == price.ProductId && product.KimlikPlan != null))),
+            cancellationToken);
 }
 
 /// <summary>The unique fields of customers: the external ID and the Kimlik link.</summary>

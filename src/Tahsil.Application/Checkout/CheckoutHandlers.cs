@@ -39,6 +39,7 @@ public sealed partial class CreateCheckoutSessionHandler(
     CheckoutMapper mapper,
     Coupons.Redemptions redemptions,
     CheckoutDiscounts discounts,
+    Kimlik.KimlikReferences kimlik,
     IOptions<CheckoutOptions> checkout,
     IOptions<BillingOptions> billing,
     IOptions<ServerOptions> server,
@@ -219,6 +220,11 @@ public sealed partial class CreateCheckoutSessionHandler(
         if (Text.Normalize(given.ExternalId) is { Length: > ModelCustomers.Customer.ExternalIdMaxLength })
         {
             return ModelCustomers.CustomerErrors.Invalid("customerDetails.externalId", "The external ID is at most 200 characters.");
+        }
+
+        if (await kimlik.CheckSubscriberAsync(details.KimlikSubscriber, cancellationToken) is { IsFailure: true } unknown)
+        {
+            return unknown.Error with { Field = "customerDetails.kimlikSubscriber" };
         }
 
         return (null, new Model.CheckoutCustomer(

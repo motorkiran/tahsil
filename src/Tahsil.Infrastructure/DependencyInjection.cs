@@ -133,7 +133,7 @@ public static class DependencyInjection
     private static void AddKimlik(IServiceCollection services)
     {
         services.AddSingleton<Kimlik.KimlikTokens>();
-        services.AddScoped<Application.Kimlik.IKimlikClient, Kimlik.KimlikClient>();
+        services.AddSingleton<Application.Kimlik.IKimlikClient, Kimlik.KimlikClient>();
         services.AddHttpClient(Kimlik.KimlikClient.HttpClientName).ConfigureHttpClient((provider, client) =>
         {
             client.BaseAddress = provider.GetRequiredService<IOptions<Application.Kimlik.KimlikOptions>>().Value.Authority;

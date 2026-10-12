@@ -28,6 +28,7 @@ public static class ProductErrors
     public static readonly Error InvalidName = Error.Validation("product.invalid", "A name is required and is at most 100 characters.", "name");
     public static readonly Error InvalidDescription = Error.Validation("product.invalid", "The description is at most 500 characters.", "description");
     public static readonly Error InvalidKimlikPlan = Error.Validation("product.invalid", "The Kimlik plan is a plan key of at most 64 characters.", "kimlikPlan");
+    public static readonly Error UnknownKimlikPlan = Error.Validation("product.unknown_kimlik_plan", "Kimlik has no base plan with this key that takes subscribers.", "kimlikPlan");
     public static readonly Error Archived = Error.Validation("product.archived", "The product is archived and sells no more.");
     public static readonly Error InUse = Error.Conflict("product.in_use", "The product's prices have been used; archive the product instead.");
 }

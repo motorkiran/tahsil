@@ -7,7 +7,8 @@ using Tahsil.Domain.Common;
 
 namespace Tahsil.Application.Catalog;
 
-public sealed class CreateProductHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IIdempotency idempotency, BillingClock clock)
+public sealed class CreateProductHandler(
+    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, IIdempotency idempotency, Kimlik.KimlikReferences kimlik, BillingClock clock)
 {
     public async Task<Result<Versioned<ProductResponse>>> HandleAsync(CreateProductRequest request, CancellationToken cancellationToken)
     {
@@ -28,6 +29,11 @@ public sealed class CreateProductHandler(ITahsilDbContext context, IAuthorizer a
         }
 
         var product = created.Value;
+        if (await kimlik.CheckPlanAsync(product.KimlikPlan, cancellationToken) is { IsFailure: true } unknown)
+        {
+            return unknown.Error;
+        }
+
         context.Products.Add(product);
         idempotency.RecordCreated(ResourceTypes.Product, product.Id);
         audit.Record(AuditActions.ProductCreated, AuditSubject.Of(AuditSubjects.Product, product.Id), new Dictionary<string, object?> { ["key"] = product.Key });
@@ -44,7 +50,7 @@ public sealed class CreateProductHandler(ITahsilDbContext context, IAuthorizer a
     }
 }
 
-public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, BillingClock clock)
+public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, Kimlik.KimlikReferences kimlik, BillingClock clock)
 {
     public async Task<Result<Versioned<ProductResponse>>> HandleAsync(
         string idOrKey, UpdateProductRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
@@ -64,6 +70,7 @@ public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer a
             return stale.Error;
         }
 
+        var plan = product.KimlikPlan;
         var updated = product.Update(
             request.Name ?? product.Name,
             request.HasDescription ? request.Description : product.Description,
@@ -74,6 +81,11 @@ public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer a
         if (updated.IsFailure)
         {
             return updated.Error;
+        }
+
+        if (product.KimlikPlan != plan && await kimlik.CheckPlanAsync(product.KimlikPlan, cancellationToken) is { IsFailure: true } unknown)
+        {
+            return unknown.Error;
         }
 
         audit.Record(AuditActions.ProductUpdated, AuditSubject.Of(AuditSubjects.Product, product.Id), Changes.Of(

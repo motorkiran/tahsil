@@ -302,6 +302,11 @@ public static class CustomerErrors
 
     public static readonly Error KimlikSubscriberTaken = Error.Conflict("customer.kimlik_subscriber_taken", "Another customer is linked to this Kimlik subscriber.");
 
+    public static readonly Error UnknownKimlikSubscriber = Error.Validation("customer.unknown_kimlik_subscriber", "Kimlik has no such user or organization.", "kimlikSubscriber");
+
+    public static readonly Error KimlikLinkLocked = Error.Conflict(
+        "customer.kimlik_link_locked", "The customer has a subscription to a product with a Kimlik plan; its Kimlik link changes only when that subscription has ended.");
+
     public static readonly Error Anonymized = Error.Conflict("customer.anonymized", "The customer was anonymized and can no longer change or buy.");
 
     public static Error ExternalIdTaken(Guid existing) =>
