@@ -541,4 +541,70 @@
   <data name="Manage cards" xml:space="preserve">
     <value>Kartları yönet</value>
   </data>
+  <data name="Cancel subscription" xml:space="preserve">
+    <value>Aboneliği iptal et</value>
+  </data>
+  <data name="Before you go" xml:space="preserve">
+    <value>Ayrılmadan önce</value>
+  </data>
+  <data name="Stay, and your subscription gets {0}." xml:space="preserve">
+    <value>Kalırsanız aboneliğinize {0} uygulanır.</value>
+  </data>
+  <data name="Stay with the offer" xml:space="preserve">
+    <value>Teklifle devam et</value>
+  </data>
+  <data name="No thanks, continue to cancel" xml:space="preserve">
+    <value>Hayır, iptale devam et</value>
+  </data>
+  <data name="When should it end?" xml:space="preserve">
+    <value>Ne zaman sona ersin?</value>
+  </data>
+  <data name="Why are you leaving? (optional)" xml:space="preserve">
+    <value>Neden ayrılıyorsunuz? (isteğe bağlı)</value>
+  </data>
+  <data name="Rather not say" xml:space="preserve">
+    <value>Belirtmek istemiyorum</value>
+  </data>
+  <data name="It is too expensive" xml:space="preserve">
+    <value>Fiyatı yüksek</value>
+  </data>
+  <data name="It lacks something I need" xml:space="preserve">
+    <value>İhtiyacım olan bir şey eksik</value>
+  </data>
+  <data name="I switched to another service" xml:space="preserve">
+    <value>Başka bir hizmete geçtim</value>
+  </data>
+  <data name="I do not use it enough" xml:space="preserve">
+    <value>Yeterince kullanmıyorum</value>
+  </data>
+  <data name="Another reason" xml:space="preserve">
+    <value>Başka bir neden</value>
+  </data>
+  <data name="The subscription could not be canceled. Please try again." xml:space="preserve">
+    <value>Abonelik iptal edilemedi. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="Your details could not be saved. Please try again." xml:space="preserve">
+    <value>Bilgileriniz kaydedilemedi. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Kaydet</value>
+  </data>
+  <data name="Your subscription will end as you chose. We sent you a confirmation." xml:space="preserve">
+    <value>Aboneliğiniz seçtiğiniz şekilde sona erecek. Size bir onay gönderdik.</value>
+  </data>
+  <data name="Your subscription has ended. We sent you a confirmation." xml:space="preserve">
+    <value>Aboneliğiniz sona erdi. Size bir onay gönderdik.</value>
+  </data>
+  <data name="Your subscription continues." xml:space="preserve">
+    <value>Aboneliğiniz devam ediyor.</value>
+  </data>
+  <data name="Your billing details were saved." xml:space="preserve">
+    <value>Fatura bilgileriniz kaydedildi.</value>
+  </data>
+  <data name="Keep my subscription" xml:space="preserve">
+    <value>Aboneliğimi sürdür</value>
+  </data>
+  <data name="Edit billing details" xml:space="preserve">
+    <value>Fatura bilgilerini düzenle</value>
+  </data>
 </root>

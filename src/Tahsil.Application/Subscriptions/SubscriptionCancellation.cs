@@ -24,6 +24,7 @@ public sealed class CancelSubscriptionHandler(
     ITahsilDbContext context,
     IAuthorizer authorizer,
     IAuditLog audit,
+    IOutbox outbox,
     IBillingLocks locks,
     InvoiceLines invoiceLines,
     InvoiceFinalizer finalizer,
@@ -40,12 +41,13 @@ public sealed class CancelSubscriptionHandler(
     public async Task<Result<Versioned<SubscriptionResponse>>> HandleAsync(
         Guid id, CancelSubscriptionRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
     {
-        if (authorizer.Require(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
+        if (authorizer.RequireOrCustomer(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
 
-        if (request.Refund != CancellationRefund.None && authorizer.Require(TahsilPermissions.RefundsWrite) is { IsFailure: true } cannotRefund)
+        // A customer's own refund in the portal follows its rules (PRT-8, PRT-10); the API needs the refund permission.
+        if (request.Refund != CancellationRefund.None && !authorizer.IsCustomer && authorizer.Require(TahsilPermissions.RefundsWrite) is { IsFailure: true } cannotRefund)
         {
             return cannotRefund.Error;
         }
@@ -80,7 +82,8 @@ public sealed class CancelSubscriptionHandler(
         await using (var transaction = await context.BeginTransactionAsync(cancellationToken))
         {
             await locks.LockSubscriptionAsync(id, cancellationToken);
-            if (await context.Subscriptions.Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } found)
+            if (await context.Subscriptions.Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } found
+                || !authorizer.Owns(found.CustomerId))
             {
                 return SubscriptionErrors.NotFound;
             }
@@ -104,6 +107,14 @@ public sealed class CancelSubscriptionHandler(
                     ["status"] = SubscriptionMapper.Wire(subscription.Status),
                     ["previousStatus"] = null,
                 }, customerId: subscription.CustomerId);
+
+                // The cancellation is confirmed by email at once, not only when it takes effect (SUB-35, PRT-9).
+                Notifications.CustomerEmails.Enqueue(
+                    outbox,
+                    Notifications.EmailTypes.SubscriptionCanceled,
+                    subscription.Id,
+                    $"{subscription.Id}:scheduled:{subscription.CancelAt!.Value.ToUnixTimeSeconds()}",
+                    new Dictionary<string, string> { ["scheduled"] = "true" });
             }
             else
             {
@@ -112,6 +123,7 @@ public sealed class CancelSubscriptionHandler(
                 {
                     CancellationRefund.Prorated => await ProratedRefundAsync(subscription, customer, now, cancellationToken),
                     CancellationRefund.LastPayment => await LastPaymentRefundAsync(subscription, cancellationToken),
+                    CancellationRefund.AllPayments => await AllPaymentsRefundAsync(subscription, cancellationToken),
                     _ => [],
                 };
                 if (subscription.Cancel(now, reason, feedback, request.Comment, now) is { IsFailure: true } refused)
@@ -166,6 +178,32 @@ public sealed class CancelSubscriptionHandler(
         var invoices = context.Invoices.Where(invoice => invoice.SubscriptionId == subscription.Id && invoice.Status == ModelInvoices.InvoiceStatus.Paid
             && invoice.PeriodStart >= period.Start && invoice.PeriodStart < period.End).Select(invoice => invoice.Id);
         return await TakeAsync(invoices, -credit.Total, cancellationToken);
+    }
+
+    /// <summary>
+    /// What a cancellation now would refund with <paramref name="refund"/>, without cancelling: for the choices the
+    /// portal shows (PRT-8, PRT-10).
+    /// </summary>
+    public async Task<long> RefundPreviewAsync(Guid subscriptionId, CancellationRefund refund, CancellationToken cancellationToken)
+    {
+        var subscription = await context.Subscriptions.AsNoTracking().Include(row => row.Items).SingleAsync(row => row.Id == subscriptionId, cancellationToken);
+        var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == subscription.CustomerId, cancellationToken);
+        var taken = refund switch
+        {
+            CancellationRefund.Prorated => await ProratedRefundAsync(subscription, customer, clock.GetUtcNow(), cancellationToken),
+            CancellationRefund.LastPayment => await LastPaymentRefundAsync(subscription, cancellationToken),
+            CancellationRefund.AllPayments => await AllPaymentsRefundAsync(subscription, cancellationToken),
+            _ => [],
+        };
+        return taken.Sum(part => part.Amount);
+    }
+
+    /// <summary>Every paid invoice's payments, in full (PRT-10).</summary>
+    private async Task<List<(Guid Payment, long Amount)>> AllPaymentsRefundAsync(Subscription subscription, CancellationToken cancellationToken)
+    {
+        var paid = context.Invoices.Where(invoice => invoice.SubscriptionId == subscription.Id && invoice.Status == ModelInvoices.InvoiceStatus.Paid && invoice.Total > 0)
+            .Select(invoice => invoice.Id);
+        return await TakeAsync(paid, long.MaxValue, cancellationToken);
     }
 
     /// <summary>The latest paid invoice's payments, in full (SUB-31).</summary>
@@ -259,14 +297,15 @@ public sealed class ResumeSubscriptionHandler(
 
     public async Task<Result<Versioned<SubscriptionResponse>>> HandleAsync(Guid id, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
     {
-        if (authorizer.Require(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
+        if (authorizer.RequireOrCustomer(TahsilPermissions.SubscriptionsWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
 
         await using var transaction = await context.BeginTransactionAsync(cancellationToken);
         await locks.LockSubscriptionAsync(id, cancellationToken);
-        if (await context.Subscriptions.Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } subscription)
+        if (await context.Subscriptions.Include(row => row.Items).SingleOrDefaultAsync(row => row.Id == id, cancellationToken) is not { } subscription
+            || !authorizer.Owns(subscription.CustomerId))
         {
             return SubscriptionErrors.NotFound;
         }

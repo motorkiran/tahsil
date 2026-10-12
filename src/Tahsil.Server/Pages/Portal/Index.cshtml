@@ -56,10 +56,23 @@
                             <p class="hint discount">@L["Discount: {0}", discount.Coupon.Name]</p>
                         }
                     </div>
-                    @if (Model.View.Has(PortalFeatures.PlanChange) && subscription is { CancelAt: null, Status: SubscriptionStatus.Active or SubscriptionStatus.Trialing, Items: [{ Quantity: not null }] })
-                    {
-                        <a class="button button-secondary button-small change-plan" href="/portal/@Model.Token/subscriptions/@subscription.Id/change">@L["Change plan"]</a>
-                    }
+                    <div class="actions">
+                        @if (Model.View.Has(PortalFeatures.PlanChange) && subscription is { CancelAt: null, Status: SubscriptionStatus.Active or SubscriptionStatus.Trialing, Items: [{ Quantity: not null }] })
+                        {
+                            <a class="button button-secondary button-small change-plan" href="/portal/@Model.Token/subscriptions/@subscription.Id/change">@L["Change plan"]</a>
+                        }
+                        @if (Model.View.Has(PortalFeatures.Cancel) && subscription is { CancelAt: null, Status: not SubscriptionStatus.Incomplete })
+                        {
+                            <a class="button button-secondary button-small cancel" href="/portal/@Model.Token/subscriptions/@subscription.Id/cancel">@L["Cancel subscription"]</a>
+                        }
+                        @if (Model.View.Has(PortalFeatures.Resume) && subscription.CancelAt is not null)
+                        {
+                            <form method="post" asp-page-handler="Resume" class="inline-form">
+                                <input type="hidden" name="subscription" value="@subscription.Id" />
+                                <button class="button button-small resume" type="submit">@L["Keep my subscription"]</button>
+                            </form>
+                        }
+                    </div>
                 </li>
             }
         </ul>
@@ -120,6 +133,7 @@
         {
             <p class="hint">@string.Join(", ", new[] { address.Line1, address.Line2, address.District, address.City, address.PostalCode, address.Country }.Where(part => !string.IsNullOrWhiteSpace(part)))</p>
         }
+        <p><a class="button button-secondary button-small" href="/portal/@Model.Token/billing-details" id="edit-details">@L["Edit billing details"]</a></p>
     </section>
 }
 

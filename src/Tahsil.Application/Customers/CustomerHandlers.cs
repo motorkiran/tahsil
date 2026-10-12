@@ -110,12 +110,12 @@ public sealed class UpdateCustomerHandler(ITahsilDbContext context, IAuthorizer 
     public async Task<Result<Versioned<CustomerResponse>>> HandleAsync(
         Guid id, UpdateCustomerRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
     {
-        if (authorizer.Require(TahsilPermissions.CustomersWrite) is { IsFailure: true } denied)
+        if (authorizer.RequireOrCustomer(TahsilPermissions.CustomersWrite) is { IsFailure: true } denied)
         {
             return denied.Error;
         }
 
-        if (await context.Customers.SingleOrDefaultAsync(customer => customer.Id == id, cancellationToken) is not { } customer)
+        if (!authorizer.Owns(id) || await context.Customers.SingleOrDefaultAsync(customer => customer.Id == id, cancellationToken) is not { } customer)
         {
             return Model.CustomerErrors.NotFound;
         }

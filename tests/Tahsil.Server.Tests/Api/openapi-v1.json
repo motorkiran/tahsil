@@ -7792,7 +7792,8 @@
         "enum": [
           "none",
           "prorated",
-          "last_payment"
+          "last_payment",
+          "all_payments"
         ]
       },
       "CancelSubscriptionRequest": {

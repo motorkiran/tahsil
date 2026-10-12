@@ -256,6 +256,9 @@ public enum CancellationRefund
 
     /// <summary>The latest paid invoice's payments, in full, such as within a withdrawal period.</summary>
     LastPayment,
+
+    /// <summary>Every payment made for the subscription, in full, as a withdrawal refunds them (PRT-10).</summary>
+    AllPayments,
 }
 
 public sealed record CancelSubscriptionRequest

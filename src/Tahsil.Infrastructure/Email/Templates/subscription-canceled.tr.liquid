@@ -1,16 +1,20 @@
-{%- capture subject -%}Aboneliğiniz sona erdi{%- endcapture -%}
+{%- capture subject -%}{% if subscription.scheduled %}Aboneliğiniz {{ subscription.ended_at }} tarihinde sona erecek{% else %}Aboneliğiniz sona erdi{% endif %}{%- endcapture -%}
 {%- capture html -%}
 <p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
-<p>{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erdi.{% case subscription.reason %}{% when "payment_failed" %} Ödeme alınamadığı için sona erdi.{% when "trial_without_payment_method" %} Deneme süreniz bir ödeme yöntemi eklenmeden bittiği için sona erdi.{% when "requested_by_customer" %} İsteğiniz üzerine sona erdi.{% endcase %}</p>
-<p>Bundan sonra bu abonelik için ödeme alınmayacak.</p>
+{% if subscription.scheduled %}<p>İsteğiniz üzerine {{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erecek. O tarihe kadar kullanabilirsiniz; bundan sonra bu abonelik için ödeme alınmayacak.</p>
+{% if portal_url %}<p>Fikrinizi değiştirirseniz aboneliğinizi o tarihe kadar sürdürebilirsiniz: <a href="{{ portal_url }}">Aboneliğimi yönet</a></p>{% endif %}{% else %}<p>{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erdi.{% case subscription.reason %}{% when "payment_failed" %} Ödeme alınamadığı için sona erdi.{% when "trial_without_payment_method" %} Deneme süreniz bir ödeme yöntemi eklenmeden bittiği için sona erdi.{% when "requested_by_customer" %} İsteğiniz üzerine sona erdi.{% endcase %}</p>
+<p>Bundan sonra bu abonelik için ödeme alınmayacak.</p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
 {%- endcapture -%}
 {%- capture text -%}
 Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
 
-{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erdi.{% case subscription.reason %}{% when "payment_failed" %} Ödeme alınamadığı için sona erdi.{% when "trial_without_payment_method" %} Deneme süreniz bir ödeme yöntemi eklenmeden bittiği için sona erdi.{% when "requested_by_customer" %} İsteğiniz üzerine sona erdi.{% endcase %}
+{% if subscription.scheduled %}İsteğiniz üzerine {{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erecek. O tarihe kadar kullanabilirsiniz; bundan sonra bu abonelik için ödeme alınmayacak.
+{% if portal_url %}
+Fikrinizi değiştirirseniz aboneliğinizi o tarihe kadar sürdürebilirsiniz: {{ portal_url }}
+{% endif %}{% else %}{{ merchant.name }} aboneliğiniz ({{ subscription.plan }}) {{ subscription.ended_at }} tarihinde sona erdi.{% case subscription.reason %}{% when "payment_failed" %} Ödeme alınamadığı için sona erdi.{% when "trial_without_payment_method" %} Deneme süreniz bir ödeme yöntemi eklenmeden bittiği için sona erdi.{% when "requested_by_customer" %} İsteğiniz üzerine sona erdi.{% endcase %}
 
 Bundan sonra bu abonelik için ödeme alınmayacak.
-
+{% endif %}
 Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
 {%- endcapture -%}

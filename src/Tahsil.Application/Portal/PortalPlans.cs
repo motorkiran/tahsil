@@ -33,7 +33,17 @@ public sealed record PlanChoices(Subscription Subscription, int Quantity, IReadO
 /// next renewal, and the button that names the obligation.
 /// </summary>
 public sealed record PlanChangeQuote(
-    PlanOffer Offer, int Quantity, bool Upgrade, bool Now, DateTimeOffset EffectiveAt, long DueNow, long Credit, UpcomingRenewalResponse? NextRenewal, string Currency, string ButtonText);
+    PlanOffer Offer,
+    int Quantity,
+    bool Upgrade,
+    bool Now,
+    DateTimeOffset EffectiveAt,
+    long DueNow,
+    long Credit,
+    UpcomingRenewalResponse? NextRenewal,
+    string Currency,
+    string ButtonText,
+    string PreviousPlan);
 
 /// <summary>A confirmed plan change; <paramref name="PayUrl"/> is the invoice's page when the card could not pay it (PRT-6).</summary>
 public sealed record PlanChanged(Uri? PayUrl);
@@ -58,6 +68,7 @@ public sealed class PortalPlans(
     SubscriptionChanges changes,
     PreviewSubscriptionChangeHandler previews,
     UpdateSubscriptionHandler updates,
+    IOutbox outbox,
     IOptions<PortalOptions> portal,
     IOptions<BillingOptions> billing,
     BillingClock clock)
@@ -137,8 +148,8 @@ public sealed class PortalPlans(
 
         var (quote, request) = planned.Value;
 
-        // Saved with the change, in its transaction.
-        context.ConsentRecords.Add(ConsentRecord.ForPortal(
+        // Saved with the change, in its transaction, and confirmed by email (NTF §1).
+        var confirmed = ConsentRecord.ForPortal(
             session.CustomerId,
             ConsentType.PlanChange,
             quote.ButtonText,
@@ -151,13 +162,17 @@ public sealed class PortalPlans(
                 ["dueNow"] = quote.DueNow.ToString(CultureInfo.InvariantCulture),
                 ["credit"] = quote.Credit.ToString(CultureInfo.InvariantCulture),
                 ["nextRenewal"] = quote.NextRenewal?.Amount.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                ["nextRenewalAt"] = quote.NextRenewal?.At.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty,
+                ["previousPlan"] = quote.PreviousPlan,
                 ["currency"] = quote.Currency,
             },
             session.Id,
             subscriptionId,
             address,
             userAgent,
-            clock.GetUtcNow()));
+            clock.GetUtcNow());
+        context.ConsentRecords.Add(confirmed);
+        Notifications.CustomerEmails.Enqueue(outbox, Notifications.EmailTypes.SubscriptionUpdated, confirmed.Id, confirmed.Id.ToString());
         var changed = await updates.HandleAsync(subscriptionId, request, null, cancellationToken);
         if (changed.IsFailure)
         {
@@ -215,7 +230,10 @@ public sealed class PortalPlans(
             due > 0 ? Formatting.Money(due, subscription.Currency, exponent, culture) : null,
             Formatting.Date(effectiveAt, billing.Value.Zone, culture),
             locale);
-        return (new PlanChangeQuote(offer, quantity, upgrade, immediately, effectiveAt, due, credit, preview.Value.NextRenewal, subscription.Currency, button), request);
+        var current = choices.Offers.First(candidate => candidate.IsCurrent);
+        var previous = choices.Quantity > 1 ? $"{current.Name} × {choices.Quantity}" : current.Name;
+        var chosen = quantity > 1 ? offer with { Name = $"{offer.Name} × {quantity}" } : offer;
+        return (new PlanChangeQuote(chosen, quantity, upgrade, immediately, effectiveAt, due, credit, preview.Value.NextRenewal, subscription.Currency, button, previous), request);
     }
 }
 

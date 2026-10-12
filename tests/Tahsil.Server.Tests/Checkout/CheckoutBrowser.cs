@@ -48,7 +48,7 @@ internal static partial class CheckoutBrowser
         var page = await ParseAsync(get);
         var form = fields.Select(field => new KeyValuePair<string, string>(field.Name, field.Value)).ToList();
         form.Add(new("__RequestVerificationToken", page.QuerySelector("input[name=__RequestVerificationToken]")!.GetAttribute("value")!));
-        return await browser.PostAsync(new Uri($"{url}?handler={handler}"), new FormUrlEncodedContent(form), CancellationToken);
+        return await browser.PostAsync(new Uri($"{url}{(url.Query.Length > 0 ? '&' : '?')}handler={handler}"), new FormUrlEncodedContent(form), CancellationToken);
     }
 
     /// <summary>The simulator's page token of the embed the submitted form shows.</summary>

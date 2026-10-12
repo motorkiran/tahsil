@@ -1,0 +1,21 @@
+{%- capture subject -%}Planınız {% if change.now %}değişti{% else %}{{ change.effective_date }} tarihinde değişiyor{% endif %}{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>İsteğiniz üzerine {{ merchant.name }} aboneliğiniz{% if change.previous_plan %} {{ change.previous_plan }} planından{% endif %} {{ change.plan }} planına {% if change.now %}geçti{% else %}{{ change.effective_date }} tarihinde geçecek{% endif %}.</p>
+{% if change.charged %}<p>Mevcut dönemin kalan kısmı için {{ change.charged }} tahsil edildi.</p>{% endif %}{% if change.credited %}<p>Kullanılmayan süre için {{ change.credited }} sonraki faturalarınızdan düşülecek.</p>{% endif %}
+{% if change.next_renewal %}<p>Bir sonraki yenilemeniz{% if change.next_renewal_date %} {{ change.next_renewal_date }} tarihinde{% endif %} vergiler dahil {{ change.next_renewal }}.</p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+İsteğiniz üzerine {{ merchant.name }} aboneliğiniz{% if change.previous_plan %} {{ change.previous_plan }} planından{% endif %} {{ change.plan }} planına {% if change.now %}geçti{% else %}{{ change.effective_date }} tarihinde geçecek{% endif %}.
+{% if change.charged %}
+Mevcut dönemin kalan kısmı için {{ change.charged }} tahsil edildi.
+{% endif %}{% if change.credited %}
+Kullanılmayan süre için {{ change.credited }} sonraki faturalarınızdan düşülecek.
+{% endif %}{% if change.next_renewal %}
+Bir sonraki yenilemeniz{% if change.next_renewal_date %} {{ change.next_renewal_date }} tarihinde{% endif %} vergiler dahil {{ change.next_renewal }}.
+{% endif %}
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}

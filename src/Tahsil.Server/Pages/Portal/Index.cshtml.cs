@@ -14,7 +14,12 @@ namespace Tahsil.Server.Pages.Portal;
 /// cards, invoices and billing details, each when its feature is on.
 /// </summary>
 public sealed class IndexModel(
-    PortalPages pages, RequestThrottle throttle, IOptions<MerchantOptions> merchant, IOptions<BillingOptions> billing, IStringLocalizer<SharedResource> localizer)
+    PortalPages pages,
+    PortalCancellation cancellation,
+    RequestThrottle throttle,
+    IOptions<MerchantOptions> merchant,
+    IOptions<BillingOptions> billing,
+    IStringLocalizer<SharedResource> localizer)
     : PortalPageModel(pages, throttle, merchant, billing)
 {
     /// <summary>What a finished task says on the way back to the overview.</summary>
@@ -37,15 +42,31 @@ public sealed class IndexModel(
         {
             "plan" => localizer["Your plan change is confirmed."].Value,
             "default" => localizer["Your default card was changed."].Value,
+            "cancel_scheduled" => localizer["Your subscription will end as you chose. We sent you a confirmation."].Value,
+            "canceled" => localizer["Your subscription has ended. We sent you a confirmation."].Value,
+            "kept" or "resumed" => localizer["Your subscription continues."].Value,
+            "details" => localizer["Your billing details were saved."].Value,
             _ => null,
         };
         return Page();
+    }
+
+    /// <summary>Takes back a cancellation scheduled for the period's end (SUB-33).</summary>
+    public async Task<IActionResult> OnPostResumeAsync(string token, Guid subscription, CancellationToken cancellationToken)
+    {
+        if (await OpenAsync(token, cancellationToken) is { } answered)
+        {
+            return answered;
+        }
+
+        return (await cancellation.ResumeAsync(View.Session, subscription, cancellationToken)).IsSuccess ? Redirect($"/portal/{token}?done=resumed") : NotFound();
     }
 
     private string? TaskOf(PortalView view) => view.Session switch
     {
         { Flow: PortalFlow.PaymentMethodUpdate } when view.Has(PortalFeatures.PaymentMethod) => $"/portal/{Token}/payment-method",
         { Flow: PortalFlow.SubscriptionUpdate, FlowSubscriptionId: { } subscription } when view.Has(PortalFeatures.PlanChange) => $"/portal/{Token}/subscriptions/{subscription}/change",
+        { Flow: PortalFlow.SubscriptionCancel, FlowSubscriptionId: { } subscription } when view.Has(PortalFeatures.Cancel) => $"/portal/{Token}/subscriptions/{subscription}/cancel",
         _ => null,
     };
 }

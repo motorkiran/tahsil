@@ -15,7 +15,7 @@
 @if (Model.Quote is { } quote)
 {
     <section id="preview" aria-labelledby="preview-title">
-        <h2 id="preview-title">@quote.Offer.Name@(quote.Quantity > 1 ? $" × {quote.Quantity}" : null)</h2>
+        <h2 id="preview-title">@quote.Offer.Name</h2>
         <table class="lines">
             <tbody>
                 <tr><td>@L["Takes effect"]</td><td class="amount" id="effective">@(quote.Now ? L["Now"] : Model.Date(quote.EffectiveAt))</td></tr>

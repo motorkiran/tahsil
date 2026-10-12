@@ -110,6 +110,8 @@ public static class DependencyInjection
         services.AddScoped<ICustomerEmailComposer, TrialEndingComposer>();
         services.AddScoped<ICustomerEmailComposer, UpcomingRenewalComposer>();
         services.AddScoped<ICustomerEmailComposer, CardExpiringComposer>();
+        services.AddScoped<ICustomerEmailComposer, SubscriptionUpdatedComposer>();
+        services.AddScoped<ICustomerEmailComposer, WithdrawalConfirmedComposer>();
         services.AddScoped<IOutboxMessageHandler<SendCustomerEmail>, CustomerEmailSender>();
         services.AddScoped<IOutboxMessageHandler<SendOperatorEmail>, OperatorEmailSender>();
         services.AddScoped<OperatorDigest>();
@@ -245,13 +247,15 @@ public static class DependencyInjection
                 $"{Portal.PortalOptions.SectionName}:Features names only {string.Join(", ", Portal.PortalFeatures.Defaults.Keys)}.")
             .Validate(
                 options => options.HasValidPlanChanges(),
-                $"{Portal.PortalOptions.SectionName}: DowngradeTiming is period_end or now, QuantityLimits are 1 to 10000 with Minimum up to Maximum, and each of Products names its product.")
+                $"{Portal.PortalOptions.SectionName}: DowngradeTiming is period_end or now, CompanyCancellation period_end or both, QuantityLimits are 1 to 10000 with Minimum up to Maximum, and each of Products names its product.")
             .ValidateOnStart();
         services.AddScoped<Portal.CreatePortalSessionHandler>();
         services.AddScoped<Portal.PortalLinks>();
         services.AddScoped<Portal.PortalPages>();
         services.AddScoped<Portal.PortalPlans>();
         services.AddScoped<Portal.PortalCards>();
+        services.AddScoped<Portal.PortalCancellation>();
+        services.AddScoped<Portal.PortalDetails>();
         services.AddScoped<IOutboxMessageHandler<Notifications.SendOrderConfirmation>, Notifications.OrderConfirmationSender>();
         services.AddScoped<CreateRefundHandler>();
         services.AddScoped<GetRefundHandler>();

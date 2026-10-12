@@ -1,0 +1,16 @@
+{%- capture subject -%}Cayma talebiniz onaylandı{%- endcapture -%}
+{%- capture html -%}
+<p>Merhaba{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>{{ withdrawal.date }} tarihinde {{ merchant.name }} aboneliğinizden ({{ withdrawal.plan }}) cayma hakkınızı kullandınız. Aboneliğiniz sona erdi ve bundan sonra ödeme alınmayacak.</p>
+{% if withdrawal.refund %}<p>Abonelik için ödediğiniz tutarın tamamı, {{ withdrawal.refund }}, ödeme yaptığınız karta iade edilir. İadeler 14 gün içinde yapılır; bankanızın hesabınıza yansıtması birkaç gün daha sürebilir.</p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Merhaba{% if customer.name %} {{ customer.name }}{% endif %},
+
+{{ withdrawal.date }} tarihinde {{ merchant.name }} aboneliğinizden ({{ withdrawal.plan }}) cayma hakkınızı kullandınız. Aboneliğiniz sona erdi ve bundan sonra ödeme alınmayacak.
+{% if withdrawal.refund %}
+Abonelik için ödediğiniz tutarın tamamı, {{ withdrawal.refund }}, ödeme yaptığınız karta iade edilir. İadeler 14 gün içinde yapılır; bankanızın hesabınıza yansıtması birkaç gün daha sürebilir.
+{% endif %}
+Bu e-postayı {{ merchant.name }} aboneliğiniz nedeniyle alıyorsunuz.
+{%- endcapture -%}

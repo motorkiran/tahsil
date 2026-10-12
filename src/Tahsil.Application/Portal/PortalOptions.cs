@@ -25,6 +25,12 @@ public sealed class PortalOptions
 
     internal bool DowngradesNow => DowngradeTiming == "now";
 
+    /// <summary>How company customers may cancel (PRT-8): <c>period_end</c> only, or <c>both</c> like individuals.</summary>
+    public string CompanyCancellation { get; set; } = "period_end";
+
+    /// <summary>The key of a coupon offered to keep a subscription that is being canceled (PRT-8); none by default.</summary>
+    public string? RetentionCoupon { get; set; }
+
     public bool IsEnabled(string feature) => Features.TryGetValue(feature, out var enabled) ? enabled : PortalFeatures.Defaults[feature];
 
     internal bool HasValidLifetimes() =>
@@ -35,6 +41,7 @@ public sealed class PortalOptions
 
     internal bool HasValidPlanChanges() =>
         DowngradeTiming is "period_end" or "now"
+        && CompanyCancellation is "period_end" or "both"
         && QuantityLimits is { Minimum: >= 1, Maximum: <= 10_000 } && QuantityLimits.Maximum >= QuantityLimits.Minimum
         && Products.All(product => !string.IsNullOrWhiteSpace(product.Product));
 }

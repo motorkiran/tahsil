@@ -76,7 +76,9 @@ public static class EmailTypes
     public const string TrialEnding = "trial_ending";
     public const string UpcomingRenewal = "upcoming_renewal";
     public const string CardExpiring = "card_expiring";
+    public const string SubscriptionUpdated = "subscription_updated";
+    public const string WithdrawalConfirmed = "withdrawal_confirmed";
 
     /// <summary>Types that back legal duties (NTF-4): turning one off leaves the duty to the application.</summary>
-    public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation, SubscriptionCanceled, PriceChange, TrialEnding];
+    public static readonly IReadOnlyList<string> LegallyRelevant = [OrderConfirmation, SubscriptionCanceled, PriceChange, TrialEnding, WithdrawalConfirmed];
 }

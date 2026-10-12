@@ -1,0 +1,58 @@
+@page "/portal/{token}/subscriptions/{id:guid}/cancel"
+@using Tahsil.Application.Portal
+@using Tahsil.Contracts
+@model Tahsil.Server.Pages.Portal.CancelModel
+@{
+    ViewData["Title"] = L["Cancel subscription"];
+}
+
+<h1 id="page-title">@L["Cancel subscription"]</h1>
+<p class="lead">@Model.Choices.Plan</p>
+
+@if (Model.ErrorMessage is { } error)
+{
+    <p class="alert alert-error" role="alert" id="portal-error">@error</p>
+}
+
+@if (Model.OffersToStay)
+{
+    <section id="retention" aria-labelledby="retention-title">
+        <h2 id="retention-title">@L["Before you go"]</h2>
+        <p>@L["Stay, and your subscription gets {0}.", Model.Choices.RetentionOffer!]</p>
+        <div class="actions">
+            <form method="post" asp-page-handler="Stay" class="inline-form">
+                <button class="button" type="submit" id="stay">@L["Stay with the offer"]</button>
+            </form>
+            <a class="button" href="/portal/@Model.Token/subscriptions/@Model.Choices.Subscription.Id/cancel?declined=true" id="decline-offer">@L["No thanks, continue to cancel"]</a>
+        </div>
+    </section>
+}
+else
+{
+    <form method="post" id="cancel-form">
+        <fieldset id="choices">
+            <legend>@L["When should it end?"]</legend>
+            @foreach (var choice in Model.Choices.Choices)
+            {
+                <label class="checkbox choice" data-kind="@choice.Kind">
+                    <input type="radio" name="Choice" value="@choice.Kind" checked="@(choice.Kind == Model.Choice)" />
+                    <span>@choice.Text</span>
+                </label>
+            }
+        </fieldset>
+        <div class="field">
+            <label for="feedback">@L["Why are you leaving? (optional)"]</label>
+            <select id="feedback" name="Feedback">
+                <option value="">@L["Rather not say"]</option>
+                <option value="@CancellationFeedback.TooExpensive">@L["It is too expensive"]</option>
+                <option value="@CancellationFeedback.MissingFeatures">@L["It lacks something I need"]</option>
+                <option value="@CancellationFeedback.SwitchedService">@L["I switched to another service"]</option>
+                <option value="@CancellationFeedback.Unused">@L["I do not use it enough"]</option>
+                <option value="@CancellationFeedback.Other">@L["Another reason"]</option>
+            </select>
+        </div>
+        <button class="button button-danger" type="submit" id="confirm-cancel">@L["Cancel subscription"]</button>
+    </form>
+}
+
+<p><a href="/portal/@Model.Token?done=overview" id="overview">@L["Back to billing"]</a></p>

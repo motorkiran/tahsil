@@ -1,16 +1,20 @@
-{%- capture subject -%}Your subscription ended{%- endcapture -%}
+{%- capture subject -%}{% if subscription.scheduled %}Your subscription ends on {{ subscription.ended_at }}{% else %}Your subscription ended{% endif %}{%- endcapture -%}
 {%- capture html -%}
 <p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
-<p>Your {{ merchant.name }} subscription ({{ subscription.plan }}) ended on {{ subscription.ended_at }}.{% case subscription.reason %}{% when "payment_failed" %} It ended because its payment could not be collected.{% when "trial_without_payment_method" %} It ended because your trial ended without a payment method.{% when "requested_by_customer" %} It ended as you asked.{% endcase %}</p>
-<p>You will not be charged for it any more.</p>
+{% if subscription.scheduled %}<p>As you asked, your {{ merchant.name }} subscription ({{ subscription.plan }}) ends on {{ subscription.ended_at }}. You can use it until then, and you will not be charged for it any more.</p>
+{% if portal_url %}<p>Changed your mind? You can keep your subscription until then: <a href="{{ portal_url }}">Manage my subscription</a></p>{% endif %}{% else %}<p>Your {{ merchant.name }} subscription ({{ subscription.plan }}) ended on {{ subscription.ended_at }}.{% case subscription.reason %}{% when "payment_failed" %} It ended because its payment could not be collected.{% when "trial_without_payment_method" %} It ended because your trial ended without a payment method.{% when "requested_by_customer" %} It ended as you asked.{% endcase %}</p>
+<p>You will not be charged for it any more.</p>{% endif %}
 <p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
 {%- endcapture -%}
 {%- capture text -%}
 Hello{% if customer.name %} {{ customer.name }}{% endif %},
 
-Your {{ merchant.name }} subscription ({{ subscription.plan }}) ended on {{ subscription.ended_at }}.{% case subscription.reason %}{% when "payment_failed" %} It ended because its payment could not be collected.{% when "trial_without_payment_method" %} It ended because your trial ended without a payment method.{% when "requested_by_customer" %} It ended as you asked.{% endcase %}
+{% if subscription.scheduled %}As you asked, your {{ merchant.name }} subscription ({{ subscription.plan }}) ends on {{ subscription.ended_at }}. You can use it until then, and you will not be charged for it any more.
+{% if portal_url %}
+Changed your mind? You can keep your subscription until then: {{ portal_url }}
+{% endif %}{% else %}Your {{ merchant.name }} subscription ({{ subscription.plan }}) ended on {{ subscription.ended_at }}.{% case subscription.reason %}{% when "payment_failed" %} It ended because its payment could not be collected.{% when "trial_without_payment_method" %} It ended because your trial ended without a payment method.{% when "requested_by_customer" %} It ended as you asked.{% endcase %}
 
 You will not be charged for it any more.
-
+{% endif %}
 You receive this email because of your subscription with {{ merchant.name }}.
 {%- endcapture -%}

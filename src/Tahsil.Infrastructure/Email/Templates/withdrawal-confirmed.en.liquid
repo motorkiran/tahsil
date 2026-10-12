@@ -1,0 +1,16 @@
+{%- capture subject -%}Your withdrawal is confirmed{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>You withdrew from your {{ merchant.name }} subscription ({{ withdrawal.plan }}) on {{ withdrawal.date }}. It has ended, and you will not be charged for it any more.</p>
+{% if withdrawal.refund %}<p>Everything you paid for it, {{ withdrawal.refund }}, is refunded to the card you paid with. Refunds are made within 14 days; your bank may take a few more days to show it.</p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+You withdrew from your {{ merchant.name }} subscription ({{ withdrawal.plan }}) on {{ withdrawal.date }}. It has ended, and you will not be charged for it any more.
+{% if withdrawal.refund %}
+Everything you paid for it, {{ withdrawal.refund }}, is refunded to the card you paid with. Refunds are made within 14 days; your bank may take a few more days to show it.
+{% endif %}
+You receive this email because of your subscription with {{ merchant.name }}.
+{%- endcapture -%}

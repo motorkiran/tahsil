@@ -1,0 +1,21 @@
+{%- capture subject -%}Your plan {% if change.now %}changed{% else %}changes on {{ change.effective_date }}{% endif %}{%- endcapture -%}
+{%- capture html -%}
+<p>Hello{% if customer.name %} {{ customer.name }}{% endif %},</p>
+<p>As you asked, your {{ merchant.name }} subscription {% if change.now %}changed{% else %}changes on {{ change.effective_date }}{% endif %}{% if change.previous_plan %} from {{ change.previous_plan }}{% endif %} to {{ change.plan }}.</p>
+{% if change.charged %}<p>{{ change.charged }} was charged for the rest of the current period.</p>{% endif %}{% if change.credited %}<p>{{ change.credited }} for the unused time is credited to your next invoices.</p>{% endif %}
+{% if change.next_renewal %}<p>Your next renewal{% if change.next_renewal_date %} on {{ change.next_renewal_date }}{% endif %} is {{ change.next_renewal }}, taxes included.</p>{% endif %}
+<p style="color:#6b7280;font-size:13px;">You receive this email because of your subscription with {{ merchant.name }}.</p>
+{%- endcapture -%}
+{%- capture text -%}
+Hello{% if customer.name %} {{ customer.name }}{% endif %},
+
+As you asked, your {{ merchant.name }} subscription {% if change.now %}changed{% else %}changes on {{ change.effective_date }}{% endif %}{% if change.previous_plan %} from {{ change.previous_plan }}{% endif %} to {{ change.plan }}.
+{% if change.charged %}
+{{ change.charged }} was charged for the rest of the current period.
+{% endif %}{% if change.credited %}
+{{ change.credited }} for the unused time is credited to your next invoices.
+{% endif %}{% if change.next_renewal %}
+Your next renewal{% if change.next_renewal_date %} on {{ change.next_renewal_date }}{% endif %} is {{ change.next_renewal }}, taxes included.
+{% endif %}
+You receive this email because of your subscription with {{ merchant.name }}.
+{%- endcapture -%}

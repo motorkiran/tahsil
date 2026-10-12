@@ -153,16 +153,30 @@ public sealed class DunningFinalReminderComposer(ITahsilDbContext context, Invoi
     }
 }
 
-/// <summary>A subscription ended (NTF §1): why and when; a legally relevant notice (NTF-4).</summary>
-public sealed class SubscriptionCanceledComposer(ITahsilDbContext context, SubscriptionLines lines, EmailFormat format) : ICustomerEmailComposer
+/// <summary>
+/// A subscription ended, or will end as scheduled (NTF §1, SUB-35, PRT-9): why and when; a legally relevant notice
+/// (NTF-4). A scheduled end is confirmed at once, with a portal link to keep the subscription before it.
+/// </summary>
+public sealed class SubscriptionCanceledComposer(ITahsilDbContext context, SubscriptionLines lines, EmailFormat format, Portal.PortalLinks portal) : ICustomerEmailComposer
 {
     public string Type => EmailTypes.SubscriptionCanceled;
 
     public async Task<ComposedEmail?> ComposeAsync(SendCustomerEmail message, CancellationToken cancellationToken)
     {
         var subscription = await context.Subscriptions.AsNoTracking().Include(row => row.Items).SingleAsync(row => row.Id == message.SubjectId, cancellationToken);
-        if (subscription is not { Status: Domain.Subscriptions.SubscriptionStatus.Canceled, EndedAt: { } endedAt })
+        var scheduled = message.Data?.GetValueOrDefault("scheduled") == "true";
+        DateTimeOffset end;
+        if (scheduled && subscription is { IsTerminal: false, CancelAt: { } cancelAt })
         {
+            end = cancelAt;
+        }
+        else if (!scheduled && subscription is { Status: Domain.Subscriptions.SubscriptionStatus.Canceled, EndedAt: { } endedAt })
+        {
+            end = endedAt;
+        }
+        else
+        {
+            // A scheduled end that was taken back, or has already happened, is told by its own email.
             return null;
         }
 
@@ -172,9 +186,11 @@ public sealed class SubscriptionCanceledComposer(ITahsilDbContext context, Subsc
             ["subscription"] = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["plan"] = await PlanAsync(lines, subscription.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken),
-                ["ended_at"] = format.Date(endedAt, customer),
+                ["ended_at"] = format.Date(end, customer),
+                ["scheduled"] = scheduled,
                 ["reason"] = System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(subscription.CancellationReason?.ToString() ?? "other"),
             },
+            ["portal_url"] = scheduled ? portal.Create(customer.Id, null).AbsoluteUri : null,
         });
     }
 
@@ -250,4 +266,60 @@ public sealed class PriceChangeComposer(ITahsilDbContext context, SubscriptionLi
         (await lines.PricedAsync(items, cancellationToken))
             .Where(item => item.Price.UsageType != Domain.Catalog.UsageType.Metered && item.Quantity is > 0)
             .Sum(item => Domain.Money.PriceAmounts.For(item.Price, item.Quantity!.Value));
+}
+
+/// <summary>
+/// The customer changed their plan in the portal (NTF §1, PRT-7): the old and new plan, what was charged or credited,
+/// and the next renewal, as the customer confirmed them.
+/// </summary>
+public sealed class SubscriptionUpdatedComposer(ITahsilDbContext context, EmailFormat format) : ICustomerEmailComposer
+{
+    public string Type => EmailTypes.SubscriptionUpdated;
+
+    public async Task<ComposedEmail?> ComposeAsync(SendCustomerEmail message, CancellationToken cancellationToken)
+    {
+        var confirmed = await context.ConsentRecords.AsNoTracking().SingleAsync(record => record.Id == message.SubjectId, cancellationToken);
+        var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == confirmed.CustomerId, cancellationToken);
+        var currency = confirmed.Context["currency"];
+        string Money(string minorUnits) => EmailFormat.Money(long.Parse(minorUnits, CultureInfo.InvariantCulture), currency, customer);
+        var effectiveAt = DateTimeOffset.Parse(confirmed.Context["effectiveAt"], CultureInfo.InvariantCulture);
+        return new ComposedEmail(customer, "subscription-updated", new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["change"] = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["previous_plan"] = confirmed.Context.GetValueOrDefault("previousPlan"),
+                ["plan"] = confirmed.Context["plan"],
+                ["effective_date"] = format.Date(effectiveAt, customer),
+                ["now"] = effectiveAt <= confirmed.AcceptedAt,
+                ["charged"] = confirmed.Context["dueNow"] is "0" ? null : Money(confirmed.Context["dueNow"]),
+                ["credited"] = confirmed.Context["credit"] is "0" ? null : Money(confirmed.Context["credit"]),
+                ["next_renewal"] = confirmed.Context.GetValueOrDefault("nextRenewal") is { Length: > 0 } next ? Money(next) : null,
+                ["next_renewal_date"] = confirmed.Context.GetValueOrDefault("nextRenewalAt") is { Length: > 0 } at
+                    ? format.Date(DateTimeOffset.Parse(at, CultureInfo.InvariantCulture), customer)
+                    : null,
+            },
+        });
+    }
+}
+
+/// <summary>The customer withdrew from a subscription (PRT-10): what is refunded, and when; a legally relevant notice (NTF-4).</summary>
+public sealed class WithdrawalConfirmedComposer(ITahsilDbContext context, SubscriptionLines lines, EmailFormat format) : ICustomerEmailComposer
+{
+    public string Type => EmailTypes.WithdrawalConfirmed;
+
+    public async Task<ComposedEmail?> ComposeAsync(SendCustomerEmail message, CancellationToken cancellationToken)
+    {
+        var subscription = await context.Subscriptions.AsNoTracking().Include(row => row.Items).SingleAsync(row => row.Id == message.SubjectId, cancellationToken);
+        var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == subscription.CustomerId, cancellationToken);
+        var refund = long.Parse(message.Data?.GetValueOrDefault("refund") ?? "0", CultureInfo.InvariantCulture);
+        return new ComposedEmail(customer, "withdrawal-confirmed", new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["withdrawal"] = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["plan"] = await SubscriptionCanceledComposer.PlanAsync(lines, subscription.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken),
+                ["date"] = format.Date(subscription.EndedAt ?? subscription.UpdatedAt, customer),
+                ["refund"] = refund > 0 ? EmailFormat.Money(refund, subscription.Currency, customer) : null,
+            },
+        });
+    }
 }
