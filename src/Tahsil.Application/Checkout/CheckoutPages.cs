@@ -30,6 +30,7 @@ public interface IPageCaller
 /// <param name="ContentSecurity">The provider's sources for the page's content security policy (FND-42).</param>
 /// <param name="CollectsAddress">Whether the form asks for the address and phone (CHK-10).</param>
 /// <param name="Subscription">For subscription sessions, the terms the page states.</param>
+/// <param name="Discount">The session's discount as the page names it, such as <c>Launch discount (−50%, 3 months)</c>.</param>
 public sealed record CheckoutView(
     CheckoutSession Session,
     Customer? Customer,
@@ -37,7 +38,8 @@ public sealed record CheckoutView(
     IReadOnlyList<(CheckoutDocument Session, LegalDocumentOptions Options)> Documents,
     ContentSecuritySources ContentSecurity,
     bool CollectsAddress,
-    CheckoutSubscriptionView? Subscription);
+    CheckoutSubscriptionView? Subscription,
+    string? Discount);
 
 /// <summary>
 /// A subscription session's terms as the page states them (CHK-8, CHK-13): the plan, how often and how much renewals
@@ -81,6 +83,14 @@ public static class CheckoutPageErrors
     public static readonly Error ConsentRequired = Error.Validation("checkout.consent_required", "Tick the required boxes to continue.");
 
     public static readonly Error CardNotSaved = Error.Validation("checkout.card_not_saved", "The card was not saved; try again.");
+
+    /// <summary>Whatever the reason, so that the page does not reveal whether a code exists (CPN §7).</summary>
+    public static readonly Error PromotionCodeRefused = Error.Validation("checkout.promotion_code_refused", "This code cannot be used.");
+
+    public static readonly Error PromotionCodeRateLimited = Error.Validation("promotion_code.rate_limited", "Too many codes were tried; try again later.");
+
+    public static readonly Error DiscountRemoved = Error.Validation(
+        "checkout.discount_removed", "The discount does not apply to this customer and was removed; check the total and continue.");
 }
 
 /// <summary>
@@ -100,6 +110,9 @@ public sealed class CheckoutPages(
     IAuditLog audit,
     CheckoutProtection protection,
     CheckoutCompletion completion,
+    CheckoutDiscounts discounts,
+    Coupons.Redemptions redemptions,
+    PromotionCodeLimiter codeLimiter,
     IPublicUrls urls,
     IOptions<CheckoutOptions> options,
     IOptions<CheckoutPageOptions> pageOptions,
@@ -152,7 +165,26 @@ public sealed class CheckoutPages(
             Documents(session),
             sources.Of(connection),
             session.BillingDetailsCollection == BillingDetailsCollectionMode.Required || requiredFields.Contains(CustomerField.Address) || requiredFields.Contains(CustomerField.Phone),
-            await SubscriptionViewAsync(session, locale, cancellationToken));
+            await SubscriptionViewAsync(session, locale, cancellationToken),
+            await DiscountTextAsync(session, locale, cancellationToken));
+    }
+
+    private async Task<string?> DiscountTextAsync(CheckoutSession session, string locale, CancellationToken cancellationToken)
+    {
+        if (session.CouponId is not { } couponId)
+        {
+            return null;
+        }
+
+        var coupon = await context.Coupons.AsNoTracking().SingleAsync(row => row.Id == couponId, cancellationToken);
+        var culture = Formatting.CultureFor(locale);
+        var exponent = Domain.Money.Currency.TryGet(session.Currency, out var currency) ? currency.Exponent : 2;
+        return Coupons.CouponDisplay.Describe(
+            coupon,
+            locale,
+            amount => Formatting.Money(amount, session.Currency, exponent, culture),
+            session.Quote.Recurring?.Interval,
+            session.Quote.Recurring?.IntervalCount ?? 1);
     }
 
     /// <summary>
@@ -256,6 +288,67 @@ public sealed class CheckoutPages(
 
     /// <summary>Whether the session saves the card for future charges, which the customer agrees to in a box of its own (CHK-13).</summary>
     public static bool SavesCard(CheckoutSession session) => session.Mode == CheckoutMode.Setup || session.Subscription is { SavesCard: true };
+
+    /// <summary>
+    /// The customer entered a promotion code (CHK-9): within the limits against guessing, a code that could be redeemed
+    /// discounts the quote; any other is refused without saying why.
+    /// </summary>
+    public async Task<Result> ApplyPromotionCodeAsync(string token, string? code, IPAddress? address, CancellationToken cancellationToken)
+    {
+        if (await FindAsync(token, cancellationToken) is not { Status: CheckoutStatus.Open, AllowPromotionCodes: true } found)
+        {
+            return CheckoutErrors.NotOpen;
+        }
+
+        await using var transaction = await context.BeginTransactionAsync(cancellationToken);
+        await locks.LockCheckoutSessionAsync(found.Id, cancellationToken);
+        var session = await context.CheckoutSessions.SingleAsync(candidate => candidate.Id == found.Id, cancellationToken);
+        var now = clock.GetUtcNow();
+        if (session.Status != CheckoutStatus.Open)
+        {
+            return CheckoutErrors.NotOpen;
+        }
+
+        if (session.PromotionCodeAttempts >= PromotionCodeLimiter.MaxPerSession || !codeLimiter.TryAttempt(CheckoutProtection.NetworkOf(address), now))
+        {
+            return CheckoutPageErrors.PromotionCodeRateLimited;
+        }
+
+        session.RecordPromotionCodeAttempt(now);
+        var applied = string.IsNullOrWhiteSpace(code) ? CheckoutPageErrors.PromotionCodeRefused : await ApplyAsync(session, code, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return applied.IsFailure ? CheckoutPageErrors.PromotionCodeRefused : Result.Success();
+    }
+
+    /// <summary>Takes the code the customer entered off the session; a coupon the application applied stays.</summary>
+    public async Task<Result> RemovePromotionCodeAsync(string token, CancellationToken cancellationToken)
+    {
+        if (await FindAsync(token, cancellationToken) is not { Status: CheckoutStatus.Open, AllowPromotionCodes: true, PromotionCodeId: not null } found)
+        {
+            return CheckoutErrors.NotOpen;
+        }
+
+        await using var transaction = await context.BeginTransactionAsync(cancellationToken);
+        await locks.LockCheckoutSessionAsync(found.Id, cancellationToken);
+        var session = await context.CheckoutSessions.SingleAsync(candidate => candidate.Id == found.Id, cancellationToken);
+        var removed = session.SetDiscount(null, recurs: false, await TaxExemptAsync(session, cancellationToken), clock.GetUtcNow());
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return removed;
+    }
+
+    private async Task<Result> ApplyAsync(CheckoutSession session, string code, CancellationToken cancellationToken)
+    {
+        var named = await redemptions.FindAsync(null, code, cancellationToken);
+        return named.IsFailure
+            ? named.Error
+            : await discounts.ApplyAsync(session, named.Value.CouponId, named.Value.CodeId, session.CustomerId, await TaxExemptAsync(session, cancellationToken), cancellationToken);
+    }
+
+    private async Task<bool> TaxExemptAsync(CheckoutSession session, CancellationToken cancellationToken) =>
+        session.CustomerId is { } customerId
+        && await context.Customers.AsNoTracking().Where(row => row.Id == customerId).Select(row => row.IsTaxExempt).SingleAsync(cancellationToken);
 
     /// <summary>The provider sent the customer back (CHK-19): the payment is completed, which completes the session when it succeeded.</summary>
     public async Task<CheckoutReturn?> ReturnAsync(string token, Guid paymentId, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
@@ -389,6 +482,14 @@ public sealed class CheckoutPages(
         if (session.AttachCustomer(customer.Value.Id, customer.Value.IsTaxExempt, now) is { IsFailure: true } closed)
         {
             return closed.Error;
+        }
+
+        if (await discounts.RecheckAsync(session, customer.Value.Id, customer.Value.IsTaxExempt, cancellationToken) is { IsFailure: true })
+        {
+            // The customer and the quote without the discount are kept; the page shows the new total before any payment.
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return CheckoutPageErrors.DiscountRemoved;
         }
 
         var shown = new LegalDocumentCustomer(details.Name, details.Email, details.Type, details.TaxId, details.TaxOffice, details.Address, details.Phone);

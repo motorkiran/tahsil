@@ -45,6 +45,65 @@ public sealed class Redemptions(ITahsilDbContext context, IBillingLocks locks, I
     }
 
     /// <summary>
+    /// Whether a coupon, through a code when given, could be redeemed now for <paramref name="target"/> (CPN-7, CPN-8),
+    /// without counting anything: for a checkout's quote, whose redemption is counted when it completes (CPN-9). Without
+    /// a customer, what depends on them is left for later. Returns the discount as invoices take it, and whether it
+    /// lasts for every renewal.
+    /// </summary>
+    public async Task<Result<(InvoiceDiscount Discount, bool Recurs)>> CheckAsync(
+        Guid couponId, Guid? codeId, Guid? customerId, RedemptionTarget target, CancellationToken cancellationToken)
+    {
+        var coupon = await context.Coupons.AsNoTracking().SingleAsync(row => row.Id == couponId, cancellationToken);
+        var code = codeId is { } id ? await context.PromotionCodes.AsNoTracking().SingleAsync(row => row.Id == id, cancellationToken) : null;
+        var now = clock.GetUtcNow();
+        if (coupon.CanRedeem(now) is { IsFailure: true } exhausted)
+        {
+            return exhausted.Error;
+        }
+
+        if (coupon.AppliesTo(target.Currency, target.ProductIds) is { IsFailure: true } notApplicable)
+        {
+            return notApplicable.Error;
+        }
+
+        if (code is not null)
+        {
+            var hasPaidInvoice = code.FirstTimeOnly && customerId is { } customer
+                && await context.Invoices.AnyAsync(invoice => invoice.CustomerId == customer && invoice.Status == InvoiceStatus.Paid, cancellationToken);
+            if (code.CanRedeem(customerId, hasPaidInvoice, target.Subtotal, target.Currency, now) is { IsFailure: true } refused)
+            {
+                return refused.Error;
+            }
+        }
+
+        return (ToInvoiceDiscount(coupon, null, code?.Id), coupon.Duration == CouponDuration.Forever);
+    }
+
+    /// <summary>
+    /// Counts the redemption of a completed checkout (CPN-9). The customer already paid the discounted quote, so a
+    /// limit reached between the quote and the payment does not take the discount back: it is then kept, uncounted.
+    /// </summary>
+    public async Task<Redeemed> RedeemForCheckoutAsync(Guid couponId, Guid? codeId, Guid customerId, RedemptionTarget target, CancellationToken cancellationToken)
+    {
+        var redeemed = await RedeemAsync(couponId, codeId, customerId, target, cancellationToken);
+        if (redeemed.IsSuccess)
+        {
+            return redeemed.Value;
+        }
+
+        // A refusal counted nothing; the coupon and the code are as the locks found them.
+        var coupon = await context.Coupons.SingleAsync(row => row.Id == couponId, cancellationToken);
+        var code = codeId is { } id ? await context.PromotionCodes.SingleAsync(row => row.Id == id, cancellationToken) : null;
+
+        audit.Record(AuditActions.DiscountApplied, AuditSubject.Of(AuditSubjects.Coupon, couponId), new Dictionary<string, object?>
+        {
+            ["uncounted"] = redeemed.Error.Code,
+            ["promotionCode"] = code?.Code,
+        }, customerId: customerId);
+        return new Redeemed(coupon, code);
+    }
+
+    /// <summary>
     /// Counts a redemption by <paramref name="customerId"/> for <paramref name="target"/>, under the coupon's and the
     /// code's locks; the caller's transaction keeps the count only if what the discount is for is created too.
     /// </summary>
@@ -65,14 +124,12 @@ public sealed class Redemptions(ITahsilDbContext context, IBillingLocks locks, I
             return notApplicable.Error;
         }
 
-        if (code is not null)
+        // Both are checked before either is counted, so that a refusal changes nothing.
+        var hasPaidInvoice = code is { FirstTimeOnly: true }
+            && await context.Invoices.AnyAsync(invoice => invoice.CustomerId == customerId && invoice.Status == InvoiceStatus.Paid, cancellationToken);
+        if (code?.CanRedeem(customerId, hasPaidInvoice, target.Subtotal, target.Currency, now) is { IsFailure: true } refused)
         {
-            var hasPaidInvoice = code.FirstTimeOnly
-                && await context.Invoices.AnyAsync(invoice => invoice.CustomerId == customerId && invoice.Status == InvoiceStatus.Paid, cancellationToken);
-            if (code.Redeem(customerId, hasPaidInvoice, target.Subtotal, target.Currency, now) is { IsFailure: true } refused)
-            {
-                return refused.Error;
-            }
+            return refused.Error;
         }
 
         if (coupon.Redeem(now) is { IsFailure: true } exhausted)
@@ -80,6 +137,7 @@ public sealed class Redemptions(ITahsilDbContext context, IBillingLocks locks, I
             return exhausted.Error;
         }
 
+        code?.Redeem(customerId, hasPaidInvoice, target.Subtotal, target.Currency, now);
         return new Redeemed(coupon, code);
     }
 

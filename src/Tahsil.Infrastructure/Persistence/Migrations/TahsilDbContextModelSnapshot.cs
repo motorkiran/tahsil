@@ -542,6 +542,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<Guid?>("CouponId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("coupon_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -612,6 +616,14 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("payment_method_id");
 
+                    b.Property<short>("PromotionCodeAttempts")
+                        .HasColumnType("smallint")
+                        .HasColumnName("promotion_code_attempts");
+
+                    b.Property<Guid?>("PromotionCodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("promotion_code_id");
+
                     b.Property<string>("Quote")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -664,9 +676,15 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_checkout_sessions_client_reference_id")
                         .HasFilter("client_reference_id IS NOT NULL");
 
+                    b.HasIndex("CouponId")
+                        .HasDatabaseName("ix_checkout_sessions_coupon_id");
+
                     b.HasIndex("ExpiresAt")
                         .HasDatabaseName("ix_checkout_sessions_expires_at")
                         .HasFilter("status = 'open'");
+
+                    b.HasIndex("PromotionCodeId")
+                        .HasDatabaseName("ix_checkout_sessions_promotion_code_id");
 
                     b.HasIndex("TokenHash")
                         .IsUnique()
@@ -3216,11 +3234,23 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Tahsil.Domain.Checkout.CheckoutSession", b =>
                 {
+                    b.HasOne("Tahsil.Domain.Coupons.Coupon", null)
+                        .WithMany()
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_checkout_sessions_coupons_coupon_id");
+
                     b.HasOne("Tahsil.Domain.Customers.Customer", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_checkout_sessions_customers_customer_id");
+
+                    b.HasOne("Tahsil.Domain.Coupons.PromotionCode", null)
+                        .WithMany()
+                        .HasForeignKey("PromotionCodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_checkout_sessions_promotion_codes_promotion_code_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Coupons.Discount", b =>

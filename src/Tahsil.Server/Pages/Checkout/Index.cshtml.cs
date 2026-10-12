@@ -35,6 +35,10 @@ public sealed class IndexModel(
     [BindProperty]
     public CheckoutForm Form { get; set; } = new();
 
+    /// <summary>The promotion code the customer enters (CHK-9).</summary>
+    [BindProperty]
+    public string? PromotionCode { get; set; }
+
     public MerchantOptions Merchant => merchant.Value;
 
     public CultureInfo Culture => Formatting.CultureFor(View.Locale);
@@ -119,9 +123,16 @@ public sealed class IndexModel(
                 "checkout.not_open" => localizer["This checkout is no longer open."],
                 "checkout.attempts_exceeded" => localizer["Too many payment attempts. Please try again later."],
                 "checkout.paused" => localizer["Payments are paused for now. Please try again later."],
+                "checkout.discount_removed" => localizer["The discount does not apply to you and was removed. Check the total and continue."],
                 _ => started.Error.Field is null ? localizer["The payment could not be started. Please try again."] : started.Error.Message,
             };
             Response.StatusCode = started.Error.Code == "checkout.attempts_exceeded" ? StatusCodes.Status429TooManyRequests : StatusCodes.Status400BadRequest;
+            if (started.Error.Code == CheckoutPageErrors.DiscountRemoved.Code)
+            {
+                // The quote changed with the discount; the page shows the new total.
+                await LoadAsync(token, cancellationToken);
+            }
+
             return Page();
         }
 
@@ -141,6 +152,33 @@ public sealed class IndexModel(
             default:
                 throw new NotSupportedException("Direct card forms come with the providers that use them.");
         }
+    }
+
+    /// <summary>The customer enters a promotion code (CHK-9); the quote and the summary follow.</summary>
+    public async Task<IActionResult> OnPostCodeAsync(string token, CancellationToken cancellationToken) =>
+        await DiscountAsync(token, await pages.ApplyPromotionCodeAsync(token, PromotionCode, HttpContext.Connection.RemoteIpAddress, cancellationToken), cancellationToken);
+
+    public async Task<IActionResult> OnPostRemoveCodeAsync(string token, CancellationToken cancellationToken) =>
+        await DiscountAsync(token, await pages.RemovePromotionCodeAsync(token, cancellationToken), cancellationToken);
+
+    private async Task<IActionResult> DiscountAsync(string token, Domain.Common.Result changed, CancellationToken cancellationToken)
+    {
+        if (changed.IsSuccess)
+        {
+            return RedirectToPage(new { token });
+        }
+
+        if (changed.Error.Code == CheckoutErrors.NotOpen.Code || !await LoadAsync(token, cancellationToken) || View.Session.Status != CheckoutStatus.Open)
+        {
+            // Also for a session that takes no codes from customers.
+            return NotFound();
+        }
+
+        Prefill();
+        var limited = changed.Error.Code == CheckoutPageErrors.PromotionCodeRateLimited.Code;
+        ErrorMessage = limited ? localizer["Too many codes were tried. Please try again later."] : localizer["This code cannot be used."];
+        Response.StatusCode = limited ? StatusCodes.Status429TooManyRequests : StatusCodes.Status400BadRequest;
+        return Page();
     }
 
     /// <summary>The page's policy, extended by the routed provider's sources (FND-42).</summary>

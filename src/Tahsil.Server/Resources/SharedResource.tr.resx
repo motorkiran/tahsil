@@ -370,4 +370,22 @@
   <data name="Nothing is charged now." xml:space="preserve">
     <value>Şimdi bir ödeme alınmaz.</value>
   </data>
+  <data name="Promotion code" xml:space="preserve">
+    <value>Promosyon kodu</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Uygula</value>
+  </data>
+  <data name="Remove the promotion code" xml:space="preserve">
+    <value>Promosyon kodunu kaldır</value>
+  </data>
+  <data name="This code cannot be used." xml:space="preserve">
+    <value>Bu kod kullanılamıyor.</value>
+  </data>
+  <data name="Too many codes were tried. Please try again later." xml:space="preserve">
+    <value>Çok fazla kod denendi. Lütfen daha sonra tekrar deneyin.</value>
+  </data>
+  <data name="The discount does not apply to you and was removed. Check the total and continue." xml:space="preserve">
+    <value>İndirim sizin için geçerli değil ve kaldırıldı. Toplamı kontrol edip devam edin.</value>
+  </data>
 </root>

@@ -122,7 +122,14 @@ public sealed record CreateCheckoutSessionRequest
     /// <summary>Required in setup mode; otherwise the items' currency.</summary>
     public string? Currency { get; init; }
 
+    /// <summary>Shows a field on the page where the customer may enter a promotion code.</summary>
     public bool AllowPromotionCodes { get; init; }
+
+    /// <summary>A coupon's ID or key to discount the session by; or give <see cref="PromotionCode"/>. Counted when the session completes.</summary>
+    public string? Coupon { get; init; }
+
+    /// <summary>A promotion code to apply for the customer, ignoring case.</summary>
+    public string? PromotionCode { get; init; }
 
     public BillingDetailsCollectionMode BillingDetailsCollection { get; init; } = BillingDetailsCollectionMode.Auto;
 
@@ -186,6 +193,11 @@ public sealed record CheckoutSessionResponse
     public required CheckoutSubscriptionResponse? Subscription { get; init; }
 
     public required bool AllowPromotionCodes { get; init; }
+
+    /// <summary>The coupon the quote is discounted by: the API's, or that of the code the customer entered.</summary>
+    public required Guid? CouponId { get; init; }
+
+    public required Guid? PromotionCodeId { get; init; }
 
     public required BillingDetailsCollectionMode BillingDetailsCollection { get; init; }
 

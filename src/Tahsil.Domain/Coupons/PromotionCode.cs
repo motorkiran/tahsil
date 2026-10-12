@@ -93,6 +93,22 @@ public sealed partial class PromotionCode : AggregateRoot
     /// </summary>
     public Result Redeem(Guid customerId, bool hasPaidInvoice, long subtotal, string currency, DateTimeOffset now)
     {
+        if (CanRedeem(customerId, hasPaidInvoice, subtotal, currency, now) is { IsFailure: true } refused)
+        {
+            return refused;
+        }
+
+        TimesRedeemed++;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Whether the code may be redeemed (CPN-7); without a customer, as on a checkout page before the form is submitted,
+    /// what depends on the customer is checked later.
+    /// </summary>
+    public Result CanRedeem(Guid? customerId, bool hasPaidInvoice, long subtotal, string currency, DateTimeOffset now)
+    {
         if (!IsActive)
         {
             return PromotionCodeErrors.Inactive;
@@ -108,19 +124,14 @@ public sealed partial class PromotionCode : AggregateRoot
             return PromotionCodeErrors.MaxRedemptionsReached;
         }
 
-        if ((CustomerId is { } only && only != customerId) || (FirstTimeOnly && hasPaidInvoice))
+        if ((CustomerId is { } only && customerId is { } customer && only != customer) || (FirstTimeOnly && hasPaidInvoice))
         {
             return PromotionCodeErrors.NotEligible;
         }
 
-        if (MinimumAmount is { } minimum && (MinimumAmountCurrency != currency || subtotal < minimum))
-        {
-            return PromotionCodeErrors.MinimumNotMet(minimum, MinimumAmountCurrency!);
-        }
-
-        TimesRedeemed++;
-        UpdatedAt = now;
-        return Result.Success();
+        return MinimumAmount is { } minimum && (MinimumAmountCurrency != currency || subtotal < minimum)
+            ? PromotionCodeErrors.MinimumNotMet(minimum, MinimumAmountCurrency!)
+            : Result.Success();
     }
 
     public void SetActive(bool isActive, DateTimeOffset now)

@@ -123,7 +123,9 @@ public sealed class InvoiceFinalizer(
 
         if (applied.DiscountId is { } discountId)
         {
-            var current = await context.Discounts.SingleAsync(row => row.Id == discountId, cancellationToken);
+            // Found among the changes not yet saved too: a checkout creates the discount with its invoice.
+            var current = await context.Discounts.FindAsync([discountId], cancellationToken)
+                ?? throw new InvalidOperationException($"Invoice {invoice.Id} names discount {discountId}, which does not exist.");
             if (current.IsActive)
             {
                 return current;

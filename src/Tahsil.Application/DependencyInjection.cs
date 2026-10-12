@@ -172,6 +172,8 @@ public static class DependencyInjection
         services.AddScoped<InvoiceLines>();
         services.AddScoped<InvoiceFinalizer>();
         services.AddScoped<Redemptions>();
+        services.AddScoped<Checkout.CheckoutDiscounts>();
+        services.AddSingleton<Checkout.PromotionCodeLimiter>();
         services.AddScoped<CreateInvoiceHandler>();
         services.AddScoped<AddInvoiceLinesHandler>();
         services.AddScoped<RemoveInvoiceLineHandler>();

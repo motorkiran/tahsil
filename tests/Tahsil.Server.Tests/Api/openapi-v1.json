@@ -8052,6 +8052,8 @@
           "quote",
           "subscription",
           "allowPromotionCodes",
+          "couponId",
+          "promotionCodeId",
           "billingDetailsCollection",
           "locale",
           "successUrl",
@@ -8122,6 +8124,21 @@
           },
           "allowPromotionCodes": {
             "type": "boolean"
+          },
+          "couponId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The coupon the quote is discounted by: the API's, or that of the code the customer entered.",
+            "format": "uuid"
+          },
+          "promotionCodeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "billingDetailsCollection": {
             "$ref": "#/components/schemas/BillingDetailsCollectionMode"
@@ -8688,7 +8705,22 @@
             "description": "Required in setup mode; otherwise the items' currency."
           },
           "allowPromotionCodes": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Shows a field on the page where the customer may enter a promotion code."
+          },
+          "coupon": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A coupon's ID or key to discount the session by; or give string? CreateCheckoutSessionRequest.PromotionCode. Counted when the session completes."
+          },
+          "promotionCode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A promotion code to apply for the customer, ignoring case."
           },
           "billingDetailsCollection": {
             "$ref": "#/components/schemas/BillingDetailsCollectionMode"

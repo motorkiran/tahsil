@@ -270,7 +270,8 @@ form > .button + .button {
     display: block;
 }
 
-.list .inline-form {
+.list .inline-form,
+#summary .inline-form {
     display: flex;
     flex-wrap: wrap;
     align-items: center;

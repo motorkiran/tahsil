@@ -37,6 +37,8 @@ public sealed partial class CreateCheckoutSessionHandler(
     ProviderRegistry registry,
     CustomerMapper customers,
     CheckoutMapper mapper,
+    Coupons.Redemptions redemptions,
+    CheckoutDiscounts discounts,
     IOptions<CheckoutOptions> checkout,
     IOptions<BillingOptions> billing,
     IOptions<ServerOptions> server,
@@ -81,9 +83,11 @@ public sealed partial class CreateCheckoutSessionHandler(
 
         var (currency, items, drafts, recurring) = sold.Value;
         var taxExempt = customer?.IsTaxExempt ?? false;
-        var quote = Model.CheckoutQuote.Of(drafts, taxExempt) with
+        var quote = Model.CheckoutQuote.Of(drafts, currency, taxExempt) with
         {
-            Recurring = recurring is { } period ? new Model.CheckoutRecurring(period.Interval, period.IntervalCount, Model.CheckoutQuote.Of(period.Lines, taxExempt)) : null,
+            Recurring = recurring is { } period
+                ? new Model.CheckoutRecurring(period.Interval, period.IntervalCount, Model.CheckoutQuote.Of(period.Lines, currency, taxExempt))
+                : null,
         };
         var subscription = recurring is null ? null : Subscription(request.Subscription, recurring);
         var connection = await ConnectionCheckAsync(request.Mode, currency, quote, subscription, cancellationToken);
@@ -133,12 +137,26 @@ public sealed partial class CreateCheckoutSessionHandler(
         }
 
         var session = created.Value;
+        if (request.Coupon is not null || request.PromotionCode is not null)
+        {
+            var named = await redemptions.FindAsync(request.Coupon, request.PromotionCode, cancellationToken);
+            if (named.IsFailure)
+            {
+                return named.Error;
+            }
+
+            if (await discounts.ApplyAsync(session, named.Value.CouponId, named.Value.CodeId, customer?.Id, taxExempt, cancellationToken) is { IsFailure: true } refused)
+            {
+                return refused.Error;
+            }
+        }
+
         context.CheckoutSessions.Add(session);
         idempotency.RecordCreated(ResourceTypes.CheckoutSession, session.Id);
         audit.Record(
             AuditActions.CheckoutSessionCreated,
             AuditSubject.Of(AuditSubjects.CheckoutSession, session.Id),
-            new Dictionary<string, object?> { ["mode"] = request.Mode, ["currency"] = currency, ["amountDue"] = quote.AmountDue, ["clientReferenceId"] = session.ClientReferenceId },
+            new Dictionary<string, object?> { ["mode"] = request.Mode, ["currency"] = currency, ["amountDue"] = session.Quote.AmountDue, ["clientReferenceId"] = session.ClientReferenceId },
             customerId: session.CustomerId);
         await context.SaveChangesAsync(cancellationToken);
         return mapper.ToResponse(session);
@@ -589,6 +607,8 @@ public sealed class CheckoutMapper(ISecretEncryption encryption, IPublicUrls url
                 subscription.Metadata)
             : null,
         AllowPromotionCodes = session.AllowPromotionCodes,
+        CouponId = session.CouponId,
+        PromotionCodeId = session.PromotionCodeId,
         BillingDetailsCollection = session.BillingDetailsCollection.Map<BillingDetailsCollectionMode>(),
         Locale = session.Locale,
         SuccessUrl = session.SuccessUrl,

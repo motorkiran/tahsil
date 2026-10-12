@@ -64,6 +64,9 @@ internal sealed class CheckoutSessionConfiguration : IEntityTypeConfiguration<Ch
         builder.Property(session => session.ClientReferenceId).HasMaxLength(CheckoutSession.ClientReferenceIdMaxLength);
         builder.Property(session => session.Metadata).HasMetadataColumn();
         builder.Property(session => session.PaymentAttempts).HasColumnType("smallint");
+        builder.Property(session => session.PromotionCodeAttempts).HasColumnType("smallint");
+        builder.HasOne<Domain.Coupons.Coupon>().WithMany().HasForeignKey(session => session.CouponId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Domain.Coupons.PromotionCode>().WithMany().HasForeignKey(session => session.PromotionCodeId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne<Customer>().WithMany().HasForeignKey(session => session.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(session => session.TokenHash).IsUnique();

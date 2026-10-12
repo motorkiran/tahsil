@@ -143,6 +143,14 @@ public sealed class CheckoutSession : AggregateRoot
     /// <summary>The subscription a subscription session created.</summary>
     public Guid? SubscriptionId { get; private set; }
 
+    /// <summary>The coupon the quote is discounted by: the API's, or that of the code the customer entered (CHK-9).</summary>
+    public Guid? CouponId { get; private set; }
+
+    public Guid? PromotionCodeId { get; private set; }
+
+    /// <summary>Codes tried on the page, limited against guessing (CPN §7).</summary>
+    public int PromotionCodeAttempts { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private init; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -247,9 +255,34 @@ public sealed class CheckoutSession : AggregateRoot
         }
 
         CustomerId = customerId;
-        Quote = Quote.ForTaxExemption(taxExempt);
+        Quote = Quote.ForTaxExemption(Currency, taxExempt);
         UpdatedAt = now;
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Discounts the session by a coupon, through a code when the customer entered one, or by none; the quote follows
+    /// (CHK-7, CHK-9). The redemption is counted when the session completes (CPN-9).
+    /// </summary>
+    public Result SetDiscount(InvoiceDiscount? discount, bool recurs, bool taxExempt, DateTimeOffset now)
+    {
+        if (Status != CheckoutStatus.Open)
+        {
+            return CheckoutErrors.NotOpen;
+        }
+
+        CouponId = discount?.CouponId;
+        PromotionCodeId = discount?.PromotionCodeId;
+        Quote = Quote.WithDiscount(Currency, taxExempt, discount, recurs);
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    /// <summary>The customer tried a promotion code on the page.</summary>
+    public void RecordPromotionCodeAttempt(DateTimeOffset now)
+    {
+        PromotionCodeAttempts++;
+        UpdatedAt = now;
     }
 
     /// <summary>A payment attempt starts on the page; attempts are limited against card testing (CHK-21).</summary>

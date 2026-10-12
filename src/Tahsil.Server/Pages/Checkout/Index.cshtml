@@ -36,6 +36,10 @@
                 }
             </tbody>
             <tfoot>
+                @if (Model.View.Discount is { } discount)
+                {
+                    <tr id="discount"><td>@discount</td><td class="amount">@(shown.DiscountTotal != 0 ? $"−{Model.Money(shown.DiscountTotal)}" : null)</td></tr>
+                }
                 @if (shown.TaxTotal > 0)
                 {
                     <tr><td>@L["Tax included"]</td><td class="amount" id="tax-total">@Model.Money(shown.TaxTotal)</td></tr>
@@ -58,6 +62,23 @@
         else
         {
             <p class="hint">@L["Prices include taxes. This is a one-time payment."]</p>
+        }
+        @if (session.AllowPromotionCodes && Model.Embed is null)
+        {
+            @if (session.PromotionCodeId is not null)
+            {
+                <form method="post" asp-page-handler="RemoveCode" id="remove-code-form">
+                    <button class="button button-secondary button-small" type="submit" id="remove-code">@L["Remove the promotion code"]</button>
+                </form>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Code" id="promotion-code-form" class="inline-form">
+                    <label for="promotion-code">@L["Promotion code"]</label>
+                    <input type="text" id="promotion-code" name="PromotionCode" maxlength="40" autocomplete="off" autocapitalize="characters" />
+                    <button class="button button-secondary button-small" type="submit" id="apply-code">@L["Apply"]</button>
+                </form>
+            }
         }
     </section>
 }

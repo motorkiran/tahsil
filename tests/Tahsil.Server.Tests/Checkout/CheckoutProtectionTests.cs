@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -194,19 +193,5 @@ public sealed class CheckoutProtectionTests(TahsilServerFixture server)
     {
         await using var scope = host.Services.CreateAsyncScope();
         return await action(scope.ServiceProvider.GetRequiredService<TahsilDbContext>());
-    }
-
-    /// <summary>Gives every request of the in-memory server one client address, as a reverse proxy would report it.</summary>
-    private sealed class ClientAddress(IPAddress address) : IStartupFilter
-    {
-        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
-        {
-            app.Use((context, nextMiddleware) =>
-            {
-                context.Connection.RemoteIpAddress = address;
-                return nextMiddleware(context);
-            });
-            next(app);
-        };
     }
 }

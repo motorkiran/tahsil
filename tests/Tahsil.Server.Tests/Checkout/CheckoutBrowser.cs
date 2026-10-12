@@ -41,6 +41,16 @@ internal static partial class CheckoutBrowser
         return await browser.PostAsync(url, new FormUrlEncodedContent(fields), CancellationToken);
     }
 
+    /// <summary>Posts one of the page's other forms, such as the promotion code's, with the page's anti-forgery token.</summary>
+    public static async Task<HttpResponseMessage> PostHandlerAsync(HttpClient browser, Uri url, string handler, params (string Name, string Value)[] fields)
+    {
+        using var get = await browser.GetAsync(url, CancellationToken);
+        var page = await ParseAsync(get);
+        var form = fields.Select(field => new KeyValuePair<string, string>(field.Name, field.Value)).ToList();
+        form.Add(new("__RequestVerificationToken", page.QuerySelector("input[name=__RequestVerificationToken]")!.GetAttribute("value")!));
+        return await browser.PostAsync(new Uri($"{url}?handler={handler}"), new FormUrlEncodedContent(form), CancellationToken);
+    }
+
     /// <summary>The simulator's page token of the embed the submitted form shows.</summary>
     public static async Task<string> SimulatorTokenAsync(HttpResponseMessage submitted)
     {

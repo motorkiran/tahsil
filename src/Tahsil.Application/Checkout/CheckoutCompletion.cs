@@ -2,12 +2,14 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
+using Tahsil.Application.Coupons;
 using Tahsil.Application.Invoices;
 using Tahsil.Application.Payments;
 using Tahsil.Application.Subscriptions;
 using Tahsil.Domain.Auditing;
 using Tahsil.Domain.Checkout;
 using Tahsil.Domain.Common;
+using Tahsil.Domain.Coupons;
 using Tahsil.Domain.Invoices;
 using Tahsil.Domain.Money;
 using Tahsil.Domain.Payments;
@@ -29,6 +31,8 @@ public sealed class CheckoutCompletion(
     InvoiceLines invoiceLines,
     SubscriptionLines subscriptionLines,
     SubscriptionSettlement settlement,
+    CheckoutDiscounts discounts,
+    Redemptions redemptions,
     IAuditLog audit,
     IOutbox outbox,
     Attention attention,
@@ -151,6 +155,14 @@ public sealed class CheckoutCompletion(
             ["trialEnd"] = subscription.TrialEnd,
             ["checkoutSessionId"] = session.Id,
         }, customerId: customerId);
+        if (await discounts.RedeemAsync(session, customerId, cancellationToken) is { } redeemed)
+        {
+            // Counted now (CPN-9); the subscription's invoices take the discount while it lasts.
+            var discount = Discount.ForSubscription(redeemed.Coupon, redeemed.Code, customerId, subscription.Id, now);
+            redemptions.Add(discount, redeemed);
+            subscription.SetDiscount(discount.Id, now);
+        }
+
         if (trialEnd is not null || payment is null)
         {
             return (subscription.Id, null);
@@ -168,7 +180,18 @@ public sealed class CheckoutCompletion(
 
         // Collected by the checkout's payment, whatever the subscription's later invoices are.
         var invoice = Invoice.CreateDraft(
-            customerId, session.Currency, BillingReason.SubscriptionCreate, CollectionMethod.ChargeAutomatically, null, null, false, Metadata.Empty, now, subscription.Id, period).Value;
+            customerId,
+            session.Currency,
+            BillingReason.SubscriptionCreate,
+            CollectionMethod.ChargeAutomatically,
+            null,
+            null,
+            false,
+            Metadata.Empty,
+            now,
+            subscription.Id,
+            period,
+            discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
         invoice.AddLines(lines, customer.IsTaxExempt, now);
         context.Invoices.Add(invoice);
         subscription.SetLatestInvoice(invoice.Id, now);
@@ -186,6 +209,14 @@ public sealed class CheckoutCompletion(
     {
         var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == payment.CustomerId, cancellationToken);
         var invoice = Invoice.CreateDraft(payment.CustomerId, session.Currency, BillingReason.Checkout, CollectionMethod.ChargeAutomatically, null, null, false, session.Metadata, now).Value;
+        if (await discounts.RedeemAsync(session, payment.CustomerId, cancellationToken) is { } redeemed)
+        {
+            // Counted now (CPN-9); the discount is this invoice's alone (CPN-13).
+            var discount = Discount.ForInvoice(redeemed.Coupon, redeemed.Code, payment.CustomerId, invoice.Id, now);
+            redemptions.Add(discount, redeemed);
+            invoice.SetDiscount(Redemptions.ToInvoiceDiscount(redeemed.Coupon, discount.Id, redeemed.Code?.Id), customer.IsTaxExempt, now);
+        }
+
         invoice.AddLines(session.Quote.Drafts(), customer.IsTaxExempt, now);
         context.Invoices.Add(invoice);
         await SettleAsync(session, invoice, payment, now, cancellationToken);

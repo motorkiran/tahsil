@@ -73,6 +73,7 @@ public sealed class LegalDocumentModels(IOptions<MerchantOptions> merchant, IOpt
             ["totals"] = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["subtotal"] = Money(session.Quote.Subtotal),
+                ["discount"] = session.Quote.DiscountTotal != 0 ? Money(session.Quote.DiscountTotal) : null,
                 ["tax"] = Money(session.Quote.TaxTotal),
                 ["total"] = Money(session.Quote.Total),
                 ["amount_due"] = Money(session.Quote.AmountDue),
