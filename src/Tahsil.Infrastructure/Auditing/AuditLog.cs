@@ -16,7 +16,6 @@ internal sealed class AuditLog(
     TahsilDbContext context, IRequestContext request, IOutbox outbox, IOptions<ServerOptions> server, IOptions<Application.Kimlik.KimlikOptions> kimlik, BillingClock clock)
     : IAuditLog
 {
-    private readonly HashSet<Guid> _kimlikSyncs = [];
 
     public void Record(
         string action,
@@ -54,8 +53,9 @@ internal sealed class AuditLog(
             outbox.Enqueue(email);
         }
 
-        // Once per subscription and unit of work: the sync reads the subscription as it is then (KML-16).
-        if (kimlik.Value.Enabled && Application.Kimlik.KimlikTriggers.From(action, subject) is { } sync && _kimlikSyncs.Add(sync.SubscriptionId))
+        // On every change, not once per request: a request may commit a subscription more than once, and a sync of an
+        // earlier commit can run before the next one (KML-16). Syncs are level-triggered, so extra ones only read.
+        if (kimlik.Value.Enabled && Application.Kimlik.KimlikTriggers.From(action, subject) is { } sync)
         {
             outbox.Enqueue(sync);
         }

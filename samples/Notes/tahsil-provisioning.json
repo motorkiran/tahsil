@@ -1,0 +1,15 @@
+{
+  "$schema": "../../docs/schemas/provisioning.schema.json",
+  "taxRates": [{ "key": "kdv-20", "name": "KDV", "percentage": 20, "inclusive": true }],
+  "products": [
+    {
+      "key": "notes-pro",
+      "name": "Notes Pro",
+      "description": "Unlimited notes and export.",
+      "kimlikPlan": "pro",
+      "prices": [
+        { "key": "notes-pro-monthly", "name": "Monthly", "currency": "TRY", "type": "recurring", "unitAmount": 19900, "interval": "month", "taxRate": "kdv-20" }
+      ]
+    }
+  ]
+}

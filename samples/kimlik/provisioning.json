@@ -1,0 +1,89 @@
+{
+  // Kimlik's provisioning for Tahsil's development environment (`docker compose --profile kimlik up -d`).
+  // Secrets come from configuration: the Compose file sets the Tahsil__… and Samples__… variables.
+  "permissions": [
+    { "key": "tahsil.panel:admin", "description": "Administer billing in Tahsil" },
+    { "key": "tahsil.panel:operate", "description": "Operate billing in Tahsil" },
+    { "key": "tahsil.panel:view", "description": "View billing in Tahsil" }
+  ],
+  "roles": [
+    { "key": "tahsil-admin", "name": "Billing administrator", "permissions": ["tahsil.panel:admin"] },
+    { "key": "tahsil-operator", "name": "Billing operator", "permissions": ["tahsil.panel:operate"] },
+    { "key": "tahsil-viewer", "name": "Billing viewer", "permissions": ["tahsil.panel:view"] },
+    {
+      // Tahsil's connector: it mirrors subscriptions and checks plans, users and organizations (KML §2.1).
+      "key": "tahsil-sync",
+      "name": "Tahsil billing sync",
+      "permissions": ["kimlik.subscriptions:read", "kimlik.subscriptions:write", "kimlik.plans:read", "kimlik.users:read", "kimlik.organizations:read"]
+    },
+    {
+      // The development setup (setup.cs): it creates the billing administrator and registers Tahsil's webhook endpoint.
+      // Kimlik lets a client grant only roles within its own access, so its client also holds tahsil-admin.
+      "key": "tahsil-dev-setup",
+      "name": "Tahsil development setup",
+      "permissions": ["kimlik.users:read", "kimlik.users:write", "kimlik.webhooks:read", "kimlik.webhooks:write"]
+    },
+    {
+      // The Notes sample reads plan definitions to enforce features.
+      "key": "notes-backend",
+      "name": "Notes backend",
+      "permissions": ["kimlik.plans:read", "kimlik.subscriptions:read"]
+    }
+  ],
+  "features": [
+    { "key": "export_notes", "name": "Note export", "type": "boolean" }
+  ],
+  "plans": [
+    { "key": "free", "name": "Free", "features": { "export_notes": false } },
+    { "key": "pro", "name": "Pro", "features": { "export_notes": true } }
+  ],
+  "apiResources": [
+    { "scope": "tahsil", "audience": "tahsil", "displayName": "Manage billing" },
+    { "scope": "notes", "audience": "notes-api", "displayName": "Your notes" }
+  ],
+  "clients": [
+    {
+      // The admin panel's sign-in (KML-8). It must not get the kimlik scope.
+      "clientId": "tahsil-admin",
+      "displayName": "Tahsil admin",
+      "type": "web",
+      "firstParty": true,
+      "redirectUris": ["http://localhost:5090/signin-oidc"],
+      "postLogoutRedirectUris": ["http://localhost:5090/signout-callback-oidc"],
+      "scopes": ["openid", "profile", "email", "tahsil"],
+      "clientSecret": "${Tahsil:AdminClientSecret}"
+    },
+    {
+      "clientId": "tahsil",
+      "displayName": "Tahsil",
+      "type": "service",
+      "scopes": ["kimlik"],
+      "roles": ["tahsil-sync"],
+      "clientSecret": "${Tahsil:KimlikClientSecret}"
+    },
+    {
+      "clientId": "tahsil-dev-setup",
+      "displayName": "Tahsil development setup",
+      "type": "service",
+      "scopes": ["kimlik"],
+      "roles": ["tahsil-dev-setup", "tahsil-admin"],
+      "clientSecret": "${Tahsil:SetupClientSecret}"
+    },
+    {
+      "clientId": "notes-spa",
+      "displayName": "Notes",
+      "type": "spa",
+      "redirectUris": ["http://localhost:5174/"],
+      "postLogoutRedirectUris": ["http://localhost:5174/"],
+      "scopes": ["openid", "profile", "email", "offline_access", "notes"]
+    },
+    {
+      "clientId": "notes-backend",
+      "displayName": "Notes backend",
+      "type": "service",
+      "scopes": ["kimlik"],
+      "roles": ["notes-backend"],
+      "clientSecret": "${Samples:NotesBackendSecret}"
+    }
+  ]
+}

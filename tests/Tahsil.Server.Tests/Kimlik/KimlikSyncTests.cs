@@ -68,6 +68,8 @@ public sealed class KimlikSyncTests : IDisposable
         await host.RunWorkersUntilIdleAsync();
 
         (created.SubscriberId, created.Plan, created.ExternalReference).ShouldBe((user, "team", subscription.Id.ToString()));
+        (await host.QueryAsync<long>($"SELECT count(*) AS \"Value\" FROM tahsil.outbox_messages WHERE type = 'kimlik.sync_subscription' AND payload::text LIKE {"%" + subscription.Id + "%"}")).Single()
+            .ShouldBeGreaterThan(3, "every change queues a sync, even several in one request, whose earlier commits may sync before the later ones");
         (mirror.KimlikSubscriptionId, mirror.Error).ShouldBe((created.Id, null));
         (canceledStatus, canceledEnd).ShouldBe(("canceled", May), "a cancellation at the period's end has no buffer");
         (created.Status, created.CurrentPeriodEnd).ShouldBe(("active", May.AddDays(1)));

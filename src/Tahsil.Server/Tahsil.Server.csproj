@@ -6,6 +6,11 @@
     <ContainerFamily>noble-chiseled-extra</ContainerFamily>
   </PropertyGroup>
 
+  <PropertyGroup Label="Development">
+    <!-- Development settings kept out of the repository, such as the Kimlik webhook secret of samples/kimlik/setup.cs. -->
+    <UserSecretsId>tahsil-server</UserSecretsId>
+  </PropertyGroup>
+
   <PropertyGroup Label="Admin panel">
     <!-- Serves Blazor's own script (_framework/blazor.web.js), which the admin panel's components need. -->
     <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>

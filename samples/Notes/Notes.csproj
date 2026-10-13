@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>Sample app that sells a Kimlik plan through Tahsil.</Description>
+    <!-- Kimlik's .NET packages are not on NuGet yet: clone https://github.com/motorkiran/kimlik next to Tahsil, or point
+         KimlikRepository at your clone. Applications reference the Kimlik.AspNetCore and Kimlik.Client packages instead. -->
+    <KimlikRepository Condition="'$(KimlikRepository)' == ''">$(MSBuildThisFileDirectory)../../../kimlik/</KimlikRepository>
+    <UserSecretsId>tahsil-notes-sample</UserSecretsId>
+    <!-- A separate application: Kimlik's SDK brings its own package versions, not Tahsil's pinned ones. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The versions Kimlik's SDK is built with: every Microsoft.IdentityModel package at one version. -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.22.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.22.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(KimlikRepository)sdk/Kimlik.AspNetCore/Kimlik.AspNetCore.csproj" />
+    <ProjectReference Include="$(KimlikRepository)sdk/Kimlik.Client/Kimlik.Client.csproj" />
+  </ItemGroup>
+
+</Project>

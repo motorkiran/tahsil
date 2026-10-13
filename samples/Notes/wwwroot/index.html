@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notes · Tahsil and Kimlik sample</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <h1>Notes</h1>
+    <div class="session">
+      <span id="greeting"></span>
+      <button id="sign-in" hidden>Sign in</button>
+      <button id="sign-out" class="secondary" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <p id="status" role="status"></p>
+
+    <section id="signed-out" hidden>
+      <p>Sign in with Kimlik to keep notes. Pro, sold through Tahsil, adds export.</p>
+    </section>
+
+    <section id="signed-in" hidden>
+      <h2>Your plan: <span id="plan"></span></h2>
+      <div class="actions">
+        <button id="upgrade">Upgrade to Pro</button>
+        <button id="billing" class="secondary">Manage billing</button>
+      </div>
+
+      <h2>Notes</h2>
+      <ul id="notes"></ul>
+      <form id="new-note">
+        <label>Note <input name="text" required maxlength="500"></label>
+        <button type="submit">Add</button>
+      </form>
+      <div class="actions">
+        <button id="export" class="secondary">Export (Pro)</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- oidc-client-ts runs the authorization code flow with PKCE and renews tokens with the refresh token. -->
+  <script src="https://cdn.jsdelivr.net/npm/oidc-client-ts@3.5.0/dist/browser/oidc-client-ts.min.js"
+          integrity="sha384-PTRVZ+Irwhdd38ou1In8Amo5/CLZci9zRlwSiS7/OUYo6TbYw8QYTCkn6rKod6Tb"
+          crossorigin="anonymous"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

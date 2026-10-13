@@ -35,6 +35,8 @@ docker compose --profile app up -d          # http://localhost:8090
 
 `/health/live` and `/health/ready` are the probes for orchestrators.
 
+With Kimlik, `docker compose --profile kimlik up -d` also runs Kimlik for the connector and the admin sign-in, and [`samples/`](samples) has an app that sells a Kimlik plan through Tahsil; [samples/README.md](samples/README.md) walks through both.
+
 ## License
 
 Tahsil is licensed under the [Apache License 2.0](LICENSE).

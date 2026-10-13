@@ -1,6 +1,8 @@
 # Local development environment (works with Docker Compose and `podman compose`).
 #   docker compose up -d                  PostgreSQL and Mailpit; run Tahsil from your IDE
 #   docker compose --profile app up -d    also runs the Tahsil image on http://localhost:8090 (build it first, see README)
+#   docker compose --profile kimlik up -d also runs Kimlik on http://localhost:5280 for the connector and the admin
+#                                         sign-in (build its image from the Kimlik repository; see samples/README.md)
 # The ports leave room for Kimlik's environment (5433, 8025, 1025) and a local PostgreSQL (5432).
 name: tahsil
 
@@ -51,5 +53,65 @@ services:
     ports:
       - "8090:8080"
 
+  kimlik-postgres:
+    image: docker.io/library/postgres:18-alpine
+    profiles: [kimlik]
+    environment:
+      POSTGRES_DB: kimlik
+      POSTGRES_USER: kimlik
+      POSTGRES_PASSWORD: kimlik
+    volumes:
+      - kimlik-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=kimlik --dbname=kimlik"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Kimlik, built from its repository: dotnet publish src/Kimlik.Server -t:PublishContainer
+  kimlik:
+    image: ${KIMLIK_IMAGE:-kimlik:latest}
+    profiles: [kimlik]
+    depends_on:
+      kimlik-postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Kimlik: Host=kimlik-postgres;Database=kimlik;Username=kimlik;Password=kimlik
+      Kimlik__Server__PublicUrl: http://localhost:5280/
+      Kimlik__Server__RequireHttps: "false"
+      Kimlik__Email__FromAddress: no-reply@kimlik.localhost
+      Kimlik__Email__Smtp__Host: mailpit
+      Kimlik__Email__Smtp__Port: "1025"
+      Kimlik__Email__Smtp__Security: None
+      # Development only, like every secret here. Production installations generate their own.
+      Kimlik__Security__MasterKey: rbp7iXbkjB0vj1k5WYAf8DqUeSpeQJTxS/4EHHqobO8=
+      Kimlik__Bootstrap__AdminEmail: admin@kimlik.localhost
+      Kimlik__Bootstrap__AdminPassword: development-only-password
+      Kimlik__Provisioning__FilePath: /provisioning/provisioning.json
+      Kimlik__Plans__DefaultUserPlan: free
+      # Webhooks reach Tahsil through the relay below, on Kimlik's own loopback address.
+      Kimlik__Webhooks__AllowPrivateNetworks: "true"
+      Tahsil__AdminClientSecret: tahsil-admin-dev-secret
+      Tahsil__KimlikClientSecret: tahsil-kimlik-dev-secret
+      Tahsil__SetupClientSecret: tahsil-dev-setup-secret
+      Samples__NotesBackendSecret: notes-backend-dev-secret
+    volumes:
+      - ./samples/kimlik/provisioning.json:/provisioning/provisioning.json:ro,z
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "5280:8080"
+
+  # Kimlik sends webhooks over plain HTTP only to its loopback address: this relay, in Kimlik's network namespace,
+  # passes http://localhost:5090 on to Tahsil running on the host.
+  kimlik-webhook-relay:
+    image: docker.io/alpine/socat:1.8.0.3
+    profiles: [kimlik]
+    network_mode: service:kimlik
+    command: tcp-listen:5090,fork,reuseaddr tcp-connect:host.docker.internal:5090
+    depends_on:
+      - kimlik
+
 volumes:
   postgres-data:
+  kimlik-data:

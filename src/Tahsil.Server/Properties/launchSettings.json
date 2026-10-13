@@ -9,6 +9,31 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    "kimlik": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5090",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Tahsil__Kimlik__Enabled": "true",
+        "Tahsil__Kimlik__Authority": "http://localhost:5280/",
+        "Tahsil__Kimlik__ClientId": "tahsil",
+        "Tahsil__Kimlik__ClientSecret": "tahsil-kimlik-dev-secret",
+        "Tahsil__Admin__Oidc__Authority": "http://localhost:5280/",
+        "Tahsil__Admin__Oidc__ClientId": "tahsil-admin",
+        "Tahsil__Admin__Oidc__ClientSecret": "tahsil-admin-dev-secret",
+        "Tahsil__Admin__Oidc__Scopes": "openid profile email tahsil",
+        "Tahsil__Admin__Oidc__RoleSource": "AccessToken",
+        "Tahsil__Admin__Oidc__AccessTokenAudience": "tahsil",
+        "Tahsil__Admin__Oidc__RoleMappings__tahsil-admin": "admin",
+        "Tahsil__Admin__Oidc__RoleMappings__tahsil-operator": "operator",
+        "Tahsil__Admin__Oidc__RoleMappings__tahsil-viewer": "viewer",
+        "Tahsil__Admin__Oidc__RequireMfa": "false",
+        "Tahsil__Admin__Oidc__AccountUrl": "http://localhost:5280/account",
+        "Tahsil__Provisioning__FilePath": "../../samples/Notes/tahsil-provisioning.json"
+      }
     }
   }
 }
