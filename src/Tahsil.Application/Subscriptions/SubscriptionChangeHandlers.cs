@@ -37,6 +37,7 @@ public sealed class UpdateSubscriptionHandler(
     ChargeableCards cards,
     Redemptions redemptions,
     Kimlik.KimlikPlanRule kimlikPlans,
+    Usage.MeterRule meters,
     IOptions<BillingOptions> billing,
     BillingClock clock)
 {
@@ -258,6 +259,11 @@ public sealed class UpdateSubscriptionHandler(
             return kimlikConflict;
         }
 
+        if (await meters.CheckAsync(customer.Id, items.Value, subscription.Id, cancellationToken) is { } meterConflict)
+        {
+            return meterConflict;
+        }
+
         var scheduled = request.Effective == ChangeTiming.PeriodEnd || request.EffectiveAt is not null;
         var effectiveAt = scheduled ? request.EffectiveAt ?? subscription.CurrentPeriodEnd : now;
         // The notice protects customers from the merchant's changes (SUB-34); a customer's own change in the portal needs none.
@@ -364,7 +370,7 @@ public sealed class PreviewSubscriptionChangeHandler(
             return new SubscriptionPreviewResponse { Invoice = null, PendingLines = [], NextRenewal = Renewal(renewal) };
         }
 
-        var plan = await changes.PlanAsync(subscription, items.Value, request.ProrationBehavior, customer.Locale, now, cancellationToken);
+        var plan = await changes.PlanAsync(subscription, items.Value, request.ProrationBehavior, customer.Locale, now, applying: false, cancellationToken);
         if (subscription.ReplaceItems(items.Value, zone, now) is { IsFailure: true } refused)
         {
             return refused.Error;
@@ -443,7 +449,13 @@ public sealed record PreviewDiscount(ModelInvoices.InvoiceDiscount? Discount, bo
 
 /// <summary>Invoices built in memory, as they would be created now (SUB-24).</summary>
 public sealed class SubscriptionPreviews(
-    ITahsilDbContext context, SubscriptionLines lines, InvoiceLines invoiceLines, InvoiceFinalizer finalizer, Redemptions redemptions, IOptions<BillingOptions> billing)
+    ITahsilDbContext context,
+    SubscriptionLines lines,
+    InvoiceLines invoiceLines,
+    Usage.SubscriptionUsage usage,
+    InvoiceFinalizer finalizer,
+    Redemptions redemptions,
+    IOptions<BillingOptions> billing)
 {
     public Task<InvoicePreviewResponse> InvoiceAsync(
         Customer customer, Subscription subscription, ModelInvoices.BillingReason reason, BillingPeriod period, IReadOnlyList<ModelInvoices.InvoiceLineDraft> drafts, DateTimeOffset now, CancellationToken cancellationToken) =>
@@ -469,8 +481,8 @@ public sealed class SubscriptionPreviews(
 
     /// <summary>
     /// The next renewal invoice (INV-1): the items at that renewal (<paramref name="items"/>, or a scheduled change that
-    /// takes effect then, or the current ones) for the period that starts then, and the subscription's pending items
-    /// with <paramref name="pending"/>. None when the subscription ends before.
+    /// takes effect then, or the current ones) for the period that starts then, the metered usage so far, and the
+    /// subscription's pending items with <paramref name="pending"/>. None when the subscription ends before.
     /// </summary>
     public Task<InvoicePreviewResponse?> UpcomingAsync(
         Subscription subscription,
@@ -504,6 +516,7 @@ public sealed class SubscriptionPreviews(
             ? await lines.PricedAsync(change.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken)
             : await lines.PricedAsync(subscription.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
         var drafts = await lines.LicensedAsync(items, next, next, customer.Locale, cancellationToken);
+        drafts.AddRange(await usage.PreviewAsync(subscription, subscription.Items, next.Start, customer.Locale, cancellationToken));
         var waiting = await context.PendingInvoiceItems.AsNoTracking()
             .Where(item => item.SubscriptionId == subscription.Id && item.InvoiceId == null && item.Currency == subscription.Currency)
             .InJoiningOrder()

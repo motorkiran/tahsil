@@ -18,7 +18,7 @@ namespace Tahsil.Application.Subscriptions;
 
 /// <summary>
 /// Cancels a subscription (SUB-28 to SUB-31): at the period end, at a time within the period, or now with a final
-/// invoice of its pending items and, if asked, a refund. A refund that fails does not undo the cancellation.
+/// invoice of its usage so far and its pending items and, if asked, a refund. A refund that fails does not undo the cancellation.
 /// </summary>
 public sealed class CancelSubscriptionHandler(
     ITahsilDbContext context,
@@ -30,6 +30,7 @@ public sealed class CancelSubscriptionHandler(
     InvoiceFinalizer finalizer,
     SubscriptionLines lines,
     SubscriptionPreviews previews,
+    Usage.SubscriptionUsage usage,
     Refunds refunds,
     Attention attention,
     Redemptions redemptions,
@@ -249,28 +250,32 @@ public sealed class CancelSubscriptionHandler(
         return taken;
     }
 
-    /// <summary>The subscription's pending items go on a final invoice, finalized and collected like a renewal, or are deleted (SUB-29).</summary>
+    /// <summary>
+    /// The usage so far and the subscription's pending items go on a final invoice, finalized and collected like a
+    /// renewal; without <paramref name="invoiceNow"/>, the usage is not billed and the items are deleted (SUB-29).
+    /// </summary>
     private async Task<Result> SettlePendingItemsAsync(Subscription subscription, Customer customer, bool invoiceNow, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var pending = await context.PendingInvoiceItems
             .Where(item => item.SubscriptionId == subscription.Id && item.InvoiceId == null)
             .OrderBy(item => item.Id)
             .ToListAsync(cancellationToken);
-        if (pending.Count == 0)
-        {
-            return Result.Success();
-        }
-
         if (!invoiceNow)
         {
             context.PendingInvoiceItems.RemoveRange(pending);
             return Result.Success();
         }
 
+        var used = await usage.InvoiceAsync(subscription, subscription.Items, now, customer.Locale, cancellationToken);
+        if (pending.Count == 0 && used.Count == 0)
+        {
+            return Result.Success();
+        }
+
         var invoice = Invoice.CreateDraft(
             customer.Id, subscription.Currency, ModelInvoices.BillingReason.SubscriptionCancel, subscription.CollectionMethod, subscription.DaysUntilDue, memo: null, autoAdvance: false, Metadata.Empty, now, subscription.Id,
             discount: await redemptions.OfSubscriptionAsync(subscription.DiscountId, cancellationToken)).Value;
-        invoice.AddLines(await invoiceLines.FromPendingItemsAsync(pending, customer.Locale, cancellationToken), customer.IsTaxExempt, now);
+        invoice.AddLines([.. used, .. await invoiceLines.FromPendingItemsAsync(pending, customer.Locale, cancellationToken)], customer.IsTaxExempt, now);
         foreach (var item in pending)
         {
             item.IncludeIn(invoice.Id, now);

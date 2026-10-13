@@ -25,6 +25,9 @@ public static class SubscriptionErrors
         "The card is not active, not the customer's, or its connection is disabled, cannot charge saved cards or does not take the subscription's currency.",
         "defaultPaymentMethod");
 
+    public static readonly Error MeterConflict = Error.Conflict(
+        "subscription.meter_conflict", "A customer's usage on a meter is billed by one subscription item: another item, here or in another subscription of the customer, has a price with the same meter.");
+
     public static readonly Error CurrencyMismatch = Error.Validation(
         "subscription.currency_mismatch", "Every price of a subscription is in the subscription's currency.", "items");
 

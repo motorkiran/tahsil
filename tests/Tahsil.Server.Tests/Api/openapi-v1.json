@@ -3863,7 +3863,7 @@
           "Invoices"
         ],
         "summary": "Preview a subscription's next renewal invoice",
-        "description": "The invoice the next renewal would create as things stand, with a scheduled change that takes effect then and the subscription's pending items; nothing is created.\n\nRequires the `tahsil.invoices:read` permission.",
+        "description": "The invoice the next renewal would create as things stand, with a scheduled change that takes effect then, the metered usage so far and the subscription's pending items; nothing is created.\n\nRequires the `tahsil.invoices:read` permission.",
         "operationId": "GetUpcomingInvoice",
         "parameters": [
           {

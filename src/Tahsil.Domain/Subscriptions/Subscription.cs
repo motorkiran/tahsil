@@ -612,6 +612,9 @@ public sealed class Subscription : AggregateRoot
         return due.Min();
     }
 
+    /// <summary>Whether <see cref="ReplaceItems"/> would take these items.</summary>
+    public bool CanReplaceItems(IReadOnlyList<SubscriptionItemSpec> items) => CanChange("changed") is null && ValidateItems(items) is null;
+
     private Error? CanChange(string action) =>
         Status is SubscriptionStatus.Trialing or SubscriptionStatus.Active or SubscriptionStatus.PastDue ? null : SubscriptionErrors.InvalidState(Status, action);
 
@@ -656,6 +659,16 @@ public sealed class SubscriptionItem
     public DateTimeOffset CreatedAt { get; private init; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
+
+    /// <summary>The item's usage before <paramref name="until"/> is invoiced: its period is closed to new events (USG-11).</summary>
+    public void CloseUsage(DateTimeOffset until, DateTimeOffset now)
+    {
+        if (UsageBilledUntil is null || UsageBilledUntil < until)
+        {
+            UsageBilledUntil = until;
+            UpdatedAt = now;
+        }
+    }
 
     internal void SetQuantity(SubscriptionItemSpec spec, DateTimeOffset now)
     {

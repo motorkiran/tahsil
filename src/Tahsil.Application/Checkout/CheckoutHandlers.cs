@@ -41,6 +41,7 @@ public sealed partial class CreateCheckoutSessionHandler(
     CheckoutDiscounts discounts,
     Kimlik.KimlikReferences kimlik,
     Kimlik.KimlikPlanRule kimlikPlans,
+    Usage.MeterRule meters,
     IOptions<CheckoutOptions> checkout,
     IOptions<BillingOptions> billing,
     IOptions<ServerOptions> server,
@@ -334,6 +335,11 @@ public sealed partial class CreateCheckoutSessionHandler(
         if (await kimlikPlans.CheckAsync(customer?.Id, customer?.KimlikSubscriber ?? details?.KimlikSubscriber, specs, null, cancellationToken) is { } kimlikConflict)
         {
             return kimlikConflict;
+        }
+
+        if (await meters.CheckAsync(customer?.Id, specs, null, cancellationToken) is { } meterConflict)
+        {
+            return meterConflict;
         }
 
         var data = request.Subscription ?? new CheckoutSubscriptionData();

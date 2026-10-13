@@ -26,6 +26,7 @@ public sealed class InvoiceFinalizer(
     Subscriptions.SubscriptionSettlement subscriptions,
     InvoiceReminders reminders,
     Redemptions redemptions,
+    Usage.SubscriptionUsage usage,
     IOptions<BillingOptions> billing,
     IOptions<InvoiceOptions> invoices,
     BillingClock clock)
@@ -44,6 +45,9 @@ public sealed class InvoiceFinalizer(
 
         var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == invoice.CustomerId, cancellationToken);
         var now = clock.GetUtcNow();
+
+        // A cycle invoice bills the usage reported until now, and closes its period (USG-11).
+        await usage.RefreshAsync(invoice, customer.IsTaxExempt, customer.Locale, cancellationToken);
         var discount = await DiscountAsync(invoice, customer.IsTaxExempt, now, cancellationToken);
         if (discount.IsFailure)
         {

@@ -95,6 +95,28 @@ public sealed class PendingInvoiceItem : AggregateRoot
     }
 
     /// <summary>
+    /// The usage of a metered item that left its subscription, waiting for the subscription's next invoice (SUB-25):
+    /// its amount for the usage until then, described like a usage line (INV-2).
+    /// </summary>
+    public static PendingInvoiceItem ForUsage(
+        Guid customerId, Guid subscriptionId, string currency, string description, long amount, Guid? taxRateId, DateTimeOffset periodStart, DateTimeOffset periodEnd, DateTimeOffset now) => new()
+        {
+            Id = Guid.CreateVersion7(now),
+            CustomerId = customerId,
+            SubscriptionId = subscriptionId,
+            Currency = currency,
+            Description = description,
+            Quantity = 1,
+            UnitAmount = amount,
+            TaxRateId = taxRateId,
+            IsDiscountable = true,
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+    /// <summary>
     /// A proration line waiting for its subscription's next invoice (SUB-20): its amount for the remaining period, with
     /// the price's tax rate, described like the line it becomes (INV-2).
     /// </summary>

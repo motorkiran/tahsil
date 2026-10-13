@@ -60,12 +60,12 @@ public sealed class SubscriptionCycles(
 
         if (subscription.CancelAt is { } cancelAt && cancelAt <= now)
         {
-            return Cancel(subscription, cancelAt, subscription.CancellationReason ?? CancellationReason.RequestedByMerchant, now);
+            return await CancelAsync(subscription, customer, cancelAt, subscription.CancellationReason ?? CancellationReason.RequestedByMerchant, now, cancellationToken);
         }
 
         if (subscription.ScheduledChange is { } change && change.EffectiveAt <= now)
         {
-            await ApplyScheduledChangeAsync(subscription, change, now, cancellationToken);
+            await ApplyScheduledChangeAsync(subscription, customer, change, now, cancellationToken);
             return true;
         }
 
@@ -120,7 +120,7 @@ public sealed class SubscriptionCycles(
         if (subscription is { CollectionMethod: CollectionMethod.ChargeAutomatically, TrialEndBehavior: TrialEndBehavior.Cancel }
             && await cards.ForInvoiceAsync(customer, subscription.DefaultPaymentMethodId, subscription.Currency, cancellationToken) is null)
         {
-            return Cancel(subscription, trialEnd, CancellationReason.TrialWithoutPaymentMethod, now);
+            return await CancelAsync(subscription, customer, trialEnd, CancellationReason.TrialWithoutPaymentMethod, now, cancellationToken);
         }
 
         var period = subscription.EndTrial(billing.Value.Zone, now);
@@ -146,12 +146,17 @@ public sealed class SubscriptionCycles(
 
     /// <summary>
     /// The scheduled change takes effect at its renewal, before the renewal invoice (SUB-12, SUB-19). Prices archived
-    /// meanwhile no longer qualify; the change is dropped then, and the event says so.
+    /// meanwhile no longer qualify; the change is dropped then, and the event says so. The usage of metered items that
+    /// leave waits for the renewal invoice as pending items (SUB-25).
     /// </summary>
-    private async Task ApplyScheduledChangeAsync(Subscription subscription, ScheduledChange change, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task ApplyScheduledChangeAsync(Subscription subscription, Customer customer, ScheduledChange change, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var items = await lines.PricedAsync(change.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
-        var applied = subscription.ReplaceItems(items, billing.Value.Zone, now).IsSuccess;
+        var leaving = subscription.Items.Where(item => items.All(kept => kept.Price.Id != item.PriceId)).ToList();
+        var applied = subscription.CanReplaceItems(items)
+            && await invoices.AddPendingUsageAsync(subscription, customer, leaving, change.EffectiveAt, now, cancellationToken)
+            // As of the renewal it was scheduled for, whenever the worker gets to it: items that join are metered from then.
+            && subscription.ReplaceItems(items, billing.Value.Zone, change.EffectiveAt).IsSuccess;
         if (!applied)
         {
             subscription.ClearScheduledChange(now);
@@ -165,9 +170,16 @@ public sealed class SubscriptionCycles(
         }, customerId: subscription.CustomerId);
     }
 
-    private bool Cancel(Subscription subscription, DateTimeOffset endedAt, CancellationReason reason, DateTimeOffset now)
+    /// <summary>The subscription ends; its metered usage until then goes on a final invoice, if there is any (SUB-12, SUB-29).</summary>
+    private async Task<bool> CancelAsync(
+        Subscription subscription, Customer customer, DateTimeOffset endedAt, CancellationReason reason, DateTimeOffset now, CancellationToken cancellationToken)
     {
         if (subscription.Cancel(endedAt, reason, null, null, now).IsFailure)
+        {
+            return false;
+        }
+
+        if (!await invoices.CreateFinalUsageInvoiceAsync(subscription, customer, endedAt, now, cancellationToken))
         {
             return false;
         }

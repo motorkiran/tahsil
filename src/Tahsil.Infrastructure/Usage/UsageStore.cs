@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tahsil.Application.Usage;
+using Tahsil.Domain.Catalog;
 using Tahsil.Domain.Usage;
 using Tahsil.Infrastructure.Persistence;
 
@@ -44,6 +45,37 @@ internal sealed class UsageStore(TahsilDbContext context) : IUsageStore
             ON CONFLICT (identifier) DO NOTHING
             RETURNING identifier AS "Value"
             """).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UsageCursor>> LockItemsAsync(Guid subscriptionId, CancellationToken cancellationToken) =>
+        await context.Database.SqlQuery<UsageCursor>($"""
+            SELECT id AS item_id, usage_billed_until AS billed_until
+            FROM tahsil.subscription_items
+            WHERE subscription_id = {subscriptionId}
+            ORDER BY id
+            FOR UPDATE
+            """).ToListAsync(cancellationToken);
+
+    public async Task<decimal> AggregateAsync(Guid customerId, Meter meter, DateTimeOffset from, DateTimeOffset until, CancellationToken cancellationToken)
+    {
+        var events = context.UsageEvents.AsNoTracking()
+            .Where(usage => usage.MeterId == meter.Id && usage.CustomerId == customerId && usage.OccurredAt >= from && usage.OccurredAt < until);
+        switch (meter.Aggregation)
+        {
+            case MeterAggregation.Sum:
+                return await events.SumAsync(usage => (decimal?)usage.Value, cancellationToken) ?? 0;
+            case MeterAggregation.Count:
+                return await events.LongCountAsync(cancellationToken);
+            case MeterAggregation.Max:
+                return await events.MaxAsync(usage => (decimal?)usage.Value, cancellationToken) ?? 0;
+            default:
+                var (meterId, property) = (meter.Id, meter.UniqueProperty!);
+                return (await context.Database.SqlQuery<long>($"""
+                    SELECT count(DISTINCT properties->>{property}) AS "Value"
+                    FROM tahsil.usage_events
+                    WHERE meter_id = {meterId} AND customer_id = {customerId} AND occurred_at >= {from} AND occurred_at < {until}
+                    """).ToListAsync(cancellationToken)).Single();
+        }
     }
 
     public async Task<IReadOnlyCollection<string>> ExistingAsync(IReadOnlyCollection<string> identifiers, CancellationToken cancellationToken)

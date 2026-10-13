@@ -34,6 +34,7 @@ public sealed class CreateSubscriptionHandler(
     ChargeableCards cards,
     Redemptions redemptions,
     Kimlik.KimlikPlanRule kimlikPlans,
+    Usage.MeterRule meters,
     IOptions<BillingOptions> billing,
     IOptions<SubscriptionOptions> options,
     BillingClock clock)
@@ -75,6 +76,11 @@ public sealed class CreateSubscriptionHandler(
         if (await kimlikPlans.CheckAsync(customer.Id, customer.KimlikSubscriber, items.Value, null, cancellationToken) is { } kimlikConflict)
         {
             return kimlikConflict;
+        }
+
+        if (await meters.CheckAsync(customer.Id, items.Value, null, cancellationToken) is { } meterConflict)
+        {
+            return meterConflict;
         }
 
         (Guid CouponId, Guid? CodeId)? coupon = null;
@@ -317,7 +323,8 @@ internal static class SubscriptionItemRequests
             }
 
             var product = await context.Products.AsNoTracking().SingleAsync(row => row.Id == price.ProductId, cancellationToken);
-            specs.Add(new SubscriptionItemSpec(price, product, requests[index].Quantity));
+            // A licensed item without a quantity is one unit, here as in the subscription, so that a change compares like with like.
+            specs.Add(new SubscriptionItemSpec(price, product, requests[index].Quantity ?? (price.UsageType == Domain.Catalog.UsageType.Metered ? null : 1)));
         }
 
         return specs;

@@ -240,6 +240,37 @@ public sealed class Invoice : AggregateRoot
         return added;
     }
 
+    /// <summary>
+    /// Replaces a draft's usage lines with what the usage comes to now (USG-11), after its licensed lines (INV-1), and
+    /// recalculates it. Lines that stay as they are keep their identity.
+    /// </summary>
+    public Result ReplaceUsageLines(IReadOnlyList<InvoiceLineDraft> drafts, bool taxExempt, DateTimeOffset now)
+    {
+        if (!IsDraft)
+        {
+            return InvoiceErrors.NotDraft;
+        }
+
+        var current = _lines.Where(line => line.Type == InvoiceLineType.Usage).OrderBy(line => line.SortOrder).ToList();
+        if (current.Count == drafts.Count && current.Zip(drafts).All(pair => pair.First.Is(pair.Second)))
+        {
+            return Result.Success();
+        }
+
+        _lines.RemoveAll(line => line.Type == InvoiceLineType.Usage);
+        var ordered = _lines.OrderBy(line => line.SortOrder).ToList();
+        var added = drafts.Select(draft => InvoiceLine.Create(Id, draft, 0, now)).ToList();
+        ordered.InsertRange(ordered.FindLastIndex(line => line.Type == InvoiceLineType.Subscription) + 1, added);
+        _lines.AddRange(added);
+        foreach (var (index, line) in ordered.Index())
+        {
+            line.MoveTo(index);
+        }
+
+        Recalculate(taxExempt, now);
+        return Result.Success();
+    }
+
     /// <summary>Removes a line from a draft; returns the pending item it came from, which is free again.</summary>
     public Result<Guid?> RemoveLine(Guid lineId, bool taxExempt, DateTimeOffset now)
     {
@@ -616,7 +647,7 @@ public sealed class InvoiceLine
 
     public DateTimeOffset? PeriodEnd { get; private init; }
 
-    public int SortOrder { get; private init; }
+    public int SortOrder { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private init; }
 
@@ -643,6 +674,13 @@ public sealed class InvoiceLine
     };
 
     internal void SetDiscount(long amount) => DiscountAmount = amount;
+
+    internal void MoveTo(int sortOrder) => SortOrder = sortOrder;
+
+    /// <summary>Whether the line says what <paramref name="draft"/> would.</summary>
+    internal bool Is(InvoiceLineDraft draft) =>
+        Type == draft.Type && PriceId == draft.PriceId && Quantity == draft.Quantity && Amount == draft.Amount && Description == draft.Description.Trim()
+        && PeriodStart == draft.PeriodStart && PeriodEnd == draft.PeriodEnd && TaxRateId == draft.TaxRateId;
 
     internal LineAmounts Calculate(bool taxExempt)
     {

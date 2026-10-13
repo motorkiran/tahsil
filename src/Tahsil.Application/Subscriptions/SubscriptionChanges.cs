@@ -19,6 +19,7 @@ public sealed record ItemChangePlan(IReadOnlyList<InvoiceLineDraft> Lines, Billi
 public sealed class SubscriptionChanges(
     ITahsilDbContext context,
     SubscriptionLines lines,
+    Usage.SubscriptionUsage usage,
     InvoiceFinalizer finalizer,
     Redemptions redemptions,
     IOptions<BillingOptions> billing,
@@ -27,10 +28,17 @@ public sealed class SubscriptionChanges(
     /// <summary>
     /// The lines of a change now (SUB-20 to SUB-22): none during a trial; with a new interval, credits for the unused
     /// time of the old items (unless <c>none</c>) and the new items' full new period, invoiced at once; otherwise the
-    /// proration lines of MNY-30, invoiced or pending as <paramref name="behavior"/> says.
+    /// proration lines of MNY-30, invoiced or pending as <paramref name="behavior"/> says. Metered items that leave bill
+    /// their usage so far first (SUB-25); with <paramref name="applying"/>, that usage is closed to new events.
     /// </summary>
     public async Task<ItemChangePlan> PlanAsync(
-        Subscription subscription, IReadOnlyList<SubscriptionItemSpec> after, ProrationBehavior behavior, string locale, DateTimeOffset now, CancellationToken cancellationToken)
+        Subscription subscription,
+        IReadOnlyList<SubscriptionItemSpec> after,
+        ProrationBehavior behavior,
+        string locale,
+        DateTimeOffset now,
+        bool applying,
+        CancellationToken cancellationToken)
     {
         var current = new BillingPeriod(subscription.CurrentPeriodStart, subscription.CurrentPeriodEnd);
         if (subscription.Status == SubscriptionStatus.Trialing || after.Count == 0)
@@ -38,6 +46,10 @@ public sealed class SubscriptionChanges(
             return new ItemChangePlan([], current, Invoiced: false);
         }
 
+        var leaving = subscription.Items.Where(item => after.All(kept => kept.Price.Id != item.PriceId)).ToList();
+        var used = applying
+            ? await usage.InvoiceAsync(subscription, leaving, now, locale, cancellationToken)
+            : await usage.PreviewAsync(subscription, leaving, now, locale, cancellationToken);
         var before = await lines.PricedAsync(subscription.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
         var price = after[0].Price;
         if (price.Interval != subscription.Interval || price.IntervalCount != subscription.IntervalCount)
@@ -45,11 +57,11 @@ public sealed class SubscriptionChanges(
             var period = BillingPeriods.Period(now, price.Interval!.Value, price.IntervalCount!.Value, 0, billing.Value.Zone);
             var credits = behavior == ProrationBehavior.None ? [] : await lines.ProrationAsync(before, after, current, now, creditsOnly: true, locale, cancellationToken);
             var charges = await lines.LicensedAsync(after, period, period, locale, cancellationToken);
-            return new ItemChangePlan([.. credits, .. charges], period, Invoiced: true);
+            return new ItemChangePlan([.. used, .. credits, .. charges], period, Invoiced: true);
         }
 
         var prorations = behavior == ProrationBehavior.None ? [] : await lines.ProrationAsync(before, after, current, now, creditsOnly: false, locale, cancellationToken);
-        return new ItemChangePlan(prorations, new BillingPeriod(now < current.Start ? current.Start : now, current.End), behavior == ProrationBehavior.AlwaysInvoice);
+        return new ItemChangePlan([.. used, .. prorations], new BillingPeriod(now < current.Start ? current.Start : now, current.End), behavior == ProrationBehavior.AlwaysInvoice);
     }
 
     /// <summary>
@@ -60,7 +72,7 @@ public sealed class SubscriptionChanges(
     public async Task<Result<Invoice?>> ApplyNowAsync(
         Subscription subscription, Customer customer, IReadOnlyList<SubscriptionItemSpec> after, ProrationBehavior behavior, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var plan = await PlanAsync(subscription, after, behavior, customer.Locale, now, cancellationToken);
+        var plan = await PlanAsync(subscription, after, behavior, customer.Locale, now, applying: true, cancellationToken);
         var replaced = subscription.ReplaceItems(after, billing.Value.Zone, now);
         if (replaced.IsFailure)
         {
@@ -76,8 +88,11 @@ public sealed class SubscriptionChanges(
         {
             foreach (var line in plan.Lines)
             {
-                context.PendingInvoiceItems.Add(PendingInvoiceItem.ForProration(
-                    customer.Id, subscription.Id, subscription.Currency, line.Description, line.Amount, line.TaxRateId, line.PeriodStart!.Value, line.PeriodEnd!.Value, now));
+                context.PendingInvoiceItems.Add(line.Type == InvoiceLineType.Usage
+                    ? PendingInvoiceItem.ForUsage(
+                        customer.Id, subscription.Id, subscription.Currency, line.Description, line.Amount, line.TaxRateId, line.PeriodStart!.Value, line.PeriodEnd!.Value, now)
+                    : PendingInvoiceItem.ForProration(
+                        customer.Id, subscription.Id, subscription.Currency, line.Description, line.Amount, line.TaxRateId, line.PeriodStart!.Value, line.PeriodEnd!.Value, now));
             }
 
             return Result.Success<Invoice?>(null);

@@ -22,7 +22,7 @@ internal sealed class InvoiceFinalizationWorker(
         (await context.Database.SqlQuery<Guid>($"""
             SELECT id AS "Value" FROM tahsil.invoices
             WHERE status = 'draft' AND auto_advance AND finalize_at <= {now}
-            ORDER BY finalize_at
+            ORDER BY finalize_at, period_start NULLS FIRST
             LIMIT 1
             FOR UPDATE SKIP LOCKED
             """).ToListAsync(cancellationToken)) is [var id] ? id : null;

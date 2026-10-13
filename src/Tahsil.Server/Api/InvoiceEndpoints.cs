@@ -60,7 +60,7 @@ internal static class InvoiceEndpoints
             CancellationToken cancellationToken) =>
             (await handler.HandleAsync(subscription, cancellationToken)).ToOk())
             .WithName("GetUpcomingInvoice").WithSummary("Preview a subscription's next renewal invoice")
-            .WithDescription("The invoice the next renewal would create as things stand, with a scheduled change that takes effect then and the subscription's pending items; nothing is created.")
+            .WithDescription("The invoice the next renewal would create as things stand, with a scheduled change that takes effect then, the metered usage so far and the subscription's pending items; nothing is created.")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequirePermission(TahsilPermissions.InvoicesRead);
 
