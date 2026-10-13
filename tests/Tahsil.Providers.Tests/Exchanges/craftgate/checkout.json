@@ -1,0 +1,34 @@
+{
+  "source": "Craftgate developer portal (archived 2026-06-12) and craftgate-dotnet-client 1.0.86 samples (no sandbox account yet)",
+  "exchanges": [
+    {
+      "request": { "method": "POST", "path": "/payment/v1/checkout-payments/init", "headers": { "x-api-key": "sandbox-api-key", "x-idempotency-key": "0199c0de0000700080000000000000a1", "x-signature": "*" },
+        "json": { "price": 299.00, "paidPrice": 299.00, "currency": "TRY", "paymentGroup": "LISTING_OR_SUBSCRIPTION", "conversationId": "0199c0de0000700080000000000000a1",
+          "externalId": "0199c0de-0000-7000-8000-0000000000a1", "callbackUrl": "https://billing.example.com/checkout/cs_x/return/0199c0de-0000-7000-8000-0000000000a1",
+          "enabledPaymentMethods": ["CARD"], "enabledInstallments": [1], "forceThreeDS": true, "alwaysStoreCardAfterPayment": true, "allowDeleteStoredCard": false, "ttl": 30,
+          "items": [{ "name": "Pro (Aylık)", "price": 299.00, "externalId": "0199c0de-0000-7000-8000-0000000000a1" }],
+          "fraudParams": { "buyerExternalId": "0199c0de-0000-7000-8000-0000000000c1", "buyerEmail": "ayse@example.com" } } },
+      "response": { "status": 200, "json": { "data": { "token": "a1b2c3d4-e5f6", "pageUrl": "https://sandbox-ode.craftgate.io/payment?token=a1b2c3d4-e5f6", "tokenExpireDate": "2026-10-01T12:30:00" } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment/v1/checkout-payments/a1b2c3d4-e5f6", "headers": { "x-api-key": "sandbox-api-key", "x-rnd-key": "*", "x-auth-version": "v1", "x-signature": "*" } },
+      "response": { "status": 200, "json": { "data": {
+        "id": 1500, "conversationId": "0199c0de0000700080000000000000a1", "paymentStatus": "SUCCESS", "price": 299.00000000, "paidPrice": 299.00000000, "currency": "TRY", "installment": 1,
+        "cardUserKey": "cuk-1", "cardToken": "ct-1", "binNumber": "52092200", "lastFourDigits": "0002", "cardAssociation": "MASTER_CARD", "cardType": "CREDIT_CARD",
+        "cardIssuerBankName": "Kuveyt Türk", "cardBrand": "Saglam Kart", "paymentTransactions": [{ "id": 2001, "name": "Pro (Aylık)", "price": 299.00000000 }] } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment/v1/cards", "query": { "cardUserKey": "cuk-1", "cardToken": "ct-1" }, "headers": { "x-api-key": "sandbox-api-key", "x-rnd-key": "*", "x-auth-version": "v1", "x-signature": "*" } },
+      "response": { "status": 200, "json": { "data": { "items": [{ "cardUserKey": "cuk-1", "cardToken": "ct-1", "binNumber": "52092200", "lastFourDigits": "0002", "expireMonth": "12", "expireYear": "2030" }], "page": 0, "size": 10, "totalSize": 1 } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment/v1/checkout-payments/f0-failed", "headers": { "x-api-key": "sandbox-api-key", "x-rnd-key": "*", "x-auth-version": "v1", "x-signature": "*" } },
+      "response": { "status": 200, "json": { "data": { "id": 1501, "conversationId": "0199c0de0000700080000000000000a1", "paymentStatus": "FAILURE",
+        "paymentError": { "errorCode": "10051", "errorDescription": "Kart limiti yetersiz", "errorGroup": "NOT_SUFFICIENT_FUNDS" } } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment/v1/checkout-payments/f0-expired", "headers": { "x-api-key": "sandbox-api-key", "x-rnd-key": "*", "x-auth-version": "v1", "x-signature": "*" } },
+      "response": { "status": 422, "json": { "errors": { "errorCode": "5000", "errorDescription": "Ödeme formu bulunamadı veya süresi doldu" } } }
+    }
+  ]
+}

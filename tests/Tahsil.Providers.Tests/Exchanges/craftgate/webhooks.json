@@ -1,0 +1,14 @@
+{
+  "source": "Craftgate developer portal (archived 2026-06-12) and craftgate-dotnet-client 1.0.86 samples (no sandbox account yet)",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/payment/v1/checkout-payments/a1b2c3d4-e5f6" },
+      "response": { "status": 200, "json": { "data": { "id": 1500, "conversationId": "0199c0de0000700080000000000000a1", "paymentStatus": "SUCCESS" } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment/v1/refunds/31" },
+      "response": { "status": 200, "json": { "data": { "id": 31, "conversationId": "0199c0de0000700080000000000000b1", "status": "SUCCESS", "refundType": "REFUND" } } }
+    },
+    { "request": { "method": "GET", "path": "/payment/v1/card-payments/1600" }, "failure": "connection_failed" }
+  ]
+}

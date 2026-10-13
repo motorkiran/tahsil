@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Tahsil.Providers.Craftgate\Tahsil.Providers.Craftgate.csproj" />
     <ProjectReference Include="..\..\src\Tahsil.Providers.Iyzico\Tahsil.Providers.Iyzico.csproj" />
     <ProjectReference Include="..\..\src\Tahsil.Providers.PayTR\Tahsil.Providers.PayTR.csproj" />
     <ProjectReference Include="..\..\src\Tahsil.Providers.Stripe\Tahsil.Providers.Stripe.csproj" />

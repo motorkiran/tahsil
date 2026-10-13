@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Tahsil.Admin\Tahsil.Admin.csproj" />
     <ProjectReference Include="..\Tahsil.Application\Tahsil.Application.csproj" />
     <ProjectReference Include="..\Tahsil.Infrastructure\Tahsil.Infrastructure.csproj" />
+    <ProjectReference Include="..\Tahsil.Providers.Craftgate\Tahsil.Providers.Craftgate.csproj" />
     <ProjectReference Include="..\Tahsil.Providers.Iyzico\Tahsil.Providers.Iyzico.csproj" />
     <ProjectReference Include="..\Tahsil.Providers.PayTR\Tahsil.Providers.PayTR.csproj" />
     <ProjectReference Include="..\Tahsil.Providers.Stripe\Tahsil.Providers.Stripe.csproj" />

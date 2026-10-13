@@ -1,0 +1,20 @@
+{
+  "source": "Craftgate developer portal (archived 2026-06-12) and craftgate-dotnet-client 1.0.86 samples (no sandbox account yet)",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/payment-reporting/v1/payments", "query": { "conversationId": "0199c0de0000700080000000000000a1", "minCreatedDate": "2026-09-30T12:00:00", "page": "0", "size": "10" } },
+      "response": { "status": 200, "json": { "data": { "items": [
+        { "id": 1499, "conversationId": "0199c0de0000700080000000000000a1", "paymentStatus": "FAILURE", "paymentError": { "errorCode": "10051", "errorGroup": "NOT_SUFFICIENT_FUNDS" } },
+        { "id": 1500, "conversationId": "0199c0de0000700080000000000000a1", "paymentStatus": "SUCCESS", "paidPrice": 299.0, "currency": "TRY" }
+      ] } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment-reporting/v1/payments", "query": { "conversationId": "0199c0de0000700080000000000000a1", "minCreatedDate": "2026-09-30T12:00:00", "page": "0", "size": "10" } },
+      "response": { "status": 200, "json": { "data": { "items": [] } } }
+    },
+    {
+      "request": { "method": "POST", "path": "/payment/v1/cards/delete", "json": { "cardUserKey": "cuk-1", "cardToken": "ct-1" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

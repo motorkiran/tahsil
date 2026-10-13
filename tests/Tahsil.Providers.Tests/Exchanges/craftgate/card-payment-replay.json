@@ -1,0 +1,86 @@
+{
+  "source": "Craftgate developer portal (archived 2026-06-12) and craftgate-dotnet-client 1.0.86 samples (no sandbox account yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/v1/card-payments",
+        "headers": {
+          "x-idempotency-key": "0199c0de0000700080000000000000a3"
+        },
+        "json": {
+          "price": 299.0,
+          "paidPrice": 299.0,
+          "walletPrice": 0,
+          "installment": 1,
+          "currency": "TRY",
+          "paymentGroup": "LISTING_OR_SUBSCRIPTION",
+          "paymentPhase": "AUTH",
+          "conversationId": "0199c0de0000700080000000000000a3",
+          "externalId": "0199c0de-0000-7000-8000-0000000000a3",
+          "retry": false,
+          "posAlias": "62-kuveytturk-12",
+          "clientIp": "85.34.78.112",
+          "card": {
+            "cardUserKey": "cuk-1",
+            "cardToken": "ct-1"
+          },
+          "items": [
+            {
+              "name": "Pro (Aylık), yenileme",
+              "price": 299.0,
+              "externalId": "0199c0de-0000-7000-8000-0000000000a3"
+            }
+          ]
+        }
+      },
+      "failure": "timeout"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/payment/v1/card-payments",
+        "headers": {
+          "x-idempotency-key": "0199c0de0000700080000000000000a3"
+        },
+        "json": {
+          "price": 299.0,
+          "paidPrice": 299.0,
+          "walletPrice": 0,
+          "installment": 1,
+          "currency": "TRY",
+          "paymentGroup": "LISTING_OR_SUBSCRIPTION",
+          "paymentPhase": "AUTH",
+          "conversationId": "0199c0de0000700080000000000000a3",
+          "externalId": "0199c0de-0000-7000-8000-0000000000a3",
+          "retry": false,
+          "posAlias": "62-kuveytturk-12",
+          "clientIp": "85.34.78.112",
+          "card": {
+            "cardUserKey": "cuk-1",
+            "cardToken": "ct-1"
+          },
+          "items": [
+            {
+              "name": "Pro (Aylık), yenileme",
+              "price": 299.0,
+              "externalId": "0199c0de-0000-7000-8000-0000000000a3"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "data": {
+            "id": 1600,
+            "conversationId": "0199c0de0000700080000000000000a3",
+            "paymentStatus": "SUCCESS",
+            "paidPrice": 299.0,
+            "currency": "TRY"
+          }
+        }
+      }
+    }
+  ]
+}

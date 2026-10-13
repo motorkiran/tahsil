@@ -1,5 +1,6 @@
 using Tahsil.Infrastructure.Providers;
 using Tahsil.Providers.Abstractions;
+using Tahsil.Providers.Craftgate;
 using Tahsil.Providers.Iyzico;
 using Tahsil.Providers.PayTR;
 using Tahsil.Providers.Stripe;
@@ -10,7 +11,8 @@ namespace Tahsil.Server.Hosting;
 internal static class PaymentProviders
 {
     public static IServiceCollection AddPaymentProviders(this IServiceCollection services) =>
-        services.AddProvider<IyzicoProvider>(IyzicoProvider.Key).AddProvider<PayTRProvider>(PayTRProvider.Key).AddProvider<StripeProvider>(StripeProvider.Key);
+        services.AddProvider<CraftgateProvider>(CraftgateProvider.Key)
+            .AddProvider<IyzicoProvider>(IyzicoProvider.Key).AddProvider<PayTRProvider>(PayTRProvider.Key).AddProvider<StripeProvider>(StripeProvider.Key);
 
     /// <summary>
     /// The adapter and its client: no redirects (a provider API never redirects a payment call), and no client-wide

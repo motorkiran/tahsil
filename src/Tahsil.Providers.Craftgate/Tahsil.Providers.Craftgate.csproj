@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The Craftgate adapter: Common Payment Page payments with card storage, renewals on the merchant's own POS (such as Kuveyt Türk) without 3D Secure, refunds and signed webhooks.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tahsil.Providers.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+{
+  "source": "Craftgate developer portal (archived 2026-06-12) and craftgate-dotnet-client 1.0.86 samples (no sandbox account yet)",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/payment-reporting/v1/payments", "query": { "conversationId": "*", "page": "0", "size": "1" } },
+      "response": { "status": 200, "json": { "data": { "items": [] } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/merchant/v1/merchant-poses", "query": { "alias": "62-kuveytturk-12" } },
+      "response": { "status": 200, "json": { "data": { "items": [{ "id": 62, "alias": "62-kuveytturk-12", "name": "Kuveyt Türk", "status": "ACTIVE", "currency": "TRY", "posIntegrator": "KUVEYTTURK", "enablePaymentWithoutCvc": false, "forceThreeDs": false }] } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment-reporting/v1/payments", "query": { "conversationId": "*", "page": "0", "size": "1" } },
+      "response": { "status": 404, "json": { "errors": { "errorCode": "102", "errorDescription": "API credential not found" } } }
+    }
+  ]
+}

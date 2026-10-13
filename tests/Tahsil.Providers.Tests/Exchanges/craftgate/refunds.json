@@ -1,0 +1,23 @@
+{
+  "source": "Craftgate developer portal (archived 2026-06-12) and craftgate-dotnet-client 1.0.86 samples (no sandbox account yet)",
+  "exchanges": [
+    {
+      "request": { "method": "POST", "path": "/payment/v1/refunds", "headers": { "x-idempotency-key": "0199c0de0000700080000000000000b1" },
+        "json": { "paymentId": 1500, "conversationId": "0199c0de0000700080000000000000b1", "refundDestinationType": "PROVIDER" } },
+      "response": { "status": 200, "json": { "data": { "id": 31, "conversationId": "0199c0de0000700080000000000000b1", "status": "SUCCESS", "refundType": "CANCEL", "refundPrice": 299.0 } } }
+    },
+    {
+      "request": { "method": "POST", "path": "/payment/v1/refund-transactions",
+        "json": { "paymentTransactionId": 2001, "conversationId": "0199c0de0000700080000000000000b2", "refundPrice": 50.00, "refundDestinationType": "PROVIDER" } },
+      "response": { "status": 422, "json": { "errors": { "errorCode": "10221", "errorDescription": "Gün sonu gerçekleşmeden kısmi iade yapılamaz", "errorGroup": "REQUIRES_DAY_END" } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment-reporting/v1/refunds", "query": { "conversationId": "0199c0de0000700080000000000000b2" } },
+      "response": { "status": 200, "json": { "data": { "items": [], "page": 0, "size": 10, "totalSize": 0 } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/payment-reporting/v1/refund-transactions", "query": { "conversationId": "0199c0de0000700080000000000000b2" } },
+      "response": { "status": 200, "json": { "data": { "items": [{ "id": 41, "conversationId": "0199c0de0000700080000000000000b2", "status": "WAITING", "refundType": "REFUND" }] } } }
+    }
+  ]
+}
