@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Tahsil.Application.Auditing;
 using Tahsil.Application.Common;
 using Tahsil.Application.Invoices;
@@ -111,7 +112,14 @@ public sealed class UpsertCustomerHandler(
 }
 
 public sealed class UpdateCustomerHandler(
-    ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, CustomerMapper mapper, Kimlik.KimlikReferences kimlik, BillingClock clock)
+    ITahsilDbContext context,
+    IAuthorizer authorizer,
+    IAuditLog audit,
+    IOutbox outbox,
+    CustomerMapper mapper,
+    Kimlik.KimlikReferences kimlik,
+    IOptions<Kimlik.KimlikOptions> kimlikOptions,
+    BillingClock clock)
 {
     public async Task<Result<Versioned<CustomerResponse>>> HandleAsync(
         Guid id, UpdateCustomerRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
@@ -155,6 +163,11 @@ public sealed class UpdateCustomerHandler(
             if (await kimlik.CheckSubscriberAsync(customer.KimlikSubscriber, cancellationToken) is { IsFailure: true } unknown)
             {
                 return unknown.Error;
+            }
+
+            if (kimlikOptions.Value.Enabled)
+            {
+                await Kimlik.KimlikTriggers.QueueAsync(context, outbox, context.Subscriptions.Where(subscription => subscription.CustomerId == customer.Id), cancellationToken);
             }
         }
 

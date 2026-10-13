@@ -32,6 +32,8 @@ public interface ITahsilDbContext
 
     DbSet<Domain.Portal.PortalSession> PortalSessions { get; }
 
+    DbSet<Domain.Subscriptions.KimlikMirror> KimlikMirrors { get; }
+
     DbSet<Customer> Customers { get; }
 
     DbSet<ProviderConnection> ProviderConnections { get; }

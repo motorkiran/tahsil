@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Tahsil.Application.Common;
 using Tahsil.Contracts;
 using Tahsil.Domain.Auditing;
@@ -50,7 +51,14 @@ public sealed class CreateProductHandler(
     }
 }
 
-public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer authorizer, IAuditLog audit, Kimlik.KimlikReferences kimlik, BillingClock clock)
+public sealed class UpdateProductHandler(
+    ITahsilDbContext context,
+    IAuthorizer authorizer,
+    IAuditLog audit,
+    IOutbox outbox,
+    Kimlik.KimlikReferences kimlik,
+    IOptions<Kimlik.KimlikOptions> kimlikOptions,
+    BillingClock clock)
 {
     public async Task<Result<Versioned<ProductResponse>>> HandleAsync(
         string idOrKey, UpdateProductRequest request, IReadOnlyCollection<uint>? expectedVersions, CancellationToken cancellationToken)
@@ -86,6 +94,16 @@ public sealed class UpdateProductHandler(ITahsilDbContext context, IAuthorizer a
         if (product.KimlikPlan != plan && await kimlik.CheckPlanAsync(product.KimlikPlan, cancellationToken) is { IsFailure: true } unknown)
         {
             return unknown.Error;
+        }
+
+        if (product.KimlikPlan != plan && kimlikOptions.Value.Enabled)
+        {
+            // The plan the product's subscriptions give in Kimlik changed (KML-16).
+            await Kimlik.KimlikTriggers.QueueAsync(
+                context,
+                outbox,
+                context.Subscriptions.Where(subscription => subscription.Items.Any(item => context.Prices.Any(price => price.Id == item.PriceId && price.ProductId == product.Id))),
+                cancellationToken);
         }
 
         audit.Record(AuditActions.ProductUpdated, AuditSubject.Of(AuditSubjects.Product, product.Id), Changes.Of(

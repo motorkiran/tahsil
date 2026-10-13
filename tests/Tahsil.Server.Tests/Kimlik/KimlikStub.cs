@@ -59,6 +59,9 @@ public sealed class KimlikStub(TimeProvider time) : HttpMessageHandler
 
     public Dictionary<string, Plan> Plans { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>Whether every API request fails, as during an outage.</summary>
+    public bool Down { get; set; }
+
     /// <summary>Whether the token endpoint accepts Tahsil's credentials.</summary>
     public bool AcceptsCredentials { get; set; } = true;
 
@@ -144,6 +147,11 @@ public sealed class KimlikStub(TimeProvider time) : HttpMessageHandler
             if (request.Headers.Authorization is not { Scheme: "Bearer", Parameter: { } token } || !_tokens.Contains(token))
             {
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            if (Down)
+            {
+                return Problem(HttpStatusCode.ServiceUnavailable, "server.error", "Kimlik is down.");
             }
 
             if (_failures.TryDequeue(out var failure))

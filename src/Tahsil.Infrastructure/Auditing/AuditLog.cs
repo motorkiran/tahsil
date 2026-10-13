@@ -12,8 +12,12 @@ namespace Tahsil.Infrastructure.Auditing;
 
 /// <summary>Records audit events in the current unit of work, at the billing clock's time.</summary>
 /// <remarks>Audit events whose action is an event type of the catalog are also queued as webhooks (EVT-4).</remarks>
-internal sealed class AuditLog(TahsilDbContext context, IRequestContext request, IOutbox outbox, IOptions<ServerOptions> server, BillingClock clock) : IAuditLog
+internal sealed class AuditLog(
+    TahsilDbContext context, IRequestContext request, IOutbox outbox, IOptions<ServerOptions> server, IOptions<Application.Kimlik.KimlikOptions> kimlik, BillingClock clock)
+    : IAuditLog
 {
+    private readonly HashSet<Guid> _kimlikSyncs = [];
+
     public void Record(
         string action,
         AuditSubject? subject = null,
@@ -48,6 +52,12 @@ internal sealed class AuditLog(TahsilDbContext context, IRequestContext request,
         if (AuditEmails.From(action, subject, data) is { } email)
         {
             outbox.Enqueue(email);
+        }
+
+        // Once per subscription and unit of work: the sync reads the subscription as it is then (KML-16).
+        if (kimlik.Value.Enabled && Application.Kimlik.KimlikTriggers.From(action, subject) is { } sync && _kimlikSyncs.Add(sync.SubscriptionId))
+        {
+            outbox.Enqueue(sync);
         }
     }
 

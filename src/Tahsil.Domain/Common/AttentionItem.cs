@@ -28,6 +28,12 @@ public enum AttentionKind
 
     /// <summary>A connection's automatic payments fail for the merchant's or provider's reasons, for a day or with a missing permission (DUN-7).</summary>
     MerchantFailures,
+
+    /// <summary>The customer's Kimlik subscriber has a subscription that another system manages (KML-17).</summary>
+    KimlikConflict,
+
+    /// <summary>A subscription has not synced to Kimlik for a day (KML-20).</summary>
+    KimlikSyncFailing,
 }
 
 /// <summary>Something an operator must look at and resolve, such as an amount mismatch; one open item per kind and subject.</summary>

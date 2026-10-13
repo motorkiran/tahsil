@@ -246,6 +246,8 @@ public static class DependencyInjection
                 $"{Kimlik.KimlikOptions.SectionName}: when Enabled, Authority is an absolute URL ending with '/', ClientId, ClientSecret and a whsec_ WebhookSecret are set, SyncBuffer is 0 to 7 days, PastDueAccess is keep_until_final_action or end_immediately, and ReconcileInterval is at least 5 minutes.")
             .ValidateOnStart();
         services.AddSingleton<Kimlik.KimlikReferences>();
+        services.AddScoped<Kimlik.KimlikPlanRule>();
+        services.AddScoped<IOutboxMessageHandler<Kimlik.SyncKimlikSubscription>, Kimlik.KimlikSynchronizer>();
         services.AddOptions<Portal.PortalOptions>()
             .BindConfiguration(Portal.PortalOptions.SectionName)
             .Validate(options => options.HasValidLifetimes(), $"{Portal.PortalOptions.SectionName}: SessionLifetime is 5 minutes to 1 day, and EmailLinkLifetime 1 hour to 30 days.")

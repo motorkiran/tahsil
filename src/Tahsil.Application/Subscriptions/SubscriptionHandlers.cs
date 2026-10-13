@@ -33,6 +33,7 @@ public sealed class CreateSubscriptionHandler(
     MerchantPayments payments,
     ChargeableCards cards,
     Redemptions redemptions,
+    Kimlik.KimlikPlanRule kimlikPlans,
     IOptions<BillingOptions> billing,
     IOptions<SubscriptionOptions> options,
     BillingClock clock)
@@ -69,6 +70,11 @@ public sealed class CreateSubscriptionHandler(
         if (SubscriptionItems.Validate(items.Value, currency: null) is { } invalidItems)
         {
             return invalidItems;
+        }
+
+        if (await kimlikPlans.CheckAsync(customer.Id, customer.KimlikSubscriber, items.Value, null, cancellationToken) is { } kimlikConflict)
+        {
+            return kimlikConflict;
         }
 
         (Guid CouponId, Guid? CodeId)? coupon = null;

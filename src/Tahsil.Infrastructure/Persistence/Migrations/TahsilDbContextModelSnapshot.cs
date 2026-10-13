@@ -2650,6 +2650,40 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("portal_sessions", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.KimlikMirror", b =>
+                {
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FailingSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failing_since");
+
+                    b.Property<Guid?>("KimlikSubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kimlik_subscription_id");
+
+                    b.Property<DateTimeOffset?>("SyncedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("synced_at");
+
+                    b.HasKey("SubscriptionId")
+                        .HasName("pk_kimlik_mirrors");
+
+                    b.HasIndex("KimlikSubscriptionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_kimlik_mirrors_kimlik_subscription_id")
+                        .HasFilter("kimlik_subscription_id IS NOT NULL");
+
+                    b.ToTable("kimlik_mirrors", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3629,6 +3663,16 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasForeignKey("FlowSubscriptionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("fk_portal_sessions_subscriptions_flow_subscription_id");
+                });
+
+            modelBuilder.Entity("Tahsil.Domain.Subscriptions.KimlikMirror", b =>
+                {
+                    b.HasOne("Tahsil.Domain.Subscriptions.Subscription", null)
+                        .WithOne()
+                        .HasForeignKey("Tahsil.Domain.Subscriptions.KimlikMirror", "SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_kimlik_mirrors_subscriptions_subscription_id");
                 });
 
             modelBuilder.Entity("Tahsil.Domain.Subscriptions.Subscription", b =>

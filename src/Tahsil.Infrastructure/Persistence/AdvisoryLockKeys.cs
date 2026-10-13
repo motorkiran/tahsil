@@ -23,4 +23,6 @@ internal static class AdvisoryLockKeys
     public const long OperatorDigest = 0x544148_53494C_0008;
 
     public const long PortalSessionCleanup = 0x544148_53494C_0009;
+
+    public const long KimlikReconciliation = 0x544148_53494C_000A;
 }

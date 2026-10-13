@@ -40,6 +40,7 @@ public sealed partial class CreateCheckoutSessionHandler(
     Coupons.Redemptions redemptions,
     CheckoutDiscounts discounts,
     Kimlik.KimlikReferences kimlik,
+    Kimlik.KimlikPlanRule kimlikPlans,
     IOptions<CheckoutOptions> checkout,
     IOptions<BillingOptions> billing,
     IOptions<ServerOptions> server,
@@ -74,7 +75,7 @@ public sealed partial class CreateCheckoutSessionHandler(
         var sold = request.Mode switch
         {
             CheckoutMode.Payment => await ItemsAsync(request, locale, cancellationToken),
-            CheckoutMode.Subscription => await SubscriptionItemsAsync(request, locale, now, cancellationToken),
+            CheckoutMode.Subscription => await SubscriptionItemsAsync(request, customer, details, locale, now, cancellationToken),
             _ => SetupCurrency(request),
         };
         if (sold.IsFailure)
@@ -286,7 +287,8 @@ public sealed partial class CreateCheckoutSessionHandler(
     /// one-time prices for its first invoice. Without a trial, the quote is the first invoice; with one, nothing is due
     /// now and one-time prices have no invoice to join. Either way, the quote shows what each renewal bills (CHK-7).
     /// </summary>
-    private async Task<Result<Sale>> SubscriptionItemsAsync(CreateCheckoutSessionRequest request, string locale, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<Result<Sale>> SubscriptionItemsAsync(
+        CreateCheckoutSessionRequest request, ModelCustomers.Customer? customer, Model.CheckoutCustomer? details, string locale, DateTimeOffset now, CancellationToken cancellationToken)
     {
         if (request.Items is not { Count: > 0 } requested)
         {
@@ -327,6 +329,11 @@ public sealed partial class CreateCheckoutSessionHandler(
                 ? $"items[{specIndexes[int.Parse(match.Groups["index"].Value, CultureInfo.InvariantCulture)]}]{match.Groups["rest"].Value}"
                 : "items";
             return Model.CheckoutErrors.InvalidItems(field, invalid.Message);
+        }
+
+        if (await kimlikPlans.CheckAsync(customer?.Id, customer?.KimlikSubscriber ?? details?.KimlikSubscriber, specs, null, cancellationToken) is { } kimlikConflict)
+        {
+            return kimlikConflict;
         }
 
         var data = request.Subscription ?? new CheckoutSubscriptionData();

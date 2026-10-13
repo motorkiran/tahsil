@@ -54,3 +54,16 @@ internal sealed class SubscriptionItemConfiguration : IEntityTypeConfiguration<S
         builder.HasIndex(item => item.PriceId);
     }
 }
+
+internal sealed class KimlikMirrorConfiguration : IEntityTypeConfiguration<KimlikMirror>
+{
+    public void Configure(EntityTypeBuilder<KimlikMirror> builder)
+    {
+        builder.HasKey(mirror => mirror.SubscriptionId);
+        builder.Property(mirror => mirror.Error).HasMaxLength(KimlikMirror.ErrorMaxLength);
+        builder.HasOne<Subscription>().WithOne().HasForeignKey<KimlikMirror>(mirror => mirror.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
+
+        // Kimlik's webhooks name its subscriptions (KML-21).
+        builder.HasIndex(mirror => mirror.KimlikSubscriptionId).IsUnique().HasFilter("kimlik_subscription_id IS NOT NULL");
+    }
+}

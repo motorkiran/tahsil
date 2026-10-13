@@ -36,6 +36,7 @@ public sealed class UpdateSubscriptionHandler(
     MerchantPayments payments,
     ChargeableCards cards,
     Redemptions redemptions,
+    Kimlik.KimlikPlanRule kimlikPlans,
     IOptions<BillingOptions> billing,
     BillingClock clock)
 {
@@ -250,6 +251,11 @@ public sealed class UpdateSubscriptionHandler(
         if (items.IsFailure)
         {
             return items.Error;
+        }
+
+        if (await kimlikPlans.CheckAsync(customer.Id, customer.KimlikSubscriber, items.Value, subscription.Id, cancellationToken) is { } kimlikConflict)
+        {
+            return kimlikConflict;
         }
 
         var scheduled = request.Effective == ChangeTiming.PeriodEnd || request.EffectiveAt is not null;

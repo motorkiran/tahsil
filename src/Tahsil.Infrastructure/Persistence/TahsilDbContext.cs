@@ -37,6 +37,8 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     public DbSet<Domain.Portal.PortalSession> PortalSessions => Set<Domain.Portal.PortalSession>();
 
+    public DbSet<Domain.Subscriptions.KimlikMirror> KimlikMirrors => Set<Domain.Subscriptions.KimlikMirror>();
+
     public DbSet<Product> Products => Set<Product>();
 
     public DbSet<Price> Prices => Set<Price>();
