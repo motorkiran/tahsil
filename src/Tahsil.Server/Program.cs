@@ -88,6 +88,7 @@ app.MapCheckoutStatus();
 app.MapBrandingStylesheet();
 app.MapTahsilApi();
 app.MapProviderNotifications();
+app.MapKimlikWebhooks();
 app.MapContributedEndpoints();
 
 if (adminPanel)

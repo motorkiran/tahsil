@@ -14,6 +14,9 @@ public enum ThrottledAction
 
     /// <summary>A provider notification (SEC-4).</summary>
     ProviderNotification,
+
+    /// <summary>A webhook from Kimlik, limited like provider notifications.</summary>
+    KimlikWebhook,
 }
 
 /// <summary>
@@ -33,6 +36,7 @@ public sealed class RequestThrottle : IDisposable
         {
             [ThrottledAction.HostedPage] = CreateLimiter(limits.HostedPageRequestsPerMinute),
             [ThrottledAction.ProviderNotification] = CreateLimiter(limits.ProviderNotificationsPerMinute),
+            [ThrottledAction.KimlikWebhook] = CreateLimiter(limits.ProviderNotificationsPerMinute),
         }.ToFrozenDictionary();
     }
 

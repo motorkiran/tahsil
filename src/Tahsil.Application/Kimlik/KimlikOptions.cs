@@ -33,7 +33,7 @@ public sealed class KimlikOptions
         !Enabled
         || (Authority is { IsAbsoluteUri: true } authority && authority.Scheme is "https" or "http" && authority.AbsolutePath.EndsWith('/')
             && !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ClientSecret)
-            && WebhookSecret?.StartsWith("whsec_", StringComparison.Ordinal) == true
+            && Webhooks.WebhookSecrets.IsValid(WebhookSecret)
             && SyncBuffer >= TimeSpan.Zero && SyncBuffer <= TimeSpan.FromDays(7)
             && PastDueAccess is KeepUntilFinalAction or EndImmediately
             && ReconcileInterval >= TimeSpan.FromMinutes(5));

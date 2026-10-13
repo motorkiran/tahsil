@@ -95,6 +95,50 @@ public sealed class KimlikStub(TimeProvider time) : HttpMessageHandler
 
     public void AddPlan(string key, string kind = "base", bool archived = false) => Plans[key] = new Plan(key, kind, archived);
 
+    /// <summary>Deletes a user and, silently, its subscriptions, as Kimlik does.</summary>
+    public void DeleteUser(Guid id)
+    {
+        lock (_gate)
+        {
+            Users.Remove(id);
+            _subscriptions.RemoveAll(subscription => subscription.SubscriberType == "user" && subscription.SubscriberId == id);
+        }
+    }
+
+    /// <summary>
+    /// A webhook as Kimlik sends it (Kimlik.Contracts.Webhooks.WebhookEvent), signed with Standard Webhooks at
+    /// <paramref name="sentAt"/> with <paramref name="secret"/>, the endpoint's secret unless another is given.
+    /// </summary>
+    public static HttpRequestMessage Webhook(
+        string type, string subjectType, Guid subjectId, string actorType, string? actorId, DateTimeOffset sentAt, string? secret = null, string? tamperedBody = null)
+    {
+        var body = new JsonObject
+        {
+            ["type"] = type,
+            ["timestamp"] = sentAt,
+            ["data"] = new JsonObject
+            {
+                ["subjectType"] = subjectType,
+                ["subjectId"] = subjectId.ToString(),
+                ["organizationId"] = null,
+                ["actor"] = new JsonObject { ["type"] = actorType, ["id"] = actorId },
+                ["details"] = null,
+            },
+        }.ToJsonString();
+        var id = $"msg_{Guid.CreateVersion7():N}";
+        var timestamp = sentAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        var key = Convert.FromBase64String((secret ?? WebhookSecret)["whsec_".Length..]);
+        var signature = Convert.ToBase64String(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes($"{id}.{timestamp}.{body}")));
+        var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/webhooks/kimlik", UriKind.Relative))
+        {
+            Content = new StringContent(tamperedBody ?? body, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("webhook-id", id);
+        request.Headers.Add("webhook-timestamp", timestamp);
+        request.Headers.Add("webhook-signature", $"v1,{signature}");
+        return request;
+    }
+
     /// <summary>The next API responses fail with these statuses, one each.</summary>
     public void Fail(params HttpStatusCode[] statuses)
     {

@@ -27,6 +27,9 @@ public static class AuditActions
     public const string CustomerUpdated = "customer.updated";
     public const string CustomerDeleted = "customer.deleted";
 
+    /// <summary>A change made in Kimlik to a mirrored subscription was undone by a sync (KML-21).</summary>
+    public const string KimlikDriftCorrected = "kimlik.drift_corrected";
+
     /// <summary>The application opened the portal for a customer (PRT-1); the subject is the customer.</summary>
     public const string PortalSessionCreated = "portal_session.created";
 

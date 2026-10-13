@@ -248,6 +248,8 @@ public static class DependencyInjection
         services.AddSingleton<Kimlik.KimlikReferences>();
         services.AddScoped<Kimlik.KimlikPlanRule>();
         services.AddScoped<IOutboxMessageHandler<Kimlik.SyncKimlikSubscription>, Kimlik.KimlikSynchronizer>();
+        services.AddScoped<Kimlik.KimlikWebhooks>();
+        services.AddScoped<IOutboxMessageHandler<Kimlik.KimlikEventReceived>, Kimlik.KimlikEvents>();
         services.AddOptions<Portal.PortalOptions>()
             .BindConfiguration(Portal.PortalOptions.SectionName)
             .Validate(options => options.HasValidLifetimes(), $"{Portal.PortalOptions.SectionName}: SessionLifetime is 5 minutes to 1 day, and EmailLinkLifetime 1 hour to 30 days.")

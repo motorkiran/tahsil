@@ -189,6 +189,14 @@ public sealed partial class Customer : AggregateRoot
         UpdatedAt = now;
     }
 
+    /// <summary>The Kimlik subscriber was deleted in Kimlik: the customer stays, with its billing history (KML-23).</summary>
+    public void UnlinkKimlik(DateTimeOffset now)
+    {
+        KimlikSubscriberType = null;
+        KimlikSubscriberId = null;
+        UpdatedAt = now;
+    }
+
     /// <summary>Checks billing details as <see cref="Create"/> and <see cref="Update"/> do, such as details to use later.</summary>
     public static Error? Validate(CustomerDetails details)
     {

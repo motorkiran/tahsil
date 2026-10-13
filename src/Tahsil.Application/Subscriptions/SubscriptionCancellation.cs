@@ -52,7 +52,9 @@ public sealed class CancelSubscriptionHandler(
             return cannotRefund.Error;
         }
 
-        if (request.Reason is not (Contracts.CancellationReason.RequestedByCustomer or Contracts.CancellationReason.RequestedByMerchant))
+        // Kimlik's deletion of the subscriber cancels on its own (KML-23).
+        if (request.Reason is not (Contracts.CancellationReason.RequestedByCustomer or Contracts.CancellationReason.RequestedByMerchant)
+            && !(authorizer.IsSystem && request.Reason == Contracts.CancellationReason.KimlikSubscriberDeleted))
         {
             return SubscriptionErrors.Invalid("reason", "A cancellation is requested by the customer or by the merchant.");
         }

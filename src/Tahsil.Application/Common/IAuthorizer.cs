@@ -31,6 +31,9 @@ public interface IAuthorizer
 
     /// <summary>Whether a customer acts for themselves, on a hosted page.</summary>
     bool IsCustomer { get; }
+
+    /// <summary>Whether Tahsil acts on its own, such as a worker or a message from Kimlik.</summary>
+    bool IsSystem { get; }
 }
 
 internal sealed class Authorizer(IRequestContext request) : IAuthorizer
@@ -44,6 +47,8 @@ internal sealed class Authorizer(IRequestContext request) : IAuthorizer
     };
 
     public bool IsCustomer => request.Caller is CustomerCaller;
+
+    public bool IsSystem => request.Caller is SystemCaller;
 
     public Result RequireOrCustomer(string permission) => IsCustomer ? Result.Success() : Require(permission);
 
