@@ -1,0 +1,13 @@
+{
+  "source": "Stripe API reference object shapes and error objects for 2026-09-30.endive (docs.stripe.com/api, docs.stripe.com/declines/codes); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "POST", "path": "/v1/payment_methods/pm_1Visa/detach", "headers": { "Idempotency-Key": "tahsil:0199c0de-0000-7000-8000-00000000c001:detach:pm_1Visa" } },
+      "response": { "status": 200, "json": { "id": "pm_1Visa", "object": "payment_method", "customer": null } }
+    },
+    {
+      "request": { "method": "POST", "path": "/v1/payment_methods/pm_1Gone/detach" },
+      "response": { "status": 400, "json": { "error": { "type": "invalid_request_error", "code": "payment_method_unexpected_state", "message": "The payment method you provided is not attached to a customer so detachment is impossible." } } }
+    }
+  ]
+}

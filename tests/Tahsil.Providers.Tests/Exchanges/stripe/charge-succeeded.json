@@ -1,0 +1,9 @@
+{
+  "source": "Stripe API reference object shapes and error objects for 2026-09-30.endive (docs.stripe.com/api, docs.stripe.com/declines/codes); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "POST", "path": "/v1/payment_intents", "headers": { "Idempotency-Key": "tahsil:0199c0de-0000-7000-8000-00000000c001:charge:0199c0de0000700080000000000000a3" }, "form": { "allowed_payment_method_types[0]": "card", "amount": "2990", "confirm": "true", "currency": "usd", "customer": "cus_TaHs1L", "description": "Pro (monthly), renewal", "metadata[tahsil_payment_id]": "0199c0de-0000-7000-8000-0000000000a3", "metadata[tahsil_reference]": "0199c0de0000700080000000000000a3", "off_session": "true", "payment_method": "pm_1Visa" } },
+      "response": { "status": 200, "json": { "id": "pi_3Renew", "object": "payment_intent", "status": "succeeded", "amount": 2990, "amount_received": 2990, "currency": "usd", "customer": "cus_TaHs1L", "payment_method": "pm_1Visa", "metadata": { "tahsil_reference": "0199c0de0000700080000000000000a3" } } }
+    }
+  ]
+}

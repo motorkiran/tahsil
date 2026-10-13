@@ -1,0 +1,16 @@
+{
+  "source": "Stripe API reference object shapes and error objects for 2026-09-30.endive (docs.stripe.com/api, docs.stripe.com/declines/codes); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "POST", "path": "/v1/refunds", "headers": { "Idempotency-Key": "tahsil:0199c0de-0000-7000-8000-00000000c001:refund:0199c0de0000700080000000000000b1" },
+        "form": { "payment_intent": "pi_3Tahsil", "amount": "1000", "reason": "requested_by_customer", "metadata[tahsil_refund_id]": "0199c0de-0000-7000-8000-0000000000b1", "metadata[tahsil_reference]": "0199c0de0000700080000000000000b1" } },
+      "response": { "status": 200, "json": { "id": "re_1Pending", "object": "refund", "status": "pending", "amount": 1000, "currency": "usd", "payment_intent": "pi_3Tahsil" } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/refunds", "query": { "payment_intent": "pi_3Tahsil", "limit": "100" } },
+      "response": { "status": 200, "json": { "object": "list", "has_more": false, "data": [
+        { "id": "re_1Pending", "object": "refund", "status": "failed", "failure_reason": "expired_or_canceled_card", "amount": 1000, "currency": "usd", "metadata": { "tahsil_reference": "0199c0de0000700080000000000000b1" } }
+      ] } }
+    }
+  ]
+}

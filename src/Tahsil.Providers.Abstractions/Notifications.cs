@@ -53,5 +53,11 @@ public sealed record NotificationResult
 
     public IReadOnlyList<NotificationUpdate> Updates { get; init; } = [];
 
+    /// <summary>
+    /// Verified, but what it means cannot be read now, such as when the object a thin event names cannot be fetched:
+    /// it is not kept, and the provider is answered so that it sends it again.
+    /// </summary>
+    public bool Deferred { get; init; }
+
     public static NotificationResult Rejected(NotificationResponse response) => new() { Verified = false, Response = response };
 }

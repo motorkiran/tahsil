@@ -38,6 +38,14 @@ public sealed class PaymentRequests(ITahsilDbContext context, ISecretEncryption 
             .Select(row => row.Reference)
             .SingleOrDefaultAsync(cancellationToken);
 
+    /// <summary>What an adapter is asked when Tahsil looks a payment up: its reference, IDs, kept data and provider customer.</summary>
+    public async Task<PaymentQuery> QueryAsync(Domain.Payments.Payment payment, Guid connectionId, CancellationToken cancellationToken) =>
+        new(payment.Reference, payment.ProviderPaymentId, payment.CreatedAt)
+        {
+            ProviderData = payment.ProviderData,
+            ProviderCustomer = await ProviderCustomerAsync(payment.CustomerId, connectionId, cancellationToken),
+        };
+
     public static async Task<bool> HasPaymentInFlightAsync(ITahsilDbContext context, Guid invoiceId, CancellationToken cancellationToken) =>
         await context.Payments.AnyAsync(
             payment => payment.InvoiceId == invoiceId && (payment.Status == Domain.Payments.PaymentStatus.Processing || payment.Status == Domain.Payments.PaymentStatus.RequiresAction),

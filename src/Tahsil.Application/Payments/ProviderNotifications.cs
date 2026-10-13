@@ -46,6 +46,12 @@ public sealed partial class ProviderNotifications(
             return answer;
         }
 
+        if (result.Deferred)
+        {
+            // The provider sends it again later; nothing is kept now.
+            return answer;
+        }
+
         if (result.ProviderEventId is { } eventId
             && await context.ProviderNotifications.AnyAsync(row => row.ConnectionId == connectionId && row.ProviderEventId == eventId, cancellationToken))
         {
@@ -87,6 +93,7 @@ public sealed partial class ProviderNotificationProcessing(
     ProviderAccess providers,
     PaymentOutcomes payments,
     RefundOutcomes refunds,
+    PaymentRequests requests,
     Attention attention,
     BillingClock clock,
     ILogger<ProviderNotificationProcessing> logger)
@@ -152,7 +159,7 @@ public sealed partial class ProviderNotificationProcessing(
                 }
 
                 if (providers.For(connection) is { } call
-                    && await call.Provider.FindPaymentAsync(call.Context, new PaymentQuery(checkedPayment.Reference, checkedPayment.ProviderPaymentId, checkedPayment.CreatedAt), cancellationToken)
+                    && await call.Provider.FindPaymentAsync(call.Context, await requests.QueryAsync(checkedPayment, connection.Id, cancellationToken), cancellationToken)
                         is PaymentLookup.Found { Outcome.Status: ProviderStatus.Succeeded or ProviderStatus.Failed } found)
                 {
                     await payments.ApplyAsync(checkedPayment.Id, found.Outcome, cancellationToken);

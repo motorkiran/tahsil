@@ -1,13 +1,15 @@
 using Tahsil.Infrastructure.Providers;
 using Tahsil.Providers.Abstractions;
 using Tahsil.Providers.Iyzico;
+using Tahsil.Providers.Stripe;
 
 namespace Tahsil.Server.Hosting;
 
 /// <summary>The real payment providers' adapters, each with an HTTP client of its own (ADP-5, FND-39).</summary>
 internal static class PaymentProviders
 {
-    public static IServiceCollection AddPaymentProviders(this IServiceCollection services) => services.AddProvider<IyzicoProvider>(IyzicoProvider.Key);
+    public static IServiceCollection AddPaymentProviders(this IServiceCollection services) =>
+        services.AddProvider<IyzicoProvider>(IyzicoProvider.Key).AddProvider<StripeProvider>(StripeProvider.Key);
 
     /// <summary>
     /// The adapter and its client: no redirects (a provider API never redirects a payment call), and no client-wide

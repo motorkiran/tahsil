@@ -215,7 +215,14 @@ public sealed record PaymentOutcome
         new() { Status = PaymentStatus.Failed, FailureCode = code, ProviderFailureCode = providerCode, ProviderFailureMessage = providerMessage };
 }
 
-public sealed record PaymentQuery(string Reference, string? ProviderPaymentId, DateTimeOffset CreatedAt);
+public sealed record PaymentQuery(string Reference, string? ProviderPaymentId, DateTimeOffset CreatedAt)
+{
+    /// <summary>What the adapter kept with the payment, such as a provider session ID.</summary>
+    public IReadOnlyDictionary<string, string> ProviderData { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>The provider's customer of the payment's customer on this connection, for providers that list payments by customer.</summary>
+    public string? ProviderCustomer { get; init; }
+}
 
 public abstract record PaymentLookup
 {

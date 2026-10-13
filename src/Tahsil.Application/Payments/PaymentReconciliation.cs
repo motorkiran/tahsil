@@ -23,6 +23,7 @@ public sealed class PaymentReconciliation(
     ProviderRegistry registry,
     ProviderAccess providers,
     PaymentOutcomes outcomes,
+    PaymentRequests requests,
     Attention attention,
     IOptions<PaymentOptions> options,
     BillingClock clock)
@@ -60,7 +61,7 @@ public sealed class PaymentReconciliation(
             return;
         }
 
-        var lookup = await call.Provider.FindPaymentAsync(call.Context, new PaymentQuery(payment.Reference, payment.ProviderPaymentId, payment.CreatedAt), CancellationToken.None);
+        var lookup = await call.Provider.FindPaymentAsync(call.Context, await requests.QueryAsync(payment, connection.Id, CancellationToken.None), CancellationToken.None);
         switch (lookup)
         {
             case PaymentLookup.Found { Outcome.Status: ProviderStatus.Succeeded or ProviderStatus.Failed } found:

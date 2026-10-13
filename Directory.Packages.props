@@ -24,6 +24,11 @@
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="Payment providers">
+    <!-- The Stripe adapter; a release train pins one Stripe API version (STR-2): changing it is an ADR and a conformance run. -->
+    <PackageVersion Include="Stripe.net" Version="53.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Admin panel">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.12" />
     <PackageVersion Include="MudBlazor" Version="9.11.0" />

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The Stripe adapter: Stripe Checkout payments and card setup, off-session renewals, refunds and thin events.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+    <PackageReference Include="Stripe.net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tahsil.Providers.Tests" />
+  </ItemGroup>
+
+</Project>

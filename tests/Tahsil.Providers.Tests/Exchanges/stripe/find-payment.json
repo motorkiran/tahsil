@@ -1,0 +1,17 @@
+{
+  "source": "Stripe API reference object shapes and error objects for 2026-09-30.endive (docs.stripe.com/api, docs.stripe.com/declines/codes); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/v1/payment_intents", "query": { "customer": "cus_TaHs1L", "created[gte]": "1790841600", "limit": "100" } },
+      "response": { "status": 200, "json": { "object": "list", "has_more": false, "data": [
+        { "id": "pi_3Other", "object": "payment_intent", "status": "succeeded", "amount": 990, "amount_received": 990, "currency": "usd", "metadata": { "tahsil_reference": "someone-else" } },
+        { "id": "pi_3Renew", "object": "payment_intent", "status": "requires_payment_method", "amount": 2990, "currency": "usd", "metadata": { "tahsil_reference": "0199c0de0000700080000000000000a3" },
+          "last_payment_error": { "type": "card_error", "code": "card_declined", "decline_code": "do_not_honor", "message": "Your card was declined." } }
+      ] } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/payment_intents/pi_3Missing" },
+      "response": { "status": 404, "json": { "error": { "type": "invalid_request_error", "code": "resource_missing", "message": "No such payment_intent: 'pi_3Missing'" } } }
+    }
+  ]
+}

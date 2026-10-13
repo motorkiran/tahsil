@@ -1,0 +1,32 @@
+{
+  "source": "Stripe API reference object shapes for 2026-09-30.endive (docs.stripe.com/api); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST", "path": "/v1/customers",
+        "headers": { "Idempotency-Key": "tahsil:0199c0de-0000-7000-8000-00000000c001:customer:0199c0de-0000-7000-8000-0000000000c1", "Stripe-Version": "2026-09-30.endive" },
+        "form": { "email": "ada@example.com", "name": "Ada Lovelace", "metadata[tahsil_customer_id]": "0199c0de-0000-7000-8000-0000000000c1" }
+      },
+      "response": { "status": 200, "json": { "id": "cus_TaHs1L", "object": "customer", "email": "ada@example.com", "name": "Ada Lovelace", "livemode": false } }
+    },
+    {
+      "request": {
+        "method": "POST", "path": "/v1/checkout/sessions",
+        "headers": { "Idempotency-Key": "tahsil:0199c0de-0000-7000-8000-00000000c001:checkout:0199c0de0000700080000000000000a1" },
+        "form": {
+          "mode": "payment", "ui_mode": "hosted_page", "customer": "cus_TaHs1L", "allowed_payment_method_types[0]": "card",
+          "client_reference_id": "0199c0de0000700080000000000000a1",
+          "success_url": "https://billing.example.com/checkout/cs_x/return?session_id={CHECKOUT_SESSION_ID}", "cancel_url": "https://billing.example.com/checkout/cs_x",
+          "locale": "en", "expires_at": "1790847060",
+          "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": "2990",
+          "line_items[0][price_data][product_data][name]": "Pro (monthly)",
+          "payment_intent_data[setup_future_usage]": "off_session",
+          "payment_intent_data[metadata][tahsil_payment_id]": "0199c0de-0000-7000-8000-0000000000a1",
+          "payment_intent_data[metadata][tahsil_reference]": "0199c0de0000700080000000000000a1",
+          "payment_intent_data[statement_descriptor_suffix]": "PRO"
+        }
+      },
+      "response": { "status": 200, "json": { "id": "cs_test_a1", "object": "checkout.session", "mode": "payment", "status": "open", "url": "https://checkout.stripe.com/c/pay/cs_test_a1", "expires_at": 1790847060, "customer": "cus_TaHs1L" } }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "source": "Stripe API reference object shapes for 2026-09-30.endive (docs.stripe.com/api, docs.stripe.com/events/how-events-work); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/v1/payment_intents/pi_3Tahsil" },
+      "response": { "status": 200, "json": { "id": "pi_3Tahsil", "object": "payment_intent", "status": "succeeded", "amount": 2990, "currency": "usd", "metadata": { "tahsil_reference": "0199c0de0000700080000000000000a1" } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/checkout/sessions/cs_test_a1" },
+      "response": { "status": 200, "json": { "id": "cs_test_a1", "object": "checkout.session", "status": "expired", "client_reference_id": "0199c0de0000700080000000000000a2" } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/refunds/re_1Pending" },
+      "response": { "status": 200, "json": { "id": "re_1Pending", "object": "refund", "status": "succeeded", "amount": 1000, "currency": "usd", "metadata": { "tahsil_reference": "0199c0de0000700080000000000000b1" } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/payment_methods/pm_1Visa" },
+      "response": { "status": 200, "json": { "id": "pm_1Visa", "object": "payment_method", "type": "card", "customer": "cus_TaHs1L", "card": { "brand": "visa", "last4": "1881", "exp_month": 8, "exp_year": 2031, "funding": "credit", "country": "US" } } }
+    },
+    { "request": { "method": "GET", "path": "/v1/payment_intents/pi_3Later" }, "failure": "connection_failed" },
+    { "request": { "method": "GET", "path": "/v1/payment_intents/pi_3Later" }, "failure": "connection_failed" },
+    { "request": { "method": "GET", "path": "/v1/payment_intents/pi_3Later" }, "failure": "connection_failed" }
+  ]
+}

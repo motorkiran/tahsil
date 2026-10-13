@@ -1,0 +1,23 @@
+{
+  "source": "Stripe API reference object shapes for 2026-09-30.endive (docs.stripe.com/api); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/v1/checkout/sessions/cs_test_a1", "query": { "expand[0]": "payment_intent.payment_method", "expand[1]": "setup_intent.payment_method" } },
+      "response": {
+        "status": 200,
+        "json": {
+          "id": "cs_test_a1", "object": "checkout.session", "mode": "payment", "status": "complete", "payment_status": "paid", "customer": "cus_TaHs1L",
+          "client_reference_id": "0199c0de0000700080000000000000a1",
+          "payment_intent": {
+            "id": "pi_3Tahsil", "object": "payment_intent", "status": "succeeded", "amount": 2990, "amount_received": 2990, "currency": "usd",
+            "customer": "cus_TaHs1L", "setup_future_usage": "off_session", "metadata": { "tahsil_reference": "0199c0de0000700080000000000000a1" },
+            "payment_method": {
+              "id": "pm_1Visa", "object": "payment_method", "type": "card", "customer": "cus_TaHs1L",
+              "card": { "brand": "visa", "last4": "4242", "exp_month": 12, "exp_year": 2030, "funding": "credit", "country": "US", "fingerprint": "Xt5EWLLDS7FJjR1c" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "source": "Stripe API reference object shapes for 2026-09-30.endive (docs.stripe.com/api); no sandbox keys yet",
+  "exchanges": [
+    {
+      "request": { "method": "GET", "path": "/v1/checkout/sessions/cs_test_open", "query": { "expand[0]": "payment_intent.payment_method", "expand[1]": "setup_intent.payment_method" } },
+      "response": { "status": 200, "json": { "id": "cs_test_open", "object": "checkout.session", "mode": "payment", "status": "open", "payment_status": "unpaid", "payment_intent": null } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/checkout/sessions/cs_test_expired", "query": { "expand[0]": "payment_intent.payment_method", "expand[1]": "setup_intent.payment_method" } },
+      "response": { "status": 200, "json": { "id": "cs_test_expired", "object": "checkout.session", "mode": "payment", "status": "expired", "payment_status": "unpaid", "payment_intent": null } }
+    },
+    {
+      "request": { "method": "GET", "path": "/v1/checkout/sessions/cs_test_setup", "query": { "expand[0]": "payment_intent.payment_method", "expand[1]": "setup_intent.payment_method" } },
+      "response": {
+        "status": 200,
+        "json": {
+          "id": "cs_test_setup", "object": "checkout.session", "mode": "setup", "status": "complete", "payment_status": "no_payment_required", "customer": "cus_TaHs1L",
+          "setup_intent": {
+            "id": "seti_1Tahsil", "object": "setup_intent", "status": "succeeded", "customer": "cus_TaHs1L", "usage": "off_session",
+            "payment_method": { "id": "pm_1Master", "object": "payment_method", "type": "card", "customer": "cus_TaHs1L", "card": { "brand": "mastercard", "last4": "4444", "exp_month": 3, "exp_year": 2029, "funding": "debit", "country": "DE", "fingerprint": "Mc4Fp" } }
+          }
+        }
+      }
+    }
+  ]
+}

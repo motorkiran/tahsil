@@ -30,6 +30,9 @@ public abstract class ConformanceSuite
     /// <summary>A card saved at the provider by the test fixture, never by the adapter.</summary>
     protected abstract Task<SavedCardReference> SaveCardAsync(TestCardScenario scenario);
 
+    /// <summary>Whether the provider has a test card for the scenario; some refuse such cards when they are saved.</summary>
+    protected virtual bool Covers(TestCardScenario scenario) => true;
+
     [Fact]
     [Trait("Requirement", "ADP-17")]
     public async Task TheConnectionTest_Succeeds()
@@ -73,6 +76,7 @@ public abstract class ConformanceSuite
     public async Task RefusedCharges_FailWithTheirCodes(TestCardScenario scenario, FailureCode failure)
     {
         Assert.SkipWhen(Unavailable is not null, Unavailable ?? string.Empty);
+        Assert.SkipUnless(Covers(scenario), $"The provider has no test card for {scenario}.");
 
         var charged = await Provider.ChargeSavedCardAsync(Context(), Charge(NewReference(), await SaveCardAsync(scenario)), CancellationToken);
 
