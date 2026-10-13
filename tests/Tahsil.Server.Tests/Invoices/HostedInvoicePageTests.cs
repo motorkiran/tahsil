@@ -96,6 +96,7 @@ public sealed partial class HostedInvoicePageTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "INV-26")]
     [Trait("Requirement", "PAY-8")]
+    [Trait("Requirement", "PTR-8")]
     public async Task AnOpenInvoice_IsPaidByCard_AndBecomesAReceipt()
     {
         await using var host = Host();
@@ -113,8 +114,15 @@ public sealed partial class HostedInvoicePageTests(TahsilServerFixture server)
         using var returned = await browser.GetAsync(redirect.Url, CancellationToken);
         using var receipt = await browser.GetAsync(returned.Headers.Location, CancellationToken);
         var page = await ParseAsync(receipt);
+        using var framed = new HttpRequestMessage(HttpMethod.Get, redirect.Url);
+        framed.Headers.Add("Sec-Fetch-Dest", "iframe");
+        using var inFrame = await browser.SendAsync(framed, CancellationToken);
 
         returned.Headers.Location!.ToString().ShouldEndWith("?paid=true");
+        inFrame.StatusCode.ShouldBe(HttpStatusCode.OK, "a provider that returns inside its frame gets a page that moves the whole window (PTR-8)");
+        var leave = (await ParseAsync(inFrame)).QuerySelector("#continue")!;
+        (leave.GetAttribute("href"), leave.GetAttribute("target")).ShouldBe((returned.Headers.Location!.ToString(), "_top"));
+        inFrame.Headers.GetValues("Content-Security-Policy").Single().ShouldContain("frame-ancestors https://www.paytr.com");
         page.QuerySelector("h1")!.TextContent.ShouldBe("Tahsilat Makbuzu");
         page.QuerySelector("#paid-notice").ShouldNotBeNull();
         page.QuerySelectorAll("#payments li").ShouldHaveSingleItem().TextContent.ShouldContain("₺120,00");

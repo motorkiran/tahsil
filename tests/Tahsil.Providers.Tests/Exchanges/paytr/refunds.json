@@ -1,0 +1,104 @@
+{
+  "source": "dev.paytr.com (iFrame API, durum sorgu, iade API, hata kodlari) and PayTR's Postman collection; tokens from the spec's hash vectors (no test store yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/iade",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "return_amount": "100.00",
+          "paytr_token": "p5fuLpRC9ZHySELvAdkIodSto5U4BfLWEreG12Y5m+o=",
+          "reference_no": "0199c0de0000700080000000000000b1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "is_test": 1,
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "return_amount": "100.00"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/iade",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "return_amount": "100.00",
+          "paytr_token": "p5fuLpRC9ZHySELvAdkIodSto5U4BfLWEreG12Y5m+o=",
+          "reference_no": "0199c0de0000700080000000000000b1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "error",
+          "err_no": "007",
+          "err_msg": "Odeme bildirimine OK yaniti verilmemis"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/iade",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "return_amount": "100.00",
+          "paytr_token": "p5fuLpRC9ZHySELvAdkIodSto5U4BfLWEreG12Y5m+o=",
+          "reference_no": "0199c0de0000700080000000000000b1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "error",
+          "err_no": "009",
+          "err_msg": "Iade tutari odeme tutarindan buyuk olamaz"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/iade",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "return_amount": "100.00",
+          "paytr_token": "p5fuLpRC9ZHySELvAdkIodSto5U4BfLWEreG12Y5m+o=",
+          "reference_no": "0199c0de0000700080000000000000b1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "error",
+          "err_no": "000",
+          "err_msg": "Beklenmeyen bir hata olustu"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/iade",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "return_amount": "100.00",
+          "paytr_token": "p5fuLpRC9ZHySELvAdkIodSto5U4BfLWEreG12Y5m+o=",
+          "reference_no": "0199c0de0000700080000000000000b1"
+        }
+      },
+      "failure": "timeout"
+    }
+  ]
+}

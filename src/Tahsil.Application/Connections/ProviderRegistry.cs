@@ -27,6 +27,10 @@ public sealed class ProviderRegistry
 
     public IPaymentProvider? Find(string key) => _providers.GetValueOrDefault(key);
 
+    /// <summary>The origins that may frame Tahsil's return pages: every available provider's, in any environment.</summary>
+    public IReadOnlyList<string> ReturnFrameAncestors =>
+        [.. _providers.Values.SelectMany(provider => provider.Descriptor.ContentSecurity.Values).SelectMany(sources => sources.ReturnFrameAncestors).Distinct(StringComparer.Ordinal)];
+
     /// <summary>DOM-8: Test mode takes sandbox connections (the simulator counts as one), Live mode production connections only.</summary>
     public static bool AllowsInMode(TahsilMode mode, string provider, ConnectionEnvironment environment) => mode == TahsilMode.Live
         ? provider != Simulator && environment == ConnectionEnvironment.Production

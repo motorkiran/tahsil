@@ -1,2 +1,9 @@
 @page "/invoices/{token}/return"
+@using Tahsil.Server.Ui
 @model Tahsil.Server.Pages.Invoices.ReturnModel
+@{
+    ViewData["Title"] = L["Returning…"];
+}
+
+<a class="button" id="continue" href="@Model.Next" target="_top">@L["Continue"]</a>
+<script nonce="@HttpContext.GetCspNonce()">window.top.location.href = document.getElementById("continue").href;</script>

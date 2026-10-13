@@ -1,0 +1,101 @@
+{
+  "source": "dev.paytr.com (iFrame API, durum sorgu, iade API, hata kodlari) and PayTR's Postman collection; tokens from the spec's hash vectors (no test store yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/durum-sorgu",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "paytr_token": "DWiPY8DyU4qa/Ka7s4/Gv9cmIXd3OPd7DejY1Zge8BQ="
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "payment_amount": "299,00",
+          "payment_total": "299,00",
+          "payment_date": "2026-10-01 12:00:00",
+          "currency": "TL",
+          "taksit": "0",
+          "kart_marka": "WORLD",
+          "masked_pan": "435508****4358",
+          "odeme_tipi": "KART",
+          "test_mode": "1",
+          "returns": ""
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/durum-sorgu",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "paytr_token": "*"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "error",
+          "err_no": "004",
+          "err_msg": "merchant_oid ile basarili odeme bulunamadi"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/durum-sorgu",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "paytr_token": "*"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "payment_amount": "299",
+          "payment_total": "299",
+          "currency": "TL",
+          "returns": [
+            {
+              "return_amount": "100",
+              "return_date": "2026-10-02 10:00:00",
+              "return_type": "1",
+              "date_completed": "2026-10-02 10:00:05",
+              "return_ref_num": "R1",
+              "reference_no": "0199c0de0000700080000000000000b1",
+              "return_source": "api"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/durum-sorgu",
+        "form": {
+          "merchant_id": "123456",
+          "merchant_oid": "*",
+          "paytr_token": "*"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "error",
+          "err_no": "003",
+          "err_msg": "paytr_token gecersiz"
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Tahsil.Application.Checkout;
+using Tahsil.Application.Connections;
 using Tahsil.Server.Ui;
 
 namespace Tahsil.Server.Pages.Checkout;
@@ -10,7 +11,7 @@ namespace Tahsil.Server.Pages.Checkout;
 /// </summary>
 [IgnoreAntiforgeryToken]
 [RunsScripts]
-public sealed class ReturnModel(CheckoutPages pages) : HostedPageModel
+public sealed class ReturnModel(CheckoutPages pages, ProviderRegistry providers) : HostedPageModel, IContentSecurityPolicySources
 {
     public string Token { get; private set; } = string.Empty;
 
@@ -39,4 +40,7 @@ public sealed class ReturnModel(CheckoutPages pages) : HostedPageModel
         Result = result;
         return result.State == CheckoutReturnState.Failed ? Redirect($"/checkout/{token}?failed={Uri.EscapeDataString(result.FailureCode ?? "provider_error")}") : Page();
     }
+
+    /// <summary>Some providers send the customer back inside their frame (PTR-8).</summary>
+    public CspSources GetCspSources() => new() { FrameAncestors = providers.ReturnFrameAncestors };
 }

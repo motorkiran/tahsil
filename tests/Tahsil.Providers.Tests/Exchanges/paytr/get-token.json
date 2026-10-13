@@ -1,0 +1,73 @@
+{
+  "source": "dev.paytr.com (iFrame API, durum sorgu, iade API, hata kodlari) and PayTR's Postman collection; tokens from the spec's hash vectors (no test store yet)",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/api/get-token",
+        "form": {
+          "merchant_id": "123456",
+          "user_ip": "85.34.78.112",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "email": "ayse.yilmaz@example.com",
+          "payment_amount": "29900",
+          "paytr_token": "*",
+          "user_basket": "*",
+          "debug_on": "1",
+          "no_installment": "1",
+          "max_installment": "0",
+          "user_name": "Ayşe Yılmaz",
+          "user_address": "Moda Cad. 1, Kadıköy",
+          "user_phone": "05321234567",
+          "merchant_ok_url": "https://billing.example.com/checkout/cs_x/return/0199c0de-0000-7000-8000-0000000000a1?result=ok",
+          "merchant_fail_url": "https://billing.example.com/checkout/cs_x/return/0199c0de-0000-7000-8000-0000000000a1?result=fail",
+          "timeout_limit": "30",
+          "currency": "TL",
+          "test_mode": "1",
+          "lang": "tr"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "success",
+          "token": "7f3c1a2b9d"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/odeme/api/get-token",
+        "form": {
+          "merchant_id": "123456",
+          "user_ip": "85.34.78.112",
+          "merchant_oid": "0199c0de0000700080000000000000a1",
+          "email": "ayse.yilmaz@example.com",
+          "payment_amount": "29900",
+          "paytr_token": "*",
+          "user_basket": "*",
+          "debug_on": "1",
+          "no_installment": "1",
+          "max_installment": "0",
+          "user_name": "Ayşe Yılmaz",
+          "user_address": "Moda Cad. 1, Kadıköy",
+          "user_phone": "05321234567",
+          "merchant_ok_url": "https://billing.example.com/checkout/cs_x/return/0199c0de-0000-7000-8000-0000000000a1?result=ok",
+          "merchant_fail_url": "https://billing.example.com/checkout/cs_x/return/0199c0de-0000-7000-8000-0000000000a1?result=fail",
+          "timeout_limit": "30",
+          "currency": "TL",
+          "test_mode": "1",
+          "lang": "tr"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "failed",
+          "reason": "paytr_token gonderilmedi veya gecersiz"
+        }
+      }
+    }
+  ]
+}

@@ -73,6 +73,9 @@
   <data name="Reference" xml:space="preserve">
     <value>Referans</value>
   </data>
+  <data name="Returning…" xml:space="preserve">
+    <value>Yönlendiriliyorsunuz…</value>
+  </data>
   <data name="Returning to the merchant…" xml:space="preserve">
     <value>Satıcıya dönülüyor…</value>
   </data>

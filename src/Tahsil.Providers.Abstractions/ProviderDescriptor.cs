@@ -205,4 +205,7 @@ public sealed record ContentSecuritySources
     public IReadOnlyList<string> Images { get; init; } = [];
 
     public IReadOnlyList<string> FormActions { get; init; } = [];
+
+    /// <summary>Origins whose frames load Tahsil's return pages, such as a provider that sends the customer back inside its iframe.</summary>
+    public IReadOnlyList<string> ReturnFrameAncestors { get; init; } = [];
 }

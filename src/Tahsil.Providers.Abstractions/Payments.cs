@@ -81,7 +81,7 @@ public abstract record Presentation
 {
     public sealed record Redirect(Uri Url) : Presentation;
 
-    /// <summary>HTML and scripts rendered in Tahsil's page with its CSP nonce.</summary>
+    /// <summary>HTML and scripts rendered in Tahsil's page with its CSP nonce, which replaces <c>{nonce}</c> in the HTML for inline scripts.</summary>
     public sealed record Embed(string Html, IReadOnlyList<Uri> Scripts) : Presentation;
 
     public sealed record DirectForm(Uri Action, IReadOnlyDictionary<string, string> HiddenFields, IReadOnlyList<string> CardFields) : Presentation;

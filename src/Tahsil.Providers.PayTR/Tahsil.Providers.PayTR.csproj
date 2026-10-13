@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The PayTR adapter: iFrame payments, the opt-in direct form with card storage and recurring charges, refunds and signed notifications.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tahsil.Providers.Abstractions\Tahsil.Providers.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tahsil.Providers.Tests" />
+  </ItemGroup>
+
+</Project>

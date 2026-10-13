@@ -90,7 +90,7 @@ else
 @if (Model.Embed is { } embed)
 {
     <section id="payment" aria-label="@L["Card details"]">
-        @Html.Raw(embed.Html)
+        @Html.Raw(embed.Html.Replace("{nonce}", HttpContext.GetCspNonce(), StringComparison.Ordinal))
         @foreach (var script in embed.Scripts)
         {
             <script src="@script" nonce="@HttpContext.GetCspNonce()"></script>
