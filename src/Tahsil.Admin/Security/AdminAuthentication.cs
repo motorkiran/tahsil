@@ -63,6 +63,7 @@ public static class AdminAuthentication
                 cookie.ReturnUrlParameter = "returnUrl";
                 cookie.ExpireTimeSpan = admin.SessionLifetime;
                 cookie.SlidingExpiration = false;
+                cookie.Events.OnValidatePrincipal = AdminRecheck.ValidateAsync;
             });
 
         if (admin.Oidc.Authority is not null)
