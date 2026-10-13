@@ -421,6 +421,9 @@
   <data name="Renews on {0} for {1}, taxes included." xml:space="preserve">
     <value>{0} tarihinde, vergiler dahil {1} ile yenilenir.</value>
   </data>
+  <data name="{0}: {1} so far this period ({2})" xml:space="preserve">
+    <value>{0}: bu dönemde şimdiye kadar {1} ({2})</value>
+  </data>
   <data name="Your plan changes on {0}." xml:space="preserve">
     <value>Planınız {0} tarihinde değişir.</value>
   </data>

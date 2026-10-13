@@ -41,6 +41,10 @@
     </MudPaper>
 
     <CustomerBilling CustomerId="customer.Id" Balances="customer.Balances" BalanceChanged="LoadAsync" />
+    @if (Session.Has(TahsilPermissions.UsageRead) && Session.Has(TahsilPermissions.CatalogRead))
+    {
+        <CustomerUsage CustomerId="customer.Id" />
+    }
 }
 
 @code {

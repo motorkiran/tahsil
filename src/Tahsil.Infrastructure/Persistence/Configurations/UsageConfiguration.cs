@@ -19,5 +19,8 @@ internal sealed class UsageEventConfiguration : IEntityTypeConfiguration<UsageEv
 
         // Aggregation of a customer's usage on a meter over a period (USG-8).
         builder.HasIndex(usage => new { usage.MeterId, usage.CustomerId, usage.OccurredAt });
+
+        // Retention finds old events (USG-13). Events arrive about in order of time, which a block range index summarizes at almost no cost to inserts.
+        builder.HasIndex(usage => usage.OccurredAt).HasMethod("brin");
     }
 }

@@ -9,6 +9,10 @@ namespace Tahsil.Infrastructure.Usage;
 /// <summary>Usage events in PostgreSQL, a batch per statement.</summary>
 internal sealed class UsageStore(TahsilDbContext context) : IUsageStore
 {
+    // The intervals' starts are thresholds: an event falls in the last interval that starts at or before it.
+    private const string BucketsHead = "SELECT width_bucket(occurred_at, {0}) AS bucket, ";
+    private const string BucketsTail = " AS quantity FROM tahsil.usage_events WHERE meter_id = {1} AND customer_id = {2} AND occurred_at >= {3} AND occurred_at < {4} GROUP BY 1";
+
     public async Task<IReadOnlyList<UsageBilled>> LockBilledAsync(IReadOnlyCollection<Guid> customerIds, IReadOnlyCollection<Guid> meterIds, CancellationToken cancellationToken)
     {
         var customers = customerIds.ToArray();
@@ -78,9 +82,29 @@ internal sealed class UsageStore(TahsilDbContext context) : IUsageStore
         }
     }
 
+    public async Task<IReadOnlyDictionary<int, decimal>> BucketsAsync(
+        Guid customerId, Meter meter, IReadOnlyList<DateTimeOffset> starts, DateTimeOffset until, CancellationToken cancellationToken)
+    {
+        var thresholds = starts.Select(start => start.ToUniversalTime()).ToArray();
+        object[] parameters = meter.Aggregation == MeterAggregation.UniqueCount
+            ? [thresholds, meter.Id, customerId, thresholds[0], until.ToUniversalTime(), meter.UniqueProperty!]
+            : [thresholds, meter.Id, customerId, thresholds[0], until.ToUniversalTime()];
+        var sql = meter.Aggregation switch
+        {
+            MeterAggregation.Sum => BucketsHead + "sum(value)" + BucketsTail,
+            MeterAggregation.Count => BucketsHead + "count(*)::numeric" + BucketsTail,
+            MeterAggregation.Max => BucketsHead + "max(value)" + BucketsTail,
+            _ => BucketsHead + "count(DISTINCT properties->>{5})::numeric" + BucketsTail,
+        };
+        var rows = await context.Database.SqlQueryRaw<UsageBucket>(sql, parameters).ToListAsync(cancellationToken);
+        return rows.ToDictionary(row => row.Bucket - 1, row => row.Quantity);
+    }
+
     public async Task<IReadOnlyCollection<string>> ExistingAsync(IReadOnlyCollection<string> identifiers, CancellationToken cancellationToken)
     {
         var asked = identifiers.ToArray();
         return await context.UsageEvents.AsNoTracking().Where(usage => asked.Contains(usage.Identifier)).Select(usage => usage.Identifier).ToListAsync(cancellationToken);
     }
 }
+
+internal sealed record UsageBucket(int Bucket, decimal Quantity);

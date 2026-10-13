@@ -40,3 +40,27 @@ public sealed record ReportUsageResponse(int Accepted, IReadOnlyList<string> Dup
 
 /// <summary>An event that was not stored, by its ID and its place in the batch (from 0).</summary>
 public sealed record RejectedUsageEvent(string Id, int Index, string Code, string Message);
+
+public enum UsageInterval
+{
+    Day,
+    Month,
+}
+
+/// <summary>
+/// A customer's usage on a meter over [<c>from</c>, <c>to</c>): the quantity of the whole range, and of each day or
+/// month in the billing time zone, each aggregated the meter's way.
+/// </summary>
+public sealed record CustomerUsageResponse(
+    MeterSummary Meter, DateTimeOffset From, DateTimeOffset To, UsageInterval Interval, decimal Quantity, IReadOnlyList<UsageBucketResponse> Buckets);
+
+public sealed record UsageBucketResponse(DateTimeOffset Start, DateTimeOffset End, decimal Quantity);
+
+public sealed record SubscriptionUsageResponse(IReadOnlyList<SubscriptionItemUsageResponse> Items);
+
+/// <summary>
+/// A metered item's usage in the subscription's current period so far, and the amount it would bill now, before
+/// discounts and tax that is added; 0 during a trial, whose usage is free.
+/// </summary>
+public sealed record SubscriptionItemUsageResponse(
+    Guid Item, SubscriptionPriceResponse Price, MeterSummary Meter, DateTimeOffset PeriodStart, DateTimeOffset PeriodEnd, decimal Quantity, long Amount, string Currency);

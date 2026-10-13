@@ -2952,6 +2952,11 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_usage_events_identifier");
 
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_usage_events_occurred_at");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("OccurredAt"), "brin");
+
                     b.HasIndex("MeterId", "CustomerId", "OccurredAt")
                         .HasDatabaseName("ix_usage_events_meter_id_customer_id_occurred_at");
 

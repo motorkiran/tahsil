@@ -17,7 +17,8 @@ namespace Tahsil.Application.Portal;
 /// <summary>A subscription as the portal shows it (PRT §2): what it is, and what its next renewal bills.</summary>
 /// <param name="Subscription">The subscription, with its items, period, trial, discount and scheduled change.</param>
 /// <param name="Upcoming">The next renewal's invoice as it would be now; none when the subscription ends before it.</param>
-public sealed record PortalSubscription(SubscriptionResponse Subscription, InvoicePreviewResponse? Upcoming);
+/// <param name="Usage">What its metered items used in the current period so far.</param>
+public sealed record PortalSubscription(SubscriptionResponse Subscription, InvoicePreviewResponse? Upcoming, IReadOnlyList<SubscriptionItemUsageResponse> Usage);
 
 /// <summary>An invoice in the portal's list, with its hosted page.</summary>
 public sealed record PortalInvoice(Invoice Invoice, Uri? Url);
@@ -44,6 +45,7 @@ public sealed class PortalPages(
     IPageCaller caller,
     SubscriptionMapper subscriptions,
     SubscriptionPreviews previews,
+    Usage.SubscriptionUsage usage,
     InvoiceLinks links,
     IOptions<PortalOptions> options,
     IOptions<ServerOptions> server,
@@ -85,7 +87,10 @@ public sealed class PortalPages(
             var responses = await subscriptions.ToResponsesAsync(running, cancellationToken);
             for (var index = 0; index < running.Count; index++)
             {
-                shown.Add(new PortalSubscription(responses[index], await previews.UpcomingAsync(running[index], customer, null, [], now, cancellationToken)));
+                shown.Add(new PortalSubscription(
+                    responses[index],
+                    await previews.UpcomingAsync(running[index], customer, null, [], now, cancellationToken),
+                    Usage.GetSubscriptionUsageHandler.ToResponses(running[index], await usage.CurrentAsync(running[index], cancellationToken))));
             }
         }
 

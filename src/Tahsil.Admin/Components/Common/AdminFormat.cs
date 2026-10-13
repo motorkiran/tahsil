@@ -6,6 +6,9 @@ namespace Tahsil.Admin.Components.Common;
 /// <summary>Amounts as administrators read and type them: in the currency's major unit, such as <c>299.00 TRY</c>.</summary>
 public static class AdminFormat
 {
+    /// <summary>A usage quantity, with the decimals it has.</summary>
+    public static string Quantity(decimal quantity) => quantity.ToString("#,0.########", CultureInfo.InvariantCulture);
+
     public static string Money(long? minorUnits, string currency)
     {
         if (minorUnits is not { } amount)

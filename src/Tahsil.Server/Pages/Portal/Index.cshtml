@@ -23,7 +23,7 @@
             <p class="hint">@L["You have no subscriptions."]</p>
         }
         <ul class="list">
-            @foreach (var (subscription, upcoming) in Model.View.Subscriptions)
+            @foreach (var (subscription, upcoming, usage) in Model.View.Subscriptions)
             {
                 <li class="subscription" data-id="@subscription.Id">
                     <div>
@@ -46,6 +46,10 @@
                         else if (upcoming is not null)
                         {
                             <p class="hint renewal">@L["Renews on {0} for {1}, taxes included.", Model.Date(upcoming.PeriodStart ?? subscription.CurrentPeriodEnd), Model.Money(upcoming.Total, upcoming.Currency)]</p>
+                        }
+                        @foreach (var used in usage)
+                        {
+                            <p class="hint usage">@L["{0}: {1} so far this period ({2})", used.Meter.Name, Model.Number(used.Quantity), Model.Money(used.Amount, used.Currency)]</p>
                         }
                         @if (subscription.ScheduledChange is { } change)
                         {

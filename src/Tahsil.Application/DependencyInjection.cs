@@ -290,6 +290,8 @@ public static class DependencyInjection
         services.AddScoped<Usage.ReportUsageHandler>();
         services.AddScoped<Usage.SubscriptionUsage>();
         services.AddScoped<Usage.MeterRule>();
+        services.AddScoped<Usage.GetSubscriptionUsageHandler>();
+        services.AddScoped<Usage.GetCustomerUsageHandler>();
         services.AddOptions<Checkout.CheckoutOptions>().BindConfiguration(Checkout.CheckoutOptions.SectionName).ValidateOnStart();
         services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<Checkout.CheckoutOptions>, Checkout.CheckoutOptionsValidation>();
         services.AddScoped<Checkout.LegalDocumentModels>();

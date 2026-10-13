@@ -1,0 +1,61 @@
+@using Tahsil.Application.Catalog
+@using Tahsil.Application.Usage
+@inherits AdminPageBase
+
+@* A customer's usage on a meter, by day, over the last 30 days. *@
+
+@if (_meters.Count > 0)
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+        <MudText Typo="Typo.h6" HtmlTag="h2">Usage</MudText>
+        <MudSpacer />
+        <MudSelect T="string" Value="_meter" ValueChanged="ShowAsync" Label="Meter" Dense Variant="Variant.Outlined" Style="max-width: 16rem" id="usage-meter">
+            @foreach (var meter in _meters)
+            {
+                <MudSelectItem T="string" Value="meter.Key">@meter.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
+    @if (_usage is { } usage)
+    {
+        <MudText Typo="Typo.body2" Class="mb-2" id="usage-total">@AdminFormat.Quantity(usage.Quantity) in the last 30 days.</MudText>
+        @if (usage.Quantity != 0)
+        {
+            <MudTable T="UsageBucketResponse" Items="usage.Buckets.Where(bucket => bucket.Quantity != 0).Reverse()" Dense id="usage-days">
+                <HeaderContent>
+                    <MudTh>Day</MudTh>
+                    <MudTh>Quantity</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Day"><Moment Value="context.Start" /></MudTd>
+                    <MudTd DataLabel="Quantity">@AdminFormat.Quantity(context.Quantity)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    }
+}
+
+@code {
+    private List<MeterResponse> _meters = [];
+    private string? _meter;
+    private CustomerUsageResponse? _usage;
+
+    [Parameter, EditorRequired]
+    public Guid CustomerId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var meters = (await ReadAsync<ListMetersHandler, Page<MeterResponse>>((handler, token) => handler.HandleAsync(new ListCatalogQuery(Limit: Paging.MaxLimit), token)))?.Items ?? [];
+        _meters = [.. meters.OrderBy(meter => meter.Name, StringComparer.OrdinalIgnoreCase).ThenBy(meter => meter.Key, StringComparer.Ordinal)];
+        if (_meters.Count > 0)
+        {
+            await ShowAsync(_meters[0].Key);
+        }
+    }
+
+    private async Task ShowAsync(string meter)
+    {
+        _meter = meter;
+        _usage = await ReadAsync<GetCustomerUsageHandler, CustomerUsageResponse>((handler, token) => handler.HandleAsync(CustomerId, new CustomerUsageQuery(meter), token));
+    }
+}

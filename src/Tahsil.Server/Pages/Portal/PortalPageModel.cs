@@ -38,6 +38,9 @@ public abstract class PortalPageModel(PortalPages pages, RequestThrottle throttl
     public string Money(long amount, string currency) =>
         Formatting.Money(amount, currency, Domain.Money.Currency.TryGet(currency, out var known) ? known.Exponent : 2, Culture);
 
+    /// <summary>A usage quantity in the page's language, with the decimals it has.</summary>
+    public string Number(decimal quantity) => quantity.ToString("#,0.########", Culture);
+
     public string Date(DateTimeOffset instant) => Formatting.Date(instant, billing.Value.Zone, Culture);
 
     /// <summary>Loads the session's view, or returns what answers the request instead.</summary>

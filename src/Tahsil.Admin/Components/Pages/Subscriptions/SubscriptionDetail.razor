@@ -95,6 +95,25 @@
         </RowTemplate>
     </MudTable>
 
+    @if (_usage.Count > 0)
+    {
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Usage this period</MudText>
+        <MudTable T="SubscriptionItemUsageResponse" Items="_usage" Dense id="usage">
+            <HeaderContent>
+                <MudTh>Meter</MudTh>
+                <MudTh>Since</MudTh>
+                <MudTh>Quantity</MudTh>
+                <MudTh>Would bill now</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Meter">@context.Meter.Name <code>@context.Meter.Key</code></MudTd>
+                <MudTd DataLabel="Since"><Moment Value="context.PeriodStart" /></MudTd>
+                <MudTd DataLabel="Quantity">@AdminFormat.Quantity(context.Quantity)</MudTd>
+                <MudTd DataLabel="Would bill now">@AdminFormat.Money(context.Amount, context.Currency)</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
     @if (subscription.ScheduledChange is { } change)
     {
         <MudAlert Severity="Severity.Info" Class="mt-4" id="scheduled-change">
@@ -117,6 +136,7 @@
     private SubscriptionResponse? _subscription;
     private uint _version;
     private IReadOnlyList<InvoiceResponse> _invoices = [];
+    private IReadOnlyList<SubscriptionItemUsageResponse> _usage = [];
 
     [Parameter]
     public Guid Id { get; set; }
@@ -141,6 +161,11 @@
         {
             _invoices = (await ReadAsync<ListInvoicesHandler, Page<InvoiceResponse>>(
                 (handler, token) => handler.HandleAsync(new ListInvoicesQuery(Subscription: Id, Limit: Paging.MaxLimit), token)))?.Items ?? [];
+        }
+
+        if (Session.Has(TahsilPermissions.UsageRead) && _subscription?.Items.Any(item => item.Quantity is null) == true)
+        {
+            _usage = (await ReadAsync<Tahsil.Application.Usage.GetSubscriptionUsageHandler, SubscriptionUsageResponse>((handler, token) => handler.HandleAsync(Id, token)))?.Items ?? [];
         }
     }
 

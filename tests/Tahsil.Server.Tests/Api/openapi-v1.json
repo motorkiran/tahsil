@@ -3044,6 +3044,158 @@
         ]
       }
     },
+    "/api/v1/customers/{id}/usage": {
+      "get": {
+        "tags": [
+          "Usage"
+        ],
+        "summary": "Get a customer's usage on a meter",
+        "description": "The quantity of the range and of each day or month in it, each aggregated the meter's way, whether a subscription bills the usage or not. At most 400 intervals.\n\nRequires the `tahsil.usage:read` permission.",
+        "operationId": "GetCustomerUsage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "meter",
+            "in": "query",
+            "description": "The meter, by ID or key.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "The start of the range; 30 days before `to` by default, or 12 months for months.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "The end of the range, which is not part of it; now by default.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "`day` (the default) or `month`, in the billing time zone.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerUsageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.usage:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/subscriptions/{id}/usage": {
+      "get": {
+        "tags": [
+          "Usage"
+        ],
+        "summary": "Get a subscription's usage in its current period",
+        "description": "For each metered item: the quantity used in the current period so far and the amount it would bill now, before discounts and tax that is added.\n\nRequires the `tahsil.usage:read` permission.",
+        "operationId": "GetSubscriptionUsage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionUsageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.usage:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/audit-events": {
       "get": {
         "tags": [
@@ -10193,6 +10345,48 @@
           "company"
         ]
       },
+      "CustomerUsageResponse": {
+        "required": [
+          "meter",
+          "from",
+          "to",
+          "interval",
+          "quantity",
+          "buckets"
+        ],
+        "type": "object",
+        "properties": {
+          "meter": {
+            "$ref": "#/components/schemas/MeterSummary"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "interval": {
+            "$ref": "#/components/schemas/UsageInterval"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageBucketResponse"
+            }
+          }
+        },
+        "description": "A customer's usage on a meter over [`from`, `to`): the quantity of the whole range, and of each day or\nmonth in the billing time zone, each aggregated the meter's way."
+      },
       "DiscountResponse": {
         "required": [
           "id",
@@ -13847,6 +14041,59 @@
           }
         }
       },
+      "SubscriptionItemUsageResponse": {
+        "required": [
+          "item",
+          "price",
+          "meter",
+          "periodStart",
+          "periodEnd",
+          "quantity",
+          "amount",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "price": {
+            "$ref": "#/components/schemas/SubscriptionPriceResponse"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/MeterSummary"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "description": "A metered item's usage in the subscription's current period so far, and the amount it would bill now, before\ndiscounts and tax that is added; 0 during a trial, whose usage is free."
+      },
       "SubscriptionPreviewResponse": {
         "required": [
           "invoice",
@@ -14147,6 +14394,20 @@
           "past_due",
           "canceled"
         ]
+      },
+      "SubscriptionUsageResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionItemUsageResponse"
+            }
+          }
+        }
       },
       "TaxRateResponse": {
         "required": [
@@ -14896,6 +15157,32 @@
         },
         "description": "JSON Merge Patch: omitted fields stay, `null` clears the description, and an empty list of event types means all."
       },
+      "UsageBucketResponse": {
+        "required": [
+          "start",
+          "end",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "UsageEventRequest": {
         "required": [
           "id",
@@ -14951,6 +15238,12 @@
           }
         },
         "description": "One report of usage. The customer is named by `customer` or by `customerExternalId`."
+      },
+      "UsageInterval": {
+        "enum": [
+          "day",
+          "month"
+        ]
       },
       "UsageType": {
         "enum": [

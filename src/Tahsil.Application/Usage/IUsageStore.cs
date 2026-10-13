@@ -25,6 +25,12 @@ public interface IUsageStore
     /// <summary>A customer's quantity on a meter over [<paramref name="from"/>, <paramref name="until"/>) (USG-8).</summary>
     Task<decimal> AggregateAsync(Guid customerId, Meter meter, DateTimeOffset from, DateTimeOffset until, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// A customer's quantities on a meter over the intervals that start at <paramref name="starts"/>, the last ending
+    /// at <paramref name="until"/>, by the index of the interval; intervals without events are left out.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, decimal>> BucketsAsync(Guid customerId, Meter meter, IReadOnlyList<DateTimeOffset> starts, DateTimeOffset until, CancellationToken cancellationToken);
+
     /// <summary>Which of the identifiers are stored already.</summary>
     Task<IReadOnlyCollection<string>> ExistingAsync(IReadOnlyCollection<string> identifiers, CancellationToken cancellationToken);
 }

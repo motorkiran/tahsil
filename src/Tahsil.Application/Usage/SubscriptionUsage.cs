@@ -48,6 +48,51 @@ public sealed class SubscriptionUsage(ITahsilDbContext context, IUsageStore stor
         invoice.ReplaceUsageLines(lines, taxExempt, clock.GetUtcNow());
     }
 
+    /// <summary>
+    /// What each metered item used in the subscription's current period so far, and what that would bill now (USG §3).
+    /// During a trial, the usage is shown and comes to nothing. None for a subscription that is over.
+    /// </summary>
+    public async Task<List<CurrentUsage>> CurrentAsync(Subscription subscription, CancellationToken cancellationToken)
+    {
+        var priceIds = subscription.Items.Select(item => item.PriceId).ToList();
+        var prices = subscription.IsTerminal
+            ? []
+            : await context.Prices.AsNoTracking().Where(price => priceIds.Contains(price.Id) && price.MeterId != null).ToDictionaryAsync(price => price.Id, cancellationToken);
+        if (prices.Count == 0)
+        {
+            return [];
+        }
+
+        var meterIds = prices.Values.Select(price => price.MeterId!.Value).Distinct().ToList();
+        var meters = await context.Meters.AsNoTracking().Where(meter => meterIds.Contains(meter.Id)).ToDictionaryAsync(meter => meter.Id, cancellationToken);
+        var productIds = prices.Values.Select(price => price.ProductId).Distinct().ToList();
+        var products = await context.Products.AsNoTracking().Where(product => productIds.Contains(product.Id)).ToDictionaryAsync(product => product.Id, cancellationToken);
+        var until = subscription.CurrentPeriodEnd;
+        var inTrial = subscription.TrialEnd is { } trialEnd && until <= trialEnd;
+
+        var current = new List<CurrentUsage>();
+        foreach (var item in subscription.Items.OrderBy(item => item.CreatedAt).ThenBy(item => item.Id))
+        {
+            if (!prices.TryGetValue(item.PriceId, out var price))
+            {
+                continue;
+            }
+
+            // What came before the period is on its invoice, or waits for the next one.
+            var from = new[] { item.UsageBilledUntil ?? item.CreatedAt, subscription.CurrentPeriodStart }.Max();
+            if (from >= until)
+            {
+                continue;
+            }
+
+            var meter = meters[price.MeterId!.Value];
+            var quantity = await store.AggregateAsync(subscription.CustomerId, meter, from, until, cancellationToken);
+            current.Add(new CurrentUsage(item, price, products[price.ProductId], meter, from, until, quantity, inTrial || quantity == 0 ? 0 : PriceAmounts.For(price, quantity)));
+        }
+
+        return current;
+    }
+
     private async Task<List<InvoiceLineDraft>> LinesAsync(
         Subscription subscription, IReadOnlyCollection<SubscriptionItem> items, DateTimeOffset until, string locale, bool invoicing, CancellationToken cancellationToken)
     {
@@ -146,6 +191,10 @@ public sealed class SubscriptionUsage(ITahsilDbContext context, IUsageStore stor
         return await context.Prices.AnyAsync(price => priceIds.Contains(price.Id) && price.MeterId != null, cancellationToken);
     }
 }
+
+/// <summary>A metered item's usage over [<paramref name="From"/>, <paramref name="Until"/>) and the amount it comes to.</summary>
+public sealed record CurrentUsage(
+    SubscriptionItem Item, Domain.Catalog.Price Price, Domain.Catalog.Product Product, Domain.Catalog.Meter Meter, DateTimeOffset From, DateTimeOffset Until, decimal Quantity, long Amount);
 
 /// <summary>
 /// USG-7: a customer's usage on a meter is billed by one subscription item. Items of one subscription have different
