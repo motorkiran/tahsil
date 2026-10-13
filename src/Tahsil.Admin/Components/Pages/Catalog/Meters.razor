@@ -1,0 +1,80 @@
+@page "/admin/meters"
+@attribute [Authorize(Policy = AdminAuthentication.Policy)]
+@using Tahsil.Application.Catalog
+@inherits AdminPageBase
+
+<PageTitle>Meters · Tahsil</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Meters</MudText>
+    <MudSpacer />
+    @if (Session.Has(TahsilPermissions.CatalogWrite))
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" id="create-meter">Create meter</MudButton>
+    }
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">A meter turns the usage events that name its key into the quantity a metered price bills. Its key and how it counts never change: create a new meter and archive the old one.</MudText>
+
+<MudTable T="MeterResponse" Items="_meters" Dense id="meters">
+    <HeaderContent>
+        <MudTh>Key</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Counts</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Key"><code>@context.Key</code></MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Counts">@MeterDialog.Describe(context.Aggregation, context.UniqueProperty)</MudTd>
+        <MudTd>
+            @if (context.IsArchived)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Archived</MudChip>
+            }
+            @if (Session.Has(TahsilPermissions.CatalogWrite))
+            {
+                <MudButton Size="Size.Small" OnClick="() => ToggleArchiveAsync(context)" Class="archive">@(context.IsArchived ? "Restore" : "Archive")</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent><MudText>No meters yet.</MudText></NoRecordsContent>
+</MudTable>
+
+@code {
+    private readonly List<MeterResponse> _meters = [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _meters.Clear();
+        string? cursor = null;
+        do
+        {
+            var page = await ReadAsync<ListMetersHandler, Page<MeterResponse>>((handler, token) => handler.HandleAsync(new ListCatalogQuery(Cursor: cursor), token));
+            _meters.AddRange(page?.Items ?? []);
+            cursor = page?.NextCursor;
+        }
+        while (cursor is not null);
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<MeterDialog>("Create a meter");
+        if (await dialog.Result is { Canceled: false, Data: CreateMeterRequest request }
+            && await ChangeAsync<CreateMeterHandler, Versioned<MeterResponse>>((handler, token) => handler.HandleAsync(request, token), "The meter was created.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task ToggleArchiveAsync(MeterResponse meter)
+    {
+        var request = new UpdateMeterRequest { IsArchived = !meter.IsArchived };
+        if (await ChangeAsync<UpdateMeterHandler, Versioned<MeterResponse>>(
+            (handler, token) => handler.HandleAsync(meter.Id.ToString(), request, null, token), meter.IsArchived ? "The meter was restored." : "The meter was archived.") is not null)
+        {
+            await LoadAsync();
+        }
+    }
+}

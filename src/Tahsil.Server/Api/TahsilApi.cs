@@ -83,6 +83,7 @@ internal static class TahsilApi
             .MapPortalEndpoints()
             .MapSubscriptionEndpoints()
             .MapPaymentMethodEndpoints()
+            .MapUsageEndpoints()
             .MapProvisioningEndpoints()
             .MapAuditEventEndpoints();
 

@@ -146,6 +146,7 @@ public static class DependencyInjection
     {
         services.AddScoped<BillingLocks>();
         services.AddScoped<IBillingLocks>(provider => provider.GetRequiredService<BillingLocks>());
+        services.AddScoped<Application.Usage.IUsageStore, Usage.UsageStore>();
         services.AddScoped<IInvoiceNumbers>(provider => provider.GetRequiredService<BillingLocks>());
     }
 

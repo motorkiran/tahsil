@@ -2908,6 +2908,56 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                     b.ToTable("subscription_items", "tahsil");
                 });
 
+            modelBuilder.Entity("Tahsil.Domain.Usage.UsageEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("identifier");
+
+                    b.Property<Guid>("MeterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("meter_id");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Properties")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("properties");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("numeric(28,8)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_usage_events");
+
+                    b.HasIndex("Identifier")
+                        .IsUnique()
+                        .HasDatabaseName("ix_usage_events_identifier");
+
+                    b.HasIndex("MeterId", "CustomerId", "OccurredAt")
+                        .HasDatabaseName("ix_usage_events_meter_id_customer_id_occurred_at");
+
+                    b.ToTable("usage_events", "tahsil");
+                });
+
             modelBuilder.Entity("Tahsil.Domain.Webhooks.WebhookDelivery", b =>
                 {
                     b.Property<Guid>("Id")

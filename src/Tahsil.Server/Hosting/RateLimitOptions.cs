@@ -17,6 +17,10 @@ public sealed class RateLimitOptions
     /// <summary>API requests one API key may make at once after a quiet period.</summary>
     public int ApiBurst { get; set; } = 50;
 
+    /// <summary>Batches of usage events per second of one API key, which is also what it may send at once; apart from its other requests.</summary>
+    public int UsageBatchesPerSecond { get; set; } = 10;
+
     internal bool IsValid() =>
-        HostedPageRequestsPerMinute > 0 && ProviderNotificationsPerMinute > 0 && ApiRequestsPerSecond > 0 && ApiBurst >= ApiRequestsPerSecond;
+        HostedPageRequestsPerMinute > 0 && ProviderNotificationsPerMinute > 0 && ApiRequestsPerSecond > 0 && ApiBurst >= ApiRequestsPerSecond
+        && UsageBatchesPerSecond > 0;
 }

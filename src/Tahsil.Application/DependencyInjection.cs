@@ -283,6 +283,11 @@ public static class DependencyInjection
         services.AddScoped<IOutboxMessageHandler<DeleteProviderToken>, ProviderTokenDeleter>();
         services.AddScoped<CreateTestPaymentMethodHandler>();
         services.AddOptions<Checkout.MerchantOptions>().BindConfiguration(Checkout.MerchantOptions.SectionName);
+        services.AddOptions<Usage.UsageOptions>()
+            .BindConfiguration(Usage.UsageOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{Usage.UsageOptions.SectionName}: MaxBatchSize is 1 to 10,000, FutureTolerance is not negative and RetentionPeriod is at least a day.")
+            .ValidateOnStart();
+        services.AddScoped<Usage.ReportUsageHandler>();
         services.AddOptions<Checkout.CheckoutOptions>().BindConfiguration(Checkout.CheckoutOptions.SectionName).ValidateOnStart();
         services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<Checkout.CheckoutOptions>, Checkout.CheckoutOptionsValidation>();
         services.AddScoped<Checkout.LegalDocumentModels>();

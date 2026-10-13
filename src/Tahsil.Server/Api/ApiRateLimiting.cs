@@ -15,6 +15,9 @@ internal static class ApiRateLimiting
 {
     public const string PolicyName = "api";
 
+    /// <summary>The bucket of usage reporting, which is apart from an API key's other requests (API-14).</summary>
+    public const string UsagePolicyName = "usage";
+
     private static readonly Error RateLimited = Error.RateLimited("rate_limited", "Too many requests for this API key; retry after the time in Retry-After.");
 
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
@@ -29,6 +32,20 @@ internal static class ApiRateLimiting
                 {
                     TokenLimit = limits.ApiBurst,
                     TokensPerPeriod = limits.ApiRequestsPerSecond,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true,
+                });
+            });
+
+            options.AddPolicy(UsagePolicyName, context =>
+            {
+                var limits = context.RequestServices.GetRequiredService<IOptions<RateLimitOptions>>().Value;
+                var caller = context.Features.Get<ICallerFeature>()?.Caller as ApiKeyCaller;
+                return RateLimitPartition.GetTokenBucketLimiter($"usage:{caller?.ApiKeyId.ToString() ?? "anonymous"}", _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = limits.UsageBatchesPerSecond,
+                    TokensPerPeriod = limits.UsageBatchesPerSecond,
                     ReplenishmentPeriod = TimeSpan.FromSeconds(1),
                     QueueLimit = 0,
                     AutoReplenishment = true,

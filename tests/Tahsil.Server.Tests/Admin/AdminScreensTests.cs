@@ -22,6 +22,7 @@ public sealed class AdminScreensTests(TahsilServerFixture server)
     [InlineData(typeof(CustomersPage), "Customers")]
     [InlineData(typeof(Products), "Products")]
     [InlineData(typeof(TaxRates), "Tax rates")]
+    [InlineData(typeof(Meters), "Meters")]
     [InlineData(typeof(ApiKeysPage), "API keys")]
     [InlineData(typeof(AuditLog), "Audit log")]
     public async Task Screen_Renders(Type page, string title)
@@ -103,6 +104,32 @@ public sealed class AdminScreensTests(TahsilServerFixture server)
         var rate = await server.QueryDatabaseAsync(context => context.TaxRates.SingleAsync(candidate => candidate.Key == key));
         (rate.Percentage, rate.IsInclusive, rate.IsArchived).ShouldBe((20m, true, true));
         await AuditedByAsync(admin, "tax_rate.created");
+    }
+
+    [Fact]
+    [Trait("Requirement", "CAT-16")]
+    public async Task AMeter_IsCreatedWithThePropertyItCounts_ThenArchived()
+    {
+        await using var admin = new AdminComponents(server);
+        var key = $"seats_{Guid.CreateVersion7():N}"[..30];
+        var page = admin.Render<Meters>();
+
+        page.WaitForElement("#create-meter").Click();
+        admin.Fill("Key", key);
+        admin.Fill("Name on invoices", "Active users");
+        var counts = admin.Dialogs.FindComponents<MudBlazor.MudSelect<MeterAggregation>>().Single();
+        await counts.InvokeAsync(() => counts.Instance.ValueChanged.InvokeAsync(MeterAggregation.UniqueCount));
+        admin.Dialogs.WaitForElement("#meter-unique-property");
+        admin.Fill("Property", "user_id");
+        admin.Confirm("Create");
+        admin.WaitForNotification("The meter was created.");
+        page.WaitForAssertion(() => page.FindAll("tr").Single(row => row.TextContent.Contains(key)).TextContent.ShouldContain("The distinct values of user_id"));
+        page.FindAll("tr").Single(row => row.TextContent.Contains(key)).QuerySelector("button.archive")!.Click();
+
+        admin.WaitForNotification("The meter was archived.");
+        var meter = await server.QueryDatabaseAsync(context => context.Meters.SingleAsync(candidate => candidate.Key == key));
+        (meter.Name, meter.Aggregation, meter.UniqueProperty, meter.IsArchived).ShouldBe(("Active users", Domain.Catalog.MeterAggregation.UniqueCount, "user_id", true));
+        await AuditedByAsync(admin, "meter.created");
     }
 
     [Fact]

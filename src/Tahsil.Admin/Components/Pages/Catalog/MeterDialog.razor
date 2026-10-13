@@ -1,0 +1,47 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_key" Label="Key" Placeholder="api_calls" HelperText="What usage events call the meter." Required id="meter-key" />
+        <MudTextField @bind-Value="_name" Label="Name on invoices" Placeholder="API calls" Required id="meter-name" />
+        <MudSelect T="MeterAggregation" @bind-Value="_aggregation" Label="Counts" id="meter-aggregation">
+            @foreach (var aggregation in Enum.GetValues<MeterAggregation>())
+            {
+                <MudSelectItem T="MeterAggregation" Value="aggregation">@Describe(aggregation, "a property")</MudSelectItem>
+            }
+        </MudSelect>
+        @if (_aggregation == MeterAggregation.UniqueCount)
+        {
+            <MudTextField @bind-Value="_uniqueProperty" Label="Property" Placeholder="user_id" HelperText="The event property whose distinct values are counted." Required id="meter-unique-property" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _key = string.Empty;
+    private string _name = string.Empty;
+    private MeterAggregation _aggregation = MeterAggregation.Sum;
+    private string? _uniqueProperty;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    /// <summary>What a meter makes of a period's events, in words.</summary>
+    internal static string Describe(MeterAggregation aggregation, string? uniqueProperty) => aggregation switch
+    {
+        MeterAggregation.Sum => "The sum of the events' values",
+        MeterAggregation.Count => "The number of events",
+        MeterAggregation.Max => "The largest value of an event",
+        _ => $"The distinct values of {uniqueProperty}",
+    };
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(new CreateMeterRequest
+    {
+        Key = _key,
+        Name = _name,
+        Aggregation = _aggregation,
+        UniqueProperty = _aggregation == MeterAggregation.UniqueCount ? _uniqueProperty : null,
+    }));
+}

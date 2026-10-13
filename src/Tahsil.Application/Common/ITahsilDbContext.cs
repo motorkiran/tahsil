@@ -83,6 +83,9 @@ public interface ITahsilDbContext
     /// <summary>The audit trail, for queries. Record events through the audit log.</summary>
     IQueryable<AuditEvent> AuditEvents { get; }
 
+    /// <summary>Usage events, for queries. They are stored in batches through the usage store.</summary>
+    IQueryable<Domain.Usage.UsageEvent> UsageEvents { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Forgets every loaded and changed entity, so a retried use case reads current data.</summary>

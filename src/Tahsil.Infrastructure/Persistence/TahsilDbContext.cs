@@ -91,6 +91,10 @@ public sealed class TahsilDbContext(DbContextOptions<TahsilDbContext> options)
 
     IQueryable<AuditEvent> ITahsilDbContext.AuditEvents => AuditEvents;
 
+    public DbSet<Domain.Usage.UsageEvent> UsageEvents => Set<Domain.Usage.UsageEvent>();
+
+    IQueryable<Domain.Usage.UsageEvent> ITahsilDbContext.UsageEvents => UsageEvents;
+
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
