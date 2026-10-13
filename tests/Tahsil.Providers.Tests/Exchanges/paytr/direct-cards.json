@@ -1,0 +1,18 @@
+{
+  "source": "dev.paytr.com (Direkt API, kart saklama API: kayitli kart listesi, kayitli kart silme, tekrarlayan odeme) and PayTR's Postman collection (no test store yet)",
+  "exchanges": [
+    { "request": { "method": "POST", "path": "/odeme/durum-sorgu", "form": { "merchant_id": "123456", "merchant_oid": "0199c0de0000700080000000000000a1", "paytr_token": "*" } },
+      "response": { "status": 200, "json": { "status": "success", "payment_amount": "299.00", "payment_total": "299.00", "currency": "TL", "masked_pan": "435508****4358", "returns": "" } } },
+    { "request": { "method": "POST", "path": "/odeme/capi/list", "form": { "merchant_id": "123456", "utoken": "ut-77", "paytr_token": "*" } },
+      "response": { "status": 200, "json": [{ "ctoken": "ct-9f2", "last_4": "4358", "month": "12", "year": "30", "c_bank": "Kuveyt Türk", "require_cvv": "0", "c_name": "AYSE YILMAZ", "c_brand": "saglam", "c_type": "credit", "businessCard": "n", "initial": "4", "schema": "VISA" }, { "ctoken": "ct-old", "last_4": "0002", "month": "3", "year": "29", "c_bank": "Ziraat", "c_type": "debit", "schema": "MASTERCARD" }] } },
+    { "request": { "method": "POST", "path": "/odeme/durum-sorgu", "form": { "merchant_id": "123456", "merchant_oid": "0199c0de0000700080000000000000a1", "paytr_token": "*" } },
+      "response": { "status": 200, "json": { "status": "success", "payment_amount": "299.00", "payment_total": "299.00", "currency": "TL", "masked_pan": "435508****4358", "returns": "" } } },
+    { "request": { "method": "POST", "path": "/odeme/capi/list", "form": { "merchant_id": "123456", "utoken": "ut-new", "paytr_token": "*" } },
+      "response": { "status": 200, "json": [{ "ctoken": "ct-first", "last_4": "4358", "month": "12", "year": "30", "c_type": "credit", "schema": "VISA" }] } },
+    { "request": { "method": "POST", "path": "/odeme/durum-sorgu", "form": { "merchant_id": "123456", "merchant_oid": "0199c0de0000700080000000000000a1", "paytr_token": "*" } }, "failure": "timeout" },
+    { "request": { "method": "POST", "path": "/odeme/capi/delete", "form": { "merchant_id": "123456", "ctoken": "ct-9f2", "utoken": "ut-77", "paytr_token": "*" } },
+      "response": { "status": 200, "json": { "status": "success" } } },
+    { "request": { "method": "POST", "path": "/odeme/capi/delete", "form": { "merchant_id": "123456", "ctoken": "ct-9f2", "utoken": "ut-77", "paytr_token": "*" } },
+      "response": { "status": 200, "json": { "status": "error", "err_msg": "Kart yok veya daha önce silinmiş" } } }
+  ]
+}

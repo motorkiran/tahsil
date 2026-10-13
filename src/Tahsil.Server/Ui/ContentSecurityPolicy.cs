@@ -22,6 +22,9 @@ public sealed record CspSources
 
     /// <summary>Who may embed the page; nobody unless given, such as <c>'self'</c> for the simulator's card page.</summary>
     public IReadOnlyList<string> FrameAncestors { get; init; } = [];
+
+    /// <summary>No scripts at all, whatever the page usually runs: for a response that shows a provider's direct card form (ADP-13).</summary>
+    public bool ForbidScripts { get; init; }
 }
 
 /// <summary>Implemented by page models whose page needs more than the base policy allows.</summary>
@@ -57,7 +60,7 @@ internal static class ContentSecurityPolicy
     public static string Build(string nonce, bool runsScripts, CspSources? sources = null)
     {
         sources ??= new CspSources();
-        var scripts = runsScripts || sources.Scripts.Count > 0 ? Join($"'nonce-{nonce}'", sources.Scripts) : "'none'";
+        var scripts = !sources.ForbidScripts && (runsScripts || sources.Scripts.Count > 0) ? Join($"'nonce-{nonce}'", sources.Scripts) : "'none'";
 
         return string.Join("; ",
         [

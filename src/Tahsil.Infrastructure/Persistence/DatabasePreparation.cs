@@ -29,6 +29,7 @@ internal sealed partial class DatabasePreparation(
         await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({AdvisoryLockKeys.DatabasePreparation})", cancellationToken);
 
         await connections.CheckModeAsync(cancellationToken);
+        await connections.WarnOfDirectFormsAsync(cancellationToken);
         await connections.EnsureSimulatorAsync(cancellationToken);
         await legalDocuments.RegisterAsync(cancellationToken);
         await invoiceLinks.EnsureKeyAsync(context, cancellationToken);

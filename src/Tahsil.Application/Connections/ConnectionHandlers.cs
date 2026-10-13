@@ -142,6 +142,13 @@ public sealed class UpdateConnectionHandler(
             return settings.Error;
         }
 
+        // Cards saved through one way of taking cards cannot be charged through the other (PTR-2).
+        if (settings.Value.GetValueOrDefault(ConnectionFields.AllowDirectForm.Key, "false") != connection.Settings.GetValueOrDefault(ConnectionFields.AllowDirectForm.Key, "false")
+            && await context.PaymentMethods.AnyAsync(method => method.ConnectionId == connection.Id && method.Status == Domain.Customers.PaymentMethodStatus.Active, cancellationToken))
+        {
+            return ConnectionErrors.ModeChangeWithCards;
+        }
+
         var now = clock.GetUtcNow();
         if (request.Credentials is { Count: > 0 } changes)
         {

@@ -146,7 +146,11 @@
 @if (Model.View.CanPay)
 {
     <section class="pay no-print" id="pay-section">
-        @if (Model.Embed is { } embed)
+        @if (Model.CardForm is { } cardForm)
+        {
+            <partial name="_CardForm" model="cardForm" />
+        }
+        else if (Model.Embed is { } embed)
         {
             <div id="payment">
                 @Html.Raw(embed.Html.Replace("{nonce}", HttpContext.GetCspNonce(), StringComparison.Ordinal))

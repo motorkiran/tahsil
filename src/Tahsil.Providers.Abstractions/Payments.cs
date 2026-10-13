@@ -84,6 +84,11 @@ public abstract record Presentation
     /// <summary>HTML and scripts rendered in Tahsil's page with its CSP nonce, which replaces <c>{nonce}</c> in the HTML for inline scripts.</summary>
     public sealed record Embed(string Html, IReadOnlyList<Uri> Scripts) : Presentation;
 
+    /// <summary>
+    /// A form on Tahsil's page that posts card fields straight to the provider (ADP-13). <paramref name="CardFields"/>
+    /// are the provider's names for the card holder, the number, the expiry month, the expiry year and the security
+    /// code, in that order.
+    /// </summary>
     public sealed record DirectForm(Uri Action, IReadOnlyDictionary<string, string> HiddenFields, IReadOnlyList<string> CardFields) : Presentation;
 }
 

@@ -28,6 +28,9 @@ public sealed class IndexModel(
 
     public Presentation.Embed? Embed { get; private set; }
 
+    /// <summary>The provider's direct card form, shown alone on a response without scripts (ADP-13).</summary>
+    public Presentation.DirectForm? CardForm { get; private set; }
+
     public string? ErrorMessage { get; private set; }
 
     public bool JustPaid { get; private set; }
@@ -98,8 +101,11 @@ public sealed class IndexModel(
             case Presentation.Embed embed:
                 Embed = embed;
                 return Page();
+            case Presentation.DirectForm form:
+                CardForm = form;
+                return Page();
             default:
-                throw new NotSupportedException("Direct card forms come with the providers that use them.");
+                throw new NotSupportedException("The provider presents the payment in a way the page does not know.");
         }
     }
 
@@ -110,6 +116,7 @@ public sealed class IndexModel(
         Connections = Sources.Connections,
         Images = Sources.Images,
         FormActions = Sources.FormActions,
+        ForbidScripts = CardForm is not null,
     };
 
     private async Task<bool> LoadAsync(string token, CancellationToken cancellationToken)

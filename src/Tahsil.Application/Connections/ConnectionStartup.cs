@@ -38,6 +38,21 @@ public sealed partial class ConnectionStartup(
         }
     }
 
+    /// <summary>In Live mode, names every connection whose card fields are on Tahsil's pages, since it widens the merchant's PCI scope (ADP-13).</summary>
+    public async Task WarnOfDirectFormsAsync(CancellationToken cancellationToken)
+    {
+        if (registry.Mode != TahsilMode.Live)
+        {
+            return;
+        }
+
+        var connections = await context.ProviderConnections.AsNoTracking().ToListAsync(cancellationToken);
+        foreach (var connection in connections.Where(connection => connection.Settings.GetValueOrDefault(ConnectionFields.AllowDirectForm.Key) == "true"))
+        {
+            LogDirectForm(logger, connection.Key);
+        }
+    }
+
     /// <summary>
     /// Gives a Test mode installation without connections a simulator connection serving TRY, USD and EUR. An
     /// installation that has connections keeps what the operator chose.
@@ -77,6 +92,9 @@ public sealed partial class ConnectionStartup(
         await context.SaveChangesAsync(cancellationToken);
         LogSimulatorCreated(logger, string.Join(", ", currencies));
     }
+
+    [LoggerMessage(LogLevel.Warning, "The provider connection {Connection} shows card fields on Tahsil's pages (allowDirectForm): the merchant is in PCI DSS SAQ A-EP scope")]
+    private static partial void LogDirectForm(ILogger logger, string connection);
 
     [LoggerMessage(LogLevel.Information, "Created the simulator connection for Test mode, serving {Currencies}")]
     private static partial void LogSimulatorCreated(ILogger logger, string currencies);

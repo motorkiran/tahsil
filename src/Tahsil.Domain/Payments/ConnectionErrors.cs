@@ -7,6 +7,8 @@ public static class ConnectionErrors
     public static readonly Error NotFound = Error.NotFound("connection.not_found", "The provider connection does not exist.");
     public static readonly Error KeyTaken = Error.Conflict("connection.key_taken", "Another provider connection has this key.");
     public static readonly Error InUse = Error.Conflict("connection.in_use", "The connection has payment methods or payments; disable it instead.");
+    public static readonly Error ModeChangeWithCards = Error.Conflict(
+        "connection.mode_change_with_cards", "The connection has saved cards, which belong to its card entry mode; allowDirectForm cannot change while it has them.");
     public static readonly Error UnknownProvider = Error.Validation("connection.unknown_provider", "No such provider; GET /providers lists them.", "provider");
     public static readonly Error InvalidKey = Error.Validation(
         "connection.invalid", "A key starts with a lowercase letter and has up to 64 lowercase letters, digits, '_' or '-'.", "key");

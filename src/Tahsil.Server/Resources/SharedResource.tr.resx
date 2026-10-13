@@ -610,4 +610,16 @@
   <data name="Edit billing details" xml:space="preserve">
     <value>Fatura bilgilerini düzenle</value>
   </data>
+  <data name="Your card details go straight to the payment provider ({0}); they never reach us." xml:space="preserve">
+    <value>Kart bilgileriniz doğrudan ödeme kuruluşuna ({0}) gider; bize hiç ulaşmaz.</value>
+  </data>
+  <data name="Name on card" xml:space="preserve">
+    <value>Kart üzerindeki ad</value>
+  </data>
+  <data name="Expiry month" xml:space="preserve">
+    <value>Son kullanma ayı</value>
+  </data>
+  <data name="Expiry year" xml:space="preserve">
+    <value>Son kullanma yılı</value>
+  </data>
 </root>

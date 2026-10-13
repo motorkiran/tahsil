@@ -16,6 +16,12 @@
 <h1 id="page-title">@(Model.IsSetup ? L["Save your card"] : L["Checkout"])</h1>
 <p class="lead">@L["Sold by {0}", Model.Merchant.DisplayName ?? string.Empty]</p>
 
+@if (Model.CardForm is { } cardForm)
+{
+    <partial name="_CardForm" model="cardForm" />
+    return;
+}
+
 @if (Model.ErrorMessage is { } error)
 {
     <p class="alert alert-error" role="alert" id="checkout-error">@error</p>

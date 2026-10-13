@@ -1,0 +1,36 @@
+@model Tahsil.Providers.Abstractions.Presentation.DirectForm
+@*
+    A provider's direct card form (ADP-13): the card fields post straight to the provider and never to Tahsil. The page
+    that shows it runs no scripts, and its policy lets the form post only to the provider.
+*@
+<section id="card-form-section" aria-labelledby="card-form-title">
+    <h2 id="card-form-title">@L["Card details"]</h2>
+    <p class="hint" id="card-form-note">@L["Your card details go straight to the payment provider ({0}); they never reach us.", Model.Action.Host]</p>
+    <form method="post" action="@Model.Action.AbsoluteUri" id="card-form" autocomplete="on">
+        @foreach (var (name, value) in Model.HiddenFields)
+        {
+            <input type="hidden" name="@name" value="@value" />
+        }
+        <div class="field">
+            <label for="card-holder">@L["Name on card"]</label>
+            <input type="text" id="card-holder" name="@Model.CardFields[0]" autocomplete="cc-name" maxlength="100" required />
+        </div>
+        <div class="field">
+            <label for="card-number">@L["Card number"]</label>
+            <input type="text" id="card-number" name="@Model.CardFields[1]" autocomplete="cc-number" inputmode="numeric" pattern="[0-9 ]{12,23}" maxlength="23" required />
+        </div>
+        <div class="field">
+            <label for="card-month">@L["Expiry month"]</label>
+            <input type="text" id="card-month" name="@Model.CardFields[2]" autocomplete="cc-exp-month" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" placeholder="MM" required />
+        </div>
+        <div class="field">
+            <label for="card-year">@L["Expiry year"]</label>
+            <input type="text" id="card-year" name="@Model.CardFields[3]" autocomplete="cc-exp-year" inputmode="numeric" pattern="[0-9]{2}" maxlength="2" placeholder="YY" required />
+        </div>
+        <div class="field">
+            <label for="card-code">@L["Security code"]</label>
+            <input type="password" id="card-code" name="@Model.CardFields[4]" autocomplete="cc-csc" inputmode="numeric" pattern="[0-9]{3,4}" maxlength="4" required />
+        </div>
+        <button class="button" type="submit" id="card-pay">@L["Pay"]</button>
+    </form>
+</section>
