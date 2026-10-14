@@ -2300,6 +2300,10 @@ namespace Tahsil.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("last_test_message");
 
+                    b.Property<DateTimeOffset?>("LastTestPaymentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_test_payment_at");
+
                     b.Property<string>("LastTestStatus")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")

@@ -40,6 +40,7 @@ public sealed class ConnectionMapper(ConnectionSecrets secrets, ProviderRegistry
             connection.LastTestedAt is { } testedAt
                 ? new ConnectionTestResponse(connection.LastTestStatus!.Value.Map<Contracts.ConnectionTestStatus>(), connection.LastTestMessage, testedAt)
                 : null,
+            connection.LastTestPaymentAt,
             connection.CreatedAt,
             connection.UpdatedAt);
     }

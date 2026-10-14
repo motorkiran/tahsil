@@ -69,6 +69,7 @@ public sealed record ConnectionResponse(
     IReadOnlyList<string> Currencies,
     Uri NotificationUrl,
     ConnectionTestResponse? LastTest,
+    DateTimeOffset? LastTestPaymentAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 

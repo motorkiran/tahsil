@@ -231,6 +231,7 @@ public static class DependencyInjection
         services.AddScoped<GetWebhookDeliveryHandler>();
         services.AddScoped<RedeliverWebhookHandler>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
+        services.AddScoped<IOutboxMessageHandler<Connections.RefundConnectionTestPayment>, Connections.ConnectionTestRefunder>();
         services.AddScoped<DefaultCards>();
         services.AddScoped<IOutboxMessageHandler<RetryWaitingInvoices>, WaitingInvoiceRetrier>();
         services.AddOptions<Notifications.NotificationOptions>()
@@ -288,6 +289,11 @@ public static class DependencyInjection
             .BindConfiguration(Usage.UsageOptions.SectionName)
             .Validate(options => options.IsValid(), $"{Usage.UsageOptions.SectionName}: MaxBatchSize is 1 to 10,000, FutureTolerance is not negative and RetentionPeriod is at least a day.")
             .ValidateOnStart();
+        services.AddOptions<Connections.ProviderOptions>()
+            .BindConfiguration(Connections.ProviderOptions.SectionName)
+            .Validate(options => options.IsValid(), $"{Connections.ProviderOptions.SectionName}:SmokeTestAmount must be positive.")
+            .ValidateOnStart();
+        services.AddScoped<Connections.StartConnectionTestPaymentHandler>();
         services.AddScoped<Usage.ReportUsageHandler>();
         services.AddScoped<Usage.SubscriptionUsage>();
         services.AddScoped<Usage.MeterRule>();

@@ -48,6 +48,10 @@
             {
                 <span>Never</span>
             }
+            @if (context.LastTestPaymentAt is { } paidAt)
+            {
+                <br /><MudText Typo="Typo.caption" Class="test-payment-passed">Test payment passed <Moment Value="paidAt" /></MudText>
+            }
         </MudTd>
         <MudTd>
             @if (!context.Enabled)
@@ -61,6 +65,10 @@
             @if (Session.Has(TahsilPermissions.ConnectionsWrite))
             {
                 <MudButton Size="Size.Small" OnClick="() => TestAsync(context)" Class="test">Test</MudButton>
+                @if (context is { Enabled: true, Currencies.Count: > 0 })
+                {
+                    <MudButton Size="Size.Small" OnClick="() => RunTestPaymentAsync(context)" Class="test-payment">Run a test payment</MudButton>
+                }
                 <MudButton Size="Size.Small" OnClick="() => ToggleAsync(context)" Class="toggle">@(context.Enabled ? "Disable" : "Enable")</MudButton>
                 <MudButton Size="Size.Small" OnClick="() => PauseCheckoutsAsync(context)" Class="pause-checkouts">@(context.CheckoutsPaused ? "Resume checkouts" : "Pause checkouts")</MudButton>
             }
@@ -115,6 +123,27 @@
         {
             await LoadAsync();
             await TestAsync(created.Value);
+        }
+    }
+
+    /// <summary>ADP-18: a small payment with a real card through the connection, refunded as soon as it is paid.</summary>
+    private async Task RunTestPaymentAsync(ConnectionResponse connection)
+    {
+        if (!await ConfirmAsync(
+            $"Run a test payment on {connection.Key}?",
+            $"Tahsil creates a small invoice in {connection.Currencies[0]} for you to pay with a real card, and refunds it as soon as it is paid. Your webhook endpoints receive its events like any other invoice's.",
+            "Create the test payment"))
+        {
+            return;
+        }
+
+        if (await ChangeAsync<StartConnectionTestPaymentHandler, ConnectionTestPayment>(
+            (handler, token) => handler.HandleAsync(connection.Id.ToString(), null, token), "The test payment is ready to pay.") is { } payment)
+        {
+            var parameters = new DialogParameters<TestPaymentDialog> { { dialog => dialog.Payment, payment } };
+            var dialog = await Dialogs.ShowAsync<TestPaymentDialog>("Test payment", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+            await dialog.Result;
+            await LoadAsync();
         }
     }
 

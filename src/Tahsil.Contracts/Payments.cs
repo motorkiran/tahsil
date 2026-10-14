@@ -153,6 +153,7 @@ public enum RefundReason
     SubscriptionCanceled,
     LateSuccess,
     CardVerification,
+    ConnectionTest,
     Other,
 }
 

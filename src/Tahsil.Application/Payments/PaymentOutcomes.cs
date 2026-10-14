@@ -134,6 +134,11 @@ public sealed class PaymentOutcomes(
             audit.Record(AuditActions.InvoicePaid, AuditSubject.Of(AuditSubjects.Invoice, invoice.Id), InvoiceFinalizer.Details(invoice), customerId: invoice.CustomerId);
             Dunning.Recovered(invoice);
             await subscriptions.InvoicePaidAsync(invoice, now, cancellationToken);
+            if (invoice.Metadata.ContainsKey(Connections.StartConnectionTestPaymentHandler.MetadataKey))
+            {
+                // ADP-18: an operator's test payment goes back once this commits.
+                outbox.Enqueue(new Connections.RefundConnectionTestPayment(payment.Id));
+            }
         }
     }
 

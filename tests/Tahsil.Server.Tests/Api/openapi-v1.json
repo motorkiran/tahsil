@@ -8672,6 +8672,7 @@
           "currencies",
           "notificationUrl",
           "lastTest",
+          "lastTestPaymentAt",
           "createdAt",
           "updatedAt"
         ],
@@ -8727,6 +8728,13 @@
                 "$ref": "#/components/schemas/ConnectionTestResponse"
               }
             ]
+          },
+          "lastTestPaymentAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "createdAt": {
             "type": "string",
@@ -13752,6 +13760,7 @@
           "subscription_canceled",
           "late_success",
           "card_verification",
+          "connection_test",
           "other"
         ]
       },

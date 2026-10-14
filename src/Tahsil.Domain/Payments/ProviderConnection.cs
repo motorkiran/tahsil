@@ -57,6 +57,9 @@ public sealed class ProviderConnection : AggregateRoot
 
     public string? LastTestMessage { get; private set; }
 
+    /// <summary>When an operator's test payment last succeeded through the connection (ADP-18).</summary>
+    public DateTimeOffset? LastTestPaymentAt { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private init; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -137,6 +140,8 @@ public sealed class ProviderConnection : AggregateRoot
         Credentials = encryptCredentials(Id);
         UpdatedAt = now;
     }
+
+    public void RecordTestPayment(DateTimeOffset succeededAt) => LastTestPaymentAt = succeededAt;
 
     public void RecordTest(ConnectionTestStatus status, string? message, DateTimeOffset now)
     {

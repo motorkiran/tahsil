@@ -28,6 +28,9 @@ public enum RefundReason
     SubscriptionCanceled,
     LateSuccess,
     CardVerification,
+
+    /// <summary>An operator's test payment of a connection, refunded as soon as it is paid (ADP-18).</summary>
+    ConnectionTest,
     Other,
 }
 

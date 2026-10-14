@@ -39,6 +39,8 @@ public static class AuditActions
 
     /// <summary>The currencies' connections changed; the data has the routing before and after (PAY-6).</summary>
     public const string ConnectionRoutingUpdated = "connection.routing_updated";
+    public const string ConnectionTestPaymentStarted = "connection.test_payment_started";
+    public const string ConnectionTestPaymentSucceeded = "connection.test_payment_succeeded";
 
     /// <summary>A draft with a draft period was created; the billing engine's cycle invoices (EVT §2).</summary>
     public const string InvoiceCreated = "invoice.created";

@@ -1,0 +1,20 @@
+@* Where an operator pays the test payment of a connection (ADP-18). *@
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-2">
+            Pay @AdminFormat.Money(Payment.Amount, Payment.Currency) with a real card on the page below. Tahsil refunds it as soon as it is paid, and this page then shows when the connection last passed.
+        </MudText>
+        <MudLink Href="@Payment.Url.AbsoluteUri" Target="_blank" rel="noopener" id="test-payment-url">@Payment.Url.AbsoluteUri</MudLink>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Dialog.Close()">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required Tahsil.Application.Connections.ConnectionTestPayment Payment { get; set; }
+}
