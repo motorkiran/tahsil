@@ -247,6 +247,7 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<Kimlik.KimlikReferences>();
         services.AddScoped<Kimlik.KimlikPlanRule>();
+        services.AddScoped<Kimlik.GetKimlikSyncHandler>();
         services.AddScoped<IOutboxMessageHandler<Kimlik.SyncKimlikSubscription>, Kimlik.KimlikSynchronizer>();
         services.AddScoped<Kimlik.KimlikWebhooks>();
         services.AddScoped<IOutboxMessageHandler<Kimlik.KimlikEventReceived>, Kimlik.KimlikEvents>();

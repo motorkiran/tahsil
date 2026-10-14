@@ -1,0 +1,22 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">The link opens the customer's portal without signing in, until it expires. Send it to the customer only.</MudText>
+        <MudTextField @bind-Value="_returnUrl" Label="Where the portal leads back to" Required id="portal-return-url" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Dialog.Close(DialogResult.Ok(_returnUrl))">Create link</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _returnUrl = string.Empty;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public required string ReturnUrl { get; set; }
+
+    protected override void OnInitialized() => _returnUrl = ReturnUrl;
+}

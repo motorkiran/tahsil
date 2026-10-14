@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = AdminAuthentication.Policy)]
 @using Tahsil.Application.Customers
 @inherits AdminPageBase
+@inject Microsoft.Extensions.Options.IOptions<ServerOptions> Server
 
 <PageTitle>@(_customer?.Name ?? "Customer") · Tahsil</PageTitle>
 
@@ -16,6 +17,10 @@
         <MudSpacer />
         @if (Session.Has(TahsilPermissions.CustomersWrite) && customer.AnonymizedAt is null)
         {
+            @if (Session.Has(TahsilPermissions.CheckoutWrite) && customer.AnonymizedAt is null)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="CreatePortalLinkAsync" id="portal-link">Portal link</MudButton>
+            }
             <MudButton Variant="Variant.Outlined" OnClick="EditAsync" id="edit-customer">Edit</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteAsync" id="delete-customer">Delete</MudButton>
         }
@@ -45,10 +50,36 @@
     {
         <CustomerUsage CustomerId="customer.Id" />
     }
+    @if (_timeline.Count > 0)
+    {
+        <MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+            <MudText Typo="Typo.h6" HtmlTag="h2">Timeline</MudText>
+            <MudSpacer />
+            <MudLink Href="@($"/admin/audit-log?customer={customer.Id}")" id="timeline-all">Everything in the audit log</MudLink>
+        </MudStack>
+        <MudTable T="AuditEventResponse" Items="_timeline" Dense id="timeline">
+            <HeaderContent>
+                <MudTh>When</MudTh>
+                <MudTh>What</MudTh>
+                <MudTh>By</MudTh>
+                <MudTh>On</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="When"><Moment Value="context.OccurredAt" /></MudTd>
+                <MudTd DataLabel="What"><code>@context.Action</code></MudTd>
+                <MudTd DataLabel="By">@context.Actor.Type @context.Actor.Id</MudTd>
+                <MudTd DataLabel="On">@context.SubjectType @context.SubjectId</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
 }
 
 @code {
+    /// <summary>How many of the customer's latest events the page shows.</summary>
+    private const int TimelineLength = 25;
+
     private CustomerResponse? _customer;
+    private IReadOnlyList<AuditEventResponse> _timeline = [];
 
     [Parameter]
     public Guid Id { get; set; }
@@ -59,8 +90,29 @@
         ? "–"
         : string.Join(", ", new[] { address.Line1, address.Line2, address.District, address.City, address.PostalCode, address.Country }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-    private async Task LoadAsync() =>
+    private async Task LoadAsync()
+    {
         _customer = (await ReadAsync<GetCustomerHandler, Versioned<CustomerResponse>>((handler, token) => handler.HandleAsync(Id, token)))?.Value;
+        if (_customer is not null && Session.Has(TahsilPermissions.AuditRead))
+        {
+            _timeline = (await ReadAsync<Tahsil.Application.Auditing.ListAuditEventsHandler, Page<AuditEventResponse>>(
+                (handler, token) => handler.HandleAsync(new Tahsil.Application.Auditing.ListAuditEventsQuery(CustomerId: Id, Limit: TimelineLength), token)))?.Items ?? [];
+        }
+    }
+
+    /// <summary>A portal session for the customer, whose link is shown once: it is all the portal asks for.</summary>
+    private async Task CreatePortalLinkAsync()
+    {
+        var parameters = new DialogParameters<PortalLinkDialog> { { dialog => dialog.ReturnUrl, Server.Value.PublicUrl?.AbsoluteUri ?? string.Empty } };
+        var dialog = await Dialogs.ShowAsync<PortalLinkDialog>("Create a portal link", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: string returnUrl }
+            && await ChangeAsync<Tahsil.Application.Portal.CreatePortalSessionHandler, PortalSessionResponse>(
+                (handler, token) => handler.HandleAsync(new CreatePortalSessionRequest { Customer = Id, ReturnUrl = returnUrl }, token), "The portal link was created.") is { } session)
+        {
+            await SecretDialog.ShowAsync(Dialogs, "Portal link", $"Valid until {session.ExpiresAt.UtcDateTime:yyyy-MM-dd HH:mm} UTC", session.Url.AbsoluteUri);
+            await LoadAsync();
+        }
+    }
 
     private async Task EditAsync()
     {

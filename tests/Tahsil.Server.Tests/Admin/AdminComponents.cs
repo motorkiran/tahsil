@@ -41,6 +41,7 @@ internal sealed class AdminComponents : BunitContext
         Services.AddSingleton<Microsoft.AspNetCore.Http.IHttpContextAccessor>(new Microsoft.AspNetCore.Http.HttpContextAccessor());
         Services.AddSingleton<AdminSessionLoader>();
         Services.AddSingleton(server.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<Tahsil.Application.Common.ServerOptions>>());
+        Services.AddSingleton(server.Services.GetRequiredService<Tahsil.Admin.Settings.EffectiveSettings>());
 
         // The panel's own policies, evaluated for real against the administrator's claims, instead of bUnit's stand-ins.
         Services.RemoveAll<IAuthorizationService>();

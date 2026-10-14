@@ -1,4 +1,5 @@
 using System.Net;
+using Bunit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +37,7 @@ public sealed class KimlikSyncTests : IDisposable
         _kimlik.AddPlan("pro");
     }
 
-    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+    private static CancellationToken CancellationToken => Xunit.TestContext.Current.CancellationToken;
 
     public void Dispose() => _kimlik.Dispose();
 
@@ -164,6 +165,15 @@ public sealed class KimlikSyncTests : IDisposable
         (await AttentionAsync(host)).ShouldBe([(AttentionKind.KimlikConflict, conflicted.Id.ToString())]);
     }
 
+    /// <summary>What the admin panel's subscription page says about the subscription in Kimlik (ADM §3).</summary>
+    private static async Task<string> KimlikStateOnThePageAsync(WebApplicationFactory<Program> host, Guid subscription)
+    {
+        await using var admin = new Admin.AdminComponents(host);
+        var page = admin.Render<Tahsil.Admin.Components.Pages.Subscriptions.SubscriptionDetail>(parameters => parameters.Add(detail => detail.Id, subscription));
+        page.WaitForElement("#kimlik-sync");
+        return page.Find("#kimlik-sync").TextContent;
+    }
+
     [Fact]
     [Trait("Requirement", "KML-19")]
     [Trait("Requirement", "KML-20")]
@@ -178,6 +188,7 @@ public sealed class KimlikSyncTests : IDisposable
         var subscription = await SubscribeAsync(host, api, customer, "team-monthly-try");
         var failing = await MirrorAsync(host, subscription.Id);
         var attentionEarly = await AttentionAsync(host);
+        var pageWhileFailing = await KimlikStateOnThePageAsync(host, subscription.Id);
         for (var round = 0; round < 5; round++)
         {
             _time.Advance(TimeSpan.FromHours(6));
@@ -198,6 +209,9 @@ public sealed class KimlikSyncTests : IDisposable
         var mirror = await MirrorAsync(host, subscription.Id);
         (mirror.KimlikSubscriptionId, mirror.Error, mirror.FailingSince).ShouldBe((_kimlik.Subscriptions[1].Id, null, null));
         _kimlik.Subscriptions[1].ExternalReference.ShouldBe(subscription.Id.ToString());
+        pageWhileFailing.ShouldContain("Failing");
+        pageWhileFailing.ShouldContain(KimlikErrors.Unavailable.Message);
+        (await KimlikStateOnThePageAsync(host, subscription.Id)).ShouldContain($"as {_kimlik.Subscriptions[1].Id}");
     }
 
     [Fact]

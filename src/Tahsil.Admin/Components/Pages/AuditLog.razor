@@ -56,6 +56,10 @@
     private string? _subjectType;
     private string? _subjectId;
 
+    /// <summary>Only what concerns this customer, as the customer's page links here.</summary>
+    [SupplyParameterFromQuery(Name = "customer")]
+    public Guid? Customer { get; set; }
+
     protected override Task OnInitializedAsync() => LoadMoreAsync();
 
     private async Task SearchAsync()
@@ -69,7 +73,7 @@
     private async Task LoadMoreAsync()
     {
         var generation = _generation;
-        var query = new ListAuditEventsQuery(_action, _actorType, _actorId, _subjectType, _subjectId, Cursor: _nextCursor);
+        var query = new ListAuditEventsQuery(_action, _actorType, _actorId, _subjectType, _subjectId, Customer, Cursor: _nextCursor);
         if (await ReadAsync<ListAuditEventsHandler, Page<AuditEventResponse>>((handler, token) => handler.HandleAsync(query, token)) is { } page && generation == _generation)
         {
             _events.AddRange(page.Items);

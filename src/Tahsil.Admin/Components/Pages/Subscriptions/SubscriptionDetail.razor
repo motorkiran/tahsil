@@ -51,6 +51,23 @@
                         <tr><th>Card</th><td>@(subscription.DefaultPaymentMethodId?.ToString() ?? "The customer's default")</td></tr>
                         <tr><th>Discount</th><td id="discount">@if (subscription.Discount is { } discount) { <MudLink Href="@($"/admin/coupons/{discount.Coupon.Key}")">@discount.Coupon.Name</MudLink> <span>@Coupons.CouponText.Discount(discount.Coupon)@(discount.CyclesRemaining is { } left ? $", {left} left" : null)</span> } else { <span>–</span> }</td></tr>
                         <tr><th>Created</th><td><Moment Value="subscription.CreatedAt" /></td></tr>
+                        @if (_kimlik is { IsSynced: true } kimlik)
+                        {
+                            <tr>
+                                <th>Kimlik</th>
+                                <td id="kimlik-sync">
+                                    @if (kimlik.Error is { } error)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Failing</MudChip>
+                                        <span>since <Moment Value="kimlik.FailingSince" />: @error</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Synced <Moment Value="kimlik.SyncedAt" Empty="never" />@(kimlik.KimlikSubscriptionId is { } mirrored ? $", as {mirrored}" : ", without a subscription there")</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
                         @if (subscription.CheckoutSessionId is { } session)
                         {
                             <tr><th>Checkout session</th><td><code>@session</code></td></tr>
@@ -137,6 +154,7 @@
     private uint _version;
     private IReadOnlyList<InvoiceResponse> _invoices = [];
     private IReadOnlyList<SubscriptionItemUsageResponse> _usage = [];
+    private Tahsil.Application.Kimlik.KimlikSyncState? _kimlik;
 
     [Parameter]
     public Guid Id { get; set; }
@@ -163,6 +181,7 @@
                 (handler, token) => handler.HandleAsync(new ListInvoicesQuery(Subscription: Id, Limit: Paging.MaxLimit), token)))?.Items ?? [];
         }
 
+        _kimlik = await ReadAsync<Tahsil.Application.Kimlik.GetKimlikSyncHandler, Tahsil.Application.Kimlik.KimlikSyncState>((handler, token) => handler.HandleAsync(Id, token));
         if (Session.Has(TahsilPermissions.UsageRead) && _subscription?.Items.Any(item => item.Quantity is null) == true)
         {
             _usage = (await ReadAsync<Tahsil.Application.Usage.GetSubscriptionUsageHandler, SubscriptionUsageResponse>((handler, token) => handler.HandleAsync(Id, token)))?.Items ?? [];

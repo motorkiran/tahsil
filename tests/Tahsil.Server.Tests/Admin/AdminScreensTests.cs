@@ -54,6 +54,58 @@ public sealed class AdminScreensTests(TahsilServerFixture server)
     }
 
     [Fact]
+    [Trait("Requirement", "ADM-1")]
+    [Trait("Requirement", "ADM-4")]
+    public async Task Settings_ShowTheEffectiveConfiguration_WithoutItsSecrets_ToAdminsOnly()
+    {
+        await using var admin = new AdminComponents(server, withProviders: false);
+        admin.Services.GetRequiredService<NavigationManager>().NavigateTo("/admin/settings");
+        var routes = admin.Render<Routes>();
+        routes.WaitForAssertion(() => routes.Find("h1").TextContent.Trim().ShouldBe("Settings"));
+
+        string Value(string section, string key) => routes.Find($".settings-section[data-section='{section}'] tr[data-key='{key}'] td").TextContent.Trim();
+        routes.Find("#mode").TextContent.ShouldBe("Test");
+        Value("Tahsil:Server", "Mode").ShouldBe("Test");
+        Value("Tahsil:Usage", "MaxBatchSize").ShouldBe("1000", "defaults are part of the effective configuration");
+        Value("Tahsil:Usage", "RetentionPeriod").ShouldBe("400.00:00:00");
+        Value("Tahsil:Security", "MasterKey").ShouldBe("•••••• (set)");
+        Value("Tahsil:Security", "MasterKeyId").ShouldBe("1");
+        Value("ConnectionStrings", "Tahsil").ShouldBe("•••••• (set)");
+        routes.Markup.ShouldNotContain(Tahsil.Infrastructure.Security.SecurityOptions.DevelopmentMasterKey);
+        routes.Markup.ShouldNotContain("Password=");
+
+        await using var viewer = new AdminComponents(server, AdminRoles.Viewer, withProviders: false);
+        viewer.Services.GetRequiredService<NavigationManager>().NavigateTo("/admin/settings");
+        var refused = viewer.Render<Routes>();
+        refused.WaitForAssertion(() => refused.Markup.ShouldContain("Your role does not include this page."));
+        refused.Find("nav").TextContent.ShouldNotContain("Settings");
+    }
+
+    [Fact]
+    [Trait("Requirement", "ADM-1")]
+    [Trait("Requirement", "PRT-1")]
+    public async Task ACustomersPortalLink_IsShownOnce_AndTheirTimelineTellsOfIt()
+    {
+        using var api = await server.CreateClientWithAsync(TahsilPermissions.CustomersWrite);
+        using var created = await api.PostJsonAsync("/api/v1/customers", new CreateCustomerRequest { Name = "Ada Lovelace", Email = $"{Guid.CreateVersion7():N}@example.com" });
+        var customer = (await created.ReadAsync<CustomerResponse>()).Id;
+        await using var admin = new AdminComponents(server, AdminRoles.Operator);
+        var page = admin.Render<CustomerDetail>(parameters => parameters.Add(detail => detail.Id, customer));
+
+        page.WaitForElement("#portal-link").Click();
+        admin.Dialogs.WaitForAssertion(() => admin.Dialogs.Find("#portal-return-url").GetAttribute("value").ShouldBe(TestConfiguration.PublicUrl));
+        admin.Fill("Where the portal leads back to", "https://app.example.com/billing");
+        admin.Confirm("Create link");
+
+        admin.WaitForNotification("The portal link was created.");
+        admin.Dialogs.WaitForAssertion(() => admin.Dialogs.Find(".secret input").GetAttribute("value")!.ShouldStartWith($"{TestConfiguration.PublicUrl}portal/ps_"));
+        admin.Confirm("Done");
+        page.WaitForAssertion(() => page.FindAll("#timeline tbody tr").Select(row => row.QuerySelector("code")!.TextContent).ShouldBe(["portal_session.created", "customer.created"]));
+        page.Find("#timeline-all").GetAttribute("href").ShouldBe($"/admin/audit-log?customer={customer}");
+        await AuditedByAsync(admin, "portal_session.created");
+    }
+
+    [Fact]
     [Trait("Requirement", "ADM-4")]
     public async Task Admins_OpenAdminOnlyPages()
     {

@@ -24,6 +24,7 @@ public static class AdminServiceCollectionExtensions
         services.AddScoped<AdminSession>();
         services.AddScoped<AdminSessionLoader>();
         services.AddScoped<AdminOperations>();
+        services.AddSingleton<Settings.EffectiveSettings>();
         services.AddMemoryCache();
         services.AddScoped<AdminRecheck>();
         services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, AdminRevalidation>();
