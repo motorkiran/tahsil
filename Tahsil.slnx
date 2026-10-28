@@ -14,6 +14,7 @@
     <Project Path="src/Tahsil.Server/Tahsil.Server.csproj" />
   </Folder>
   <Folder Name="/sdk/">
+    <Project Path="sdk/Tahsil.AspNetCore/Tahsil.AspNetCore.csproj" />
     <Project Path="sdk/Tahsil.Client/Tahsil.Client.csproj" />
   </Folder>
   <Folder Name="/tests/">

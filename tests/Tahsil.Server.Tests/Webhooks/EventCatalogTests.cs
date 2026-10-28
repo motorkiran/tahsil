@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -90,8 +91,24 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
             var fields = @event.Data.Details.ShouldNotBeNull().EnumerateObject().Select(property => property.Name).ToList();
             // The audit event's data is the details (EVT-4), so events may carry more than the table; adding is non-breaking (EVT-6).
             details.ShouldBeSubsetOf(fields, $"{type} details");
+
+            // The SDK's record of the details reads them (SDK-1): its required properties are fields of the event.
+            if (WebhookEventDetails.TypeOf(type) is { } shape)
+            {
+                JsonSerializer.Deserialize(@event.Data.Details!.Value, shape, ApiClients.Json).ShouldNotBeNull();
+                var nullability = new NullabilityInfoContext();
+                var required = shape.GetProperties()
+                    .Where(property => Nullable.GetUnderlyingType(property.PropertyType) is null && nullability.Create(property).ReadState == NullabilityState.NotNull)
+                    .Select(property => JsonNamingPolicy.CamelCase.ConvertName(property.Name));
+                required.ShouldBeSubsetOf(fields, $"the fields {shape.Name} needs");
+            }
         }
     }
+
+    [Fact]
+    [Trait("Requirement", "SDK-1")]
+    public void EveryEventWithDetails_HasARecordForThem() =>
+        TahsilEventTypes.All.Where(type => type != TahsilEventTypes.Test).Where(type => WebhookEventDetails.TypeOf(type) is null).ShouldBeEmpty();
 
     /// <summary>The billing story, told once for the table: the events an application's endpoint received.</summary>
     private async Task<IReadOnlyList<WebhookEvent>> StoryAsync()
