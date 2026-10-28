@@ -50,6 +50,26 @@
     {
         <CustomerUsage CustomerId="customer.Id" />
     }
+    @if (_consents.Count > 0)
+    {
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mt-6 mb-2">Consents</MudText>
+        <MudTable T="ConsentRecordResponse" Items="_consents" Dense id="consents">
+            <HeaderContent>
+                <MudTh>When</MudTh>
+                <MudTh>What</MudTh>
+                <MudTh>As shown</MudTh>
+                <MudTh>Document</MudTh>
+                <MudTh>From</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="When"><Moment Value="context.AcceptedAt" /></MudTd>
+                <MudTd DataLabel="What"><code>@System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(context.Type.ToString())</code></MudTd>
+                <MudTd DataLabel="As shown">@context.TextShown</MudTd>
+                <MudTd DataLabel="Document">@(context.DocumentKey is { } key ? $"{key} {context.DocumentVersion}" : "–")</MudTd>
+                <MudTd DataLabel="From">@(context.IpAddress ?? "–")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
     @if (_timeline.Count > 0)
     {
         <MudStack Row AlignItems="AlignItems.Center" Class="mt-6 mb-2">
@@ -80,6 +100,7 @@
 
     private CustomerResponse? _customer;
     private IReadOnlyList<AuditEventResponse> _timeline = [];
+    private IReadOnlyList<ConsentRecordResponse> _consents = [];
 
     [Parameter]
     public Guid Id { get; set; }
@@ -93,6 +114,11 @@
     private async Task LoadAsync()
     {
         _customer = (await ReadAsync<GetCustomerHandler, Versioned<CustomerResponse>>((handler, token) => handler.HandleAsync(Id, token)))?.Value;
+        if (_customer is not null)
+        {
+            _consents = (await ReadAsync<ListConsentsHandler, Page<ConsentRecordResponse>>((handler, token) => handler.HandleAsync(Id, false, token)))?.Items ?? [];
+        }
+
         if (_customer is not null && Session.Has(TahsilPermissions.AuditRead))
         {
             _timeline = (await ReadAsync<Tahsil.Application.Auditing.ListAuditEventsHandler, Page<AuditEventResponse>>(

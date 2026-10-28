@@ -294,6 +294,7 @@ public static class DependencyInjection
             .Validate(options => options.IsValid(), $"{Connections.ProviderOptions.SectionName}:SmokeTestAmount must be positive.")
             .ValidateOnStart();
         services.AddScoped<Connections.StartConnectionTestPaymentHandler>();
+        services.AddScoped<Customers.ListConsentsHandler>();
         services.AddScoped<Usage.ReportUsageHandler>();
         services.AddScoped<Usage.SubscriptionUsage>();
         services.AddScoped<Usage.MeterRule>();

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Bunit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +34,7 @@ public sealed class CheckoutExitTests(TahsilServerFixture server)
     private readonly CapturingEmailSender _email = new();
     private readonly TestWebhookReceiver _receiver = new();
 
-    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+    private static CancellationToken CancellationToken => Xunit.TestContext.Current.CancellationToken;
 
     [Fact]
     [Trait("Requirement", "CHK-23")]
@@ -101,6 +102,34 @@ public sealed class CheckoutExitTests(TahsilServerFixture server)
         var consents = await QueryAsync(host, context => context.ConsentRecords.Where(record => record.CustomerId == paid.CustomerId)
             .Select(record => record.Type.ToString()).ToListAsync(CancellationToken));
         consents.ShouldBe(["PreInformation", "DistanceSalesContract", "ImmediateStart", "CardStorage"], ignoreOrder: true);
+
+        // The same evidence through the API, with the documents as the customer saw them when asked for, and in the customer's export (SEC-15).
+        var listed = (await GetAsync<Page<ConsentRecordResponse>>(app, $"/api/v1/customers/{paid.CustomerId}/consents")).Items;
+        listed.Select(consent => consent.Type).ShouldBe([ConsentType.PreInformation, ConsentType.DistanceSalesContract, ConsentType.ImmediateStart, ConsentType.CardStorage], ignoreOrder: true);
+        listed.ShouldAllBe(consent => consent.Document == null && consent.TextShown.Length > 0);
+        var contract = listed.Single(consent => consent.Type == ConsentType.DistanceSalesContract);
+        (contract.DocumentKey, contract.DocumentVersion, contract.CheckoutSessionId).ShouldBe(("distance-sales", "2026-10", purchase.Id));
+        var shown = (await GetAsync<Page<ConsentRecordResponse>>(app, $"/api/v1/customers/{paid.CustomerId}/consents?includeDocuments=true")).Items
+            .Single(consent => consent.Type == ConsentType.DistanceSalesContract).Document!;
+        shown.ShouldContain("Ayşe Yılmaz");
+        Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(shown))).ShouldBe(contract.DocumentHash);
+        var export = await GetAsync<CustomerExportResponse>(app, $"/api/v1/customers/{paid.CustomerId}/export");
+        (export.Invoices.Count, export.Refunds.Count, export.PaymentMethods.Count, export.CheckoutSessions.Count, export.Consents.Count, export.Subscriptions.Count)
+            .ShouldBe((1, 0, 1, 2, 4, 0));
+        export.Payments.Select(payment => payment.Amount).ShouldBe([59_800L, 0L], ignoreOrder: true, "the purchase, and the card saved without a purchase");
+        export.Invoices[0].Number.ShouldBe(invoice.Number);
+        export.Notifications.Select(notification => notification.Sent).ShouldBe([true, true]);
+        using (var unknown = await app.GetPathAsync($"/api/v1/customers/{Guid.CreateVersion7()}/consents"))
+        {
+            (unknown.StatusCode, await unknown.ProblemCodeAsync()).ShouldBe((HttpStatusCode.NotFound, "customer.not_found"));
+        }
+
+        await using (var admin = new Admin.AdminComponents(host))
+        {
+            var customerPage = admin.Render<Tahsil.Admin.Components.Pages.Customers.CustomerDetail>(parameters => parameters.Add(page => page.Id, paid.CustomerId!.Value));
+            customerPage.WaitForAssertion(() => customerPage.FindAll("#consents tbody tr").Count.ShouldBe(4));
+            customerPage.Find("#consents").TextContent.ShouldContain("distance-sales 2026-10");
+        }
 
         // Two confirmations, the purchase's with the documents attached.
         _email.Sent.Select(message => message.Subject).ShouldBe([$"Siparişiniz alındı ({invoice.Number})", "Kartınız kaydedildi"], ignoreOrder: true);

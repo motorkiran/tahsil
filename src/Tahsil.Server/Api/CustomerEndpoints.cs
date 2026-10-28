@@ -52,6 +52,17 @@ internal static class CustomerEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequirePermission(TahsilPermissions.CustomersRead);
 
+        customers.MapGet("{id:guid}/consents", async (
+            Guid id,
+            [Description("Whether each record carries the rendered document the customer saw, as HTML.")] bool? includeDocuments,
+            ListConsentsHandler handler,
+            CancellationToken cancellationToken) =>
+            (await handler.HandleAsync(id, includeDocuments == true, cancellationToken)).ToOk())
+            .WithName("ListCustomerConsents").WithSummary("List a customer's consent records")
+            .WithDescription("The evidence of what the customer was shown and accepted: legal documents, the consent to future charges of a saved card, cancellations and withdrawals. Newest first. Records are kept when a customer is anonymized.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequirePermission(TahsilPermissions.CustomersRead);
+
         customers.MapGet("by-external-id/{externalId}", async (string externalId, GetCustomerHandler handler, HttpResponse response, CancellationToken cancellationToken) =>
             (await handler.HandleByExternalIdAsync(externalId, cancellationToken)).ToOk(response))
             .WithName("GetCustomerByExternalId").WithSummary("Get a customer by external ID").ProducesProblem(StatusCodes.Status404NotFound)

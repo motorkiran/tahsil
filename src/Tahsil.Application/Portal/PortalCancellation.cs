@@ -144,7 +144,7 @@ public sealed class PortalCancellation(
         var subscription = choices.Subscription;
         context.ConsentRecords.Add(ConsentRecord.ForPortal(
             session.CustomerId,
-            kind == CancelKind.Withdrawal ? ConsentType.Withdrawal : ConsentType.Cancellation,
+            kind == CancelKind.Withdrawal ? Domain.Customers.ConsentType.Withdrawal : Domain.Customers.ConsentType.Cancellation,
             choice.Text,
             new Dictionary<string, string>
             {
@@ -215,7 +215,7 @@ public sealed class PortalCancellation(
     private async Task<bool> MayWithdrawAsync(Subscription subscription, DateTimeOffset now, CancellationToken cancellationToken) =>
         now - subscription.CreatedAt < WithdrawalPeriod
         && !(subscription.CheckoutSessionId is { } sessionId
-            && await context.ConsentRecords.AnyAsync(record => record.CheckoutSessionId == sessionId && record.Type == ConsentType.ImmediateStart, cancellationToken));
+            && await context.ConsentRecords.AnyAsync(record => record.CheckoutSessionId == sessionId && record.Type == Domain.Customers.ConsentType.ImmediateStart, cancellationToken));
 
     /// <summary>The configured retention coupon, described, for a subscription without a discount that it could still be given to.</summary>
     private async Task<string?> RetentionOfferAsync(Subscription subscription, string locale, CancellationToken cancellationToken)

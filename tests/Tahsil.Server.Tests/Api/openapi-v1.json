@@ -2457,6 +2457,68 @@
         ]
       }
     },
+    "/api/v1/customers/{id}/consents": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "List a customer's consent records",
+        "description": "The evidence of what the customer was shown and accepted: legal documents, the consent to future charges of a saved card, cancellations and withdrawals. Newest first. Records are kept when a customer is anonymized.\n\nRequires the `tahsil.customers:read` permission.",
+        "operationId": "ListCustomerConsents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeDocuments",
+            "in": "query",
+            "description": "Whether each record carries the rendered document the customer saw, as HTML.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageOfConsentRecordResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The API key is missing, unknown, revoked, expired or of the other mode."
+          },
+          "403": {
+            "description": "The API key does not have `tahsil.customers:read`."
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/customers/by-external-id/{externalId}": {
       "get": {
         "tags": [
@@ -8775,6 +8837,134 @@
           "failed"
         ]
       },
+      "ConsentRecordResponse": {
+        "required": [
+          "id",
+          "type",
+          "documentKey",
+          "documentVersion",
+          "documentHash",
+          "textShown",
+          "context",
+          "checkoutSessionId",
+          "portalSessionId",
+          "subscriptionId",
+          "ipAddress",
+          "userAgent",
+          "acceptedAt",
+          "document"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The record's ID.",
+            "format": "uuid"
+          },
+          "type": {
+            "description": "What was accepted.",
+            "$ref": "#/components/schemas/ConsentType"
+          },
+          "documentKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The legal document's key, for document consents."
+          },
+          "documentVersion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The document's version."
+          },
+          "documentHash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The SHA-256 of the rendered document, in hexadecimal."
+          },
+          "textShown": {
+            "type": "string",
+            "description": "The exact checkbox or button text."
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What it was about: the price shown, amounts, the related subscription or card."
+          },
+          "checkoutSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The checkout session it was accepted in.",
+            "format": "uuid"
+          },
+          "portalSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The portal session it was accepted in.",
+            "format": "uuid"
+          },
+          "subscriptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The subscription it concerns.",
+            "format": "uuid"
+          },
+          "ipAddress": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The address it was accepted from."
+          },
+          "userAgent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The browser it was accepted in."
+          },
+          "acceptedAt": {
+            "type": "string",
+            "description": "When it was accepted.",
+            "format": "date-time"
+          },
+          "document": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The rendered document as the customer saw it, as HTML; only when asked for."
+          }
+        },
+        "description": "The evidence of what a customer was shown and accepted: a legal document (with its key, version and the SHA-256 of\nwhat was rendered), or a consent such as the one to future charges of a saved card, with the exact text shown."
+      },
+      "ConsentType": {
+        "enum": [
+          "pre_information",
+          "distance_sales_contract",
+          "subscription_contract",
+          "privacy_notice_shown",
+          "immediate_start",
+          "card_storage",
+          "marketing",
+          "cancellation",
+          "withdrawal",
+          "plan_change",
+          "custom"
+        ]
+      },
       "CouponDuration": {
         "enum": [
           "once",
@@ -10145,7 +10335,17 @@
         "required": [
           "customer",
           "auditEvents",
-          "exportedAt"
+          "exportedAt",
+          "subscriptions",
+          "invoices",
+          "payments",
+          "refunds",
+          "paymentMethods",
+          "balanceTransactions",
+          "checkoutSessions",
+          "consents",
+          "notifications",
+          "usage"
         ],
         "type": "object",
         "properties": {
@@ -10161,9 +10361,97 @@
           "exportedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionResponse"
+            }
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceResponse"
+            }
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            }
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundResponse"
+            }
+          },
+          "paymentMethods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodResponse"
+            }
+          },
+          "balanceTransactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BalanceTransactionResponse"
+            }
+          },
+          "checkoutSessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckoutSessionResponse"
+            }
+          },
+          "consents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentRecordResponse"
+            }
+          },
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerNotificationResponse"
+            }
+          },
+          "usage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerUsageExport"
+            }
           }
         },
         "description": "Everything Tahsil holds about a customer, for data subject requests (KVKK)."
+      },
+      "CustomerNotificationResponse": {
+        "required": [
+          "type",
+          "sent",
+          "reason",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "sent": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "An email Tahsil sent the customer, or skipped: its type, and why it was not sent."
       },
       "CustomerResponse": {
         "required": [
@@ -10352,6 +10640,37 @@
           "individual",
           "company"
         ]
+      },
+      "CustomerUsageExport": {
+        "required": [
+          "meter",
+          "events",
+          "first",
+          "last"
+        ],
+        "type": "object",
+        "properties": {
+          "meter": {
+            "$ref": "#/components/schemas/MeterSummary"
+          },
+          "events": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "first": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "How much usage Tahsil keeps of the customer on a meter; the usage summaries give its quantities."
       },
       "CustomerUsageResponse": {
         "required": [
@@ -11610,6 +11929,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ConnectionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One page of a list. Pass `nextCursor` as the `cursor` parameter to get the next page; it is\n`null` on the last page. Cursors are opaque."
+      },
+      "PageOfConsentRecordResponse": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentRecordResponse"
             }
           },
           "nextCursor": {

@@ -4,6 +4,10 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 
 ## [0.1.0] - Unreleased
 
+### Security
+
+- `System.Security.Cryptography.Pkcs` and `System.Security.Cryptography.Xml`, which MimeKit and Data Protection bring in, are pinned to 10.0.14 against GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj and GHSA-r955-8q5j-3h83; the Microsoft packages are on 10.0.14.
+
 ### Added
 
 - The server foundation: configuration validated at startup, with Test and Live modes (Live mode refuses plain HTTP and the public development master key) and a `Tahsil-Mode: test` header and page banner in Test mode.
@@ -77,3 +81,4 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 - The admin panel's home page is a dashboard: per currency, monthly recurring revenue (without tax and metered usage, after discounts), active and trialing subscriptions, new and ended subscriptions this month, and over the last 30 days revenue, failed payments, the share of invoices recovered from dunning and payments still awaiting the provider. Figures are refreshed every five minutes.
 - Admin panel: a settings page that shows the configuration the installation runs with, defaults included and secrets masked; on a customer's page, a portal link to send them and a timeline of their latest events; on a subscription's page, how it stands in Kimlik.
 - "Run a test payment" on the admin panel's connections page: a small invoice (`Tahsil:Providers:SmokeTestAmount`) that the operator pays with a real card on its hosted page, through the connection its currency is routed to; it is refunded as soon as it is paid (refund reason `connection_test`), and the connection shows when a test payment last passed (`lastTestPaymentAt`).
+- `GET /api/v1/customers/{id}/consents` lists the evidence of what a customer was shown and accepted (`?includeDocuments=true` adds the documents as they saw them), and the admin panel shows it on the customer's page. The customer export (`GET /customers/{id}/export`) now holds everything that names the customer: subscriptions, invoices, payments, refunds, cards, balance history, checkout sessions, consents, emails and how much usage is kept.

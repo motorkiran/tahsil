@@ -355,7 +355,14 @@ public sealed class DeleteCustomerHandler(
 
 /// <summary>Everything Tahsil holds about a customer, for data subject requests (SEC-15).</summary>
 public sealed class ExportCustomerHandler(
-    ITahsilDbContext context, IAuthorizer authorizer, CustomerMapper mapper, ListAuditEventsHandler auditEvents, BillingClock clock)
+    ITahsilDbContext context,
+    IAuthorizer authorizer,
+    CustomerMapper mapper,
+    ListAuditEventsHandler auditEvents,
+    Subscriptions.SubscriptionMapper subscriptions,
+    InvoiceMapper invoices,
+    Checkout.CheckoutMapper checkouts,
+    BillingClock clock)
 {
     public async Task<Result<CustomerExportResponse>> HandleAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -379,8 +386,84 @@ public sealed class ExportCustomerHandler(
         }
         while (cursor is not null);
 
-        return new CustomerExportResponse(mapper.ToResponse(customer, await context.BalancesOfAsync(customer.Id, cancellationToken)), trail, clock.GetUtcNow());
+        // Everything that names the customer (SEC-15): what they bought and paid, their cards, what they accepted, what they were sent and what they used.
+        var subscribed = await context.Subscriptions.AsNoTracking().Include(row => row.Items).Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var invoiced = await context.Invoices.AsNoTracking().Include(row => row.Lines).Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var paid = await context.Payments.AsNoTracking().Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var paymentIds = paid.Select(payment => payment.Id).ToList();
+        var refunded = await context.Refunds.AsNoTracking().Where(row => paymentIds.Contains(row.PaymentId)).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var cards = await context.PaymentMethods.AsNoTracking().Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var balance = await context.BalanceTransactions.AsNoTracking().Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var sessions = await context.CheckoutSessions.AsNoTracking().Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var consents = await context.ConsentRecords.AsNoTracking().Where(row => row.CustomerId == id).OrderBy(row => row.AcceptedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var notified = await context.NotificationLogs.AsNoTracking().Where(row => row.CustomerId == id).OrderBy(row => row.CreatedAt).ThenBy(row => row.Id).ToListAsync(cancellationToken);
+        var used = await context.UsageEvents.Where(row => row.CustomerId == id)
+            .GroupBy(row => row.MeterId)
+            .Select(group => new { MeterId = group.Key, Events = group.LongCount(), First = group.Min(row => row.OccurredAt), Last = group.Max(row => row.OccurredAt) })
+            .ToListAsync(cancellationToken);
+        var meterIds = used.Select(row => row.MeterId).ToList();
+        var meters = await context.Meters.AsNoTracking().Where(meter => meterIds.Contains(meter.Id)).ToDictionaryAsync(meter => meter.Id, cancellationToken);
+
+        return new CustomerExportResponse(
+            mapper.ToResponse(customer, await context.BalancesOfAsync(customer.Id, cancellationToken)),
+            trail,
+            clock.GetUtcNow(),
+            await subscriptions.ToResponsesAsync(subscribed, cancellationToken),
+            [.. invoiced.Select(invoices.ToResponse)],
+            [.. paid.Select(Payments.PaymentMapper.ToResponse)],
+            [.. refunded.Select(Payments.RefundMapper.ToResponse)],
+            [.. cards.Select(card => PaymentMethods.PaymentMethodMapper.ToResponse(card, customer.DefaultPaymentMethodId))],
+            [.. balance.Select(InvoiceMapper.ToResponse)],
+            [.. sessions.Select(checkouts.ToResponse)],
+            [.. consents.Select(consent => ConsentMapper.ToResponse(consent, includeDocument: false))],
+            [.. notified.Select(row => new CustomerNotificationResponse(row.Type, row.Status == Domain.Notifications.NotificationStatus.Sent, row.Reason, row.CreatedAt))],
+            [.. used.OrderBy(row => meters[row.MeterId].Key, StringComparer.Ordinal).Select(row => new CustomerUsageExport(Catalog.CatalogMapping.ToSummary(meters[row.MeterId]), row.Events, row.First, row.Last))]);
     }
+}
+
+/// <summary>A customer's consent records (CUS §6), the evidence of what they were shown and accepted, newest first.</summary>
+public sealed class ListConsentsHandler(ITahsilDbContext context, IAuthorizer authorizer)
+{
+    /// <param name="customerId">The customer.</param>
+    /// <param name="includeDocuments">Whether each record carries the rendered document the customer saw.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    public async Task<Result<Page<ConsentRecordResponse>>> HandleAsync(Guid customerId, bool includeDocuments, CancellationToken cancellationToken)
+    {
+        if (authorizer.Require(TahsilPermissions.CustomersRead) is { IsFailure: true } denied)
+        {
+            return denied.Error;
+        }
+
+        if (!await context.Customers.AnyAsync(customer => customer.Id == customerId, cancellationToken))
+        {
+            return Model.CustomerErrors.NotFound;
+        }
+
+        var records = await context.ConsentRecords.AsNoTracking()
+            .Where(record => record.CustomerId == customerId)
+            .OrderByDescending(record => record.AcceptedAt).ThenByDescending(record => record.Id)
+            .ToListAsync(cancellationToken);
+        return new Page<ConsentRecordResponse>([.. records.Select(record => ConsentMapper.ToResponse(record, includeDocuments))], null);
+    }
+}
+
+public static class ConsentMapper
+{
+    public static ConsentRecordResponse ToResponse(Model.ConsentRecord record, bool includeDocument) => new(
+        record.Id,
+        record.Type.Map<ConsentType>(),
+        record.DocumentKey,
+        record.DocumentVersion,
+        record.DocumentHash is { } hash ? Convert.ToHexStringLower(hash) : null,
+        record.TextShown,
+        record.Context,
+        record.CheckoutSessionId,
+        record.PortalSessionId,
+        record.SubscriptionId,
+        record.IpAddress?.ToString(),
+        record.UserAgent,
+        record.AcceptedAt,
+        includeDocument ? record.ReadDocument() : null);
 }
 
 /// <summary>When a customer's Kimlik link may change (CUS-3).</summary>

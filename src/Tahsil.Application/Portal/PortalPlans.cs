@@ -176,7 +176,7 @@ public sealed class PortalPlans(
         // Saved with the change, in its transaction, and confirmed by email (NTF §1).
         var confirmed = ConsentRecord.ForPortal(
             session.CustomerId,
-            ConsentType.PlanChange,
+            Domain.Customers.ConsentType.PlanChange,
             quote.ButtonText,
             new Dictionary<string, string>
             {
