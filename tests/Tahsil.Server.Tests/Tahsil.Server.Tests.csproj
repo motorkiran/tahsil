@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tahsil.Server\Tahsil.Server.csproj" />
+    <ProjectReference Include="..\..\sdk\Tahsil.Client\Tahsil.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

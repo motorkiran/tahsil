@@ -13,6 +13,9 @@
     <Project Path="src/Tahsil.Providers.Stripe/Tahsil.Providers.Stripe.csproj" />
     <Project Path="src/Tahsil.Server/Tahsil.Server.csproj" />
   </Folder>
+  <Folder Name="/sdk/">
+    <Project Path="sdk/Tahsil.Client/Tahsil.Client.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Tahsil.Architecture.Tests/Tahsil.Architecture.Tests.csproj" />
     <Project Path="tests/Tahsil.Domain.Tests/Tahsil.Domain.Tests.csproj" />

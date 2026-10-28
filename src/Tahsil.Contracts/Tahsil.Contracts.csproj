@@ -2,6 +2,13 @@
 
   <PropertyGroup>
     <Description>The models of the Tahsil API and its webhook events, shared by the server and the .NET SDK.</Description>
+    <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>tahsil;billing;subscriptions;payments;invoices</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 
 </Project>

@@ -8,6 +8,7 @@
     <!-- The host references every project in src/, so their assemblies land next to the tests. SDK projects
          (sdk/) are not referenced by the host and are added here when they are created. -->
     <ProjectReference Include="..\..\src\Tahsil.Server\Tahsil.Server.csproj" />
+    <ProjectReference Include="..\..\sdk\Tahsil.Client\Tahsil.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
