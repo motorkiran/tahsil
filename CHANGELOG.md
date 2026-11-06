@@ -11,6 +11,7 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 ### Fixed
 
 - In Test mode, moving the clock while the background workers were sending an email could send it twice: time travel and the workers no longer run at the same time.
+- Request traces no longer record the access tokens in the paths of hosted pages (checkout, portal, invoice and simulator pages); they record `{token}` instead.
 
 ### Added
 

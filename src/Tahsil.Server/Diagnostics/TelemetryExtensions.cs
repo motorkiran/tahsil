@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -12,7 +13,7 @@ namespace Tahsil.Server.Diagnostics;
 /// OpenTelemetry traces, metrics and logs. Export is switched on by the standard <c>OTEL_EXPORTER_OTLP_ENDPOINT</c>
 /// setting; without it nothing is exported.
 /// </summary>
-internal static class TelemetryExtensions
+internal static partial class TelemetryExtensions
 {
     private const string ServiceName = "tahsil";
 
@@ -35,7 +36,12 @@ internal static class TelemetryExtensions
             .WithTracing(tracing => tracing
                 .AddSource(TahsilDiagnostics.Name)
                 .AddAspNetCoreInstrumentation(options =>
-                    options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
+                {
+                    options.Filter = context => !context.Request.Path.StartsWithSegments("/health");
+
+                    // Hosted pages carry their access token in the path; traces keep the path without it (SEC-15).
+                    options.EnrichWithHttpRequest = (activity, request) => activity.SetTag("url.path", WithoutTokens(request.Path.Value));
+                })
                 .AddHttpClientInstrumentation()
                 .AddNpgsql());
 
@@ -46,6 +52,17 @@ internal static class TelemetryExtensions
 
         return builder;
     }
+
+    /// <summary>
+    /// The path with every segment that looks like an access token replaced by <c>{token}</c>: the checkout's
+    /// <c>cs_…</c>, the portal's <c>ps_…</c>, and the long random segments of hosted invoice and simulator pages.
+    /// IDs, which grant nothing by themselves, stay.
+    /// </summary>
+    internal static string WithoutTokens(string? path) =>
+        string.IsNullOrEmpty(path) ? "/" : string.Join('/', path.Split('/').Select(segment => TokenSegment().IsMatch(segment) ? "{token}" : segment));
+
+    [GeneratedRegex("^(?:(?:cs|ps)_[A-Za-z0-9_-]{16,}|[A-Za-z0-9_-]{40,})$")]
+    private static partial Regex TokenSegment();
 
     /// <summary>The release version (<c>0.1.0</c>), without the commit suffix the SDK appends.</summary>
     public static string ServiceVersion()
