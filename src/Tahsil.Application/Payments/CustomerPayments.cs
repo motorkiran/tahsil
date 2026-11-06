@@ -66,7 +66,8 @@ public sealed class CustomerPayments(
             PaymentId = payment.Id,
             Reference = payment.Reference,
             Amount = PaymentRequests.AmountOf(payment.Amount, payment.Currency),
-            Purpose = payment.Purpose == PaymentPurpose.Setup ? Providers.Abstractions.PaymentPurpose.Setup : Providers.Abstractions.PaymentPurpose.Charge,
+            // A verification charge (ADP-15) is a charge that saves the card, for providers that cannot save one otherwise.
+            Purpose = payment is { Purpose: PaymentPurpose.Setup, Amount: 0 } ? Providers.Abstractions.PaymentPurpose.Setup : Providers.Abstractions.PaymentPurpose.Charge,
             SaveCard = payment.SaveCard,
             ProviderCustomer = await requests.ProviderCustomerAsync(payment.CustomerId, connection.Id, cancellationToken),
             Customer = await requests.CustomerAsync(payment.CustomerId, ipAddress, cancellationToken),

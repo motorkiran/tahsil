@@ -111,8 +111,12 @@ Craftgate documents more test cards for failures: `5100 0500 0000 6661` (insuffi
   payment can be refunded from the next day. Tahsil refuses an early partial refund before calling Craftgate.
 - **Renewals stay on your POS.** Tahsil asks Craftgate not to retry a declined renewal on another POS, so a renewal is
   charged where you chose.
-- **Saving a card without a payment** is not available with Craftgate yet, so checkout sessions in `setup` mode and
-  trials that need a card are not offered on Craftgate connections.
+- **Saving a card without a payment.** Craftgate saves cards only with a payment. Checkout sessions in `setup` mode,
+  trials that collect a card and adding a card in the customer portal need a **verification charge**: turn it on for
+  the connection (`"verificationCharge": { "enabled": true, "amount": 100 }` in the API or the provisioning file, or
+  the switch on the admin panel's connection form). Saving a card then charges that amount (₺1.00 by default, at least
+  the provider's minimum) with the customer present, saves the card and gives the money back at once, by a cancel on
+  the same day. The page tells the customer before they pay. Without it, these flows are not offered.
 - **Retries are safe.** Each payment and refund carries Tahsil's reference as its idempotency key; when Craftgate does
   not answer, Tahsil sends the same request once more, and otherwise asks Craftgate later instead of guessing.
 - **Failures.** Tahsil turns Craftgate's error groups into its own failure codes, such as `insufficient_funds` or

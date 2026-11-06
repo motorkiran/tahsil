@@ -127,6 +127,61 @@ public sealed class KimlikReferenceTests : IDisposable
         problem.ToJsonString().ShouldContain("customerDetails.kimlikSubscriber");
     }
 
+    [Fact]
+    [Trait("Requirement", "CHK-4")]
+    public async Task TwoCheckoutsForAKimlikPlan_MakeOneSubscription_AndTheSecondPaymentIsRefunded()
+    {
+        await using var host = Host();
+        using var api = await ClientAsync(host);
+        using (var planned = await api.PatchJsonAsync("/api/v1/products/team", new UpdateProductRequest { KimlikPlan = "pro" }))
+        {
+            planned.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        var subscriber = new KimlikSubscriber(KimlikSubscriberType.User, _kimlik.AddUser());
+        var first = await SubscriptionSessionAsync(api, subscriber);
+        var second = await SubscriptionSessionAsync(api, subscriber);
+        using var browser = Checkout.CheckoutBrowser.Open(host);
+        var form = Checkout.CheckoutBrowser.Form("ada@example.com", "Ada Lovelace", ["pre-information", "distance-sales"]);
+        form["Form.CardStorage"] = "true";
+
+        // Both forms are submitted before either payment completes, as from two tabs.
+        using var firstSubmitted = await Checkout.CheckoutBrowser.SubmitAsync(browser, first, form);
+        using var secondSubmitted = await Checkout.CheckoutBrowser.SubmitAsync(browser, second, form);
+        using var firstPaid = await Checkout.CheckoutBrowser.PayOnTheEmbedAsync(host, browser, firstSubmitted, "4242424242424242");
+        using var secondPaid = await Checkout.CheckoutBrowser.PayOnTheEmbedAsync(host, browser, secondSubmitted, "4242424242424242");
+        await host.RunWorkersUntilIdleAsync();
+
+        // A third session for the same subscriber is refused when its form is submitted, before any payment.
+        var third = await SubscriptionSessionAsync(api, subscriber);
+        using var thirdSubmitted = await Checkout.CheckoutBrowser.SubmitAsync(browser, third, form);
+        var thirdPage = await Checkout.CheckoutBrowser.ParseAsync(thirdSubmitted);
+
+        firstPaid.StatusCode.ShouldBe(HttpStatusCode.OK);
+        secondPaid.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        secondPaid.Headers.Location!.OriginalString.ShouldEndWith("?failed=subscription.kimlik_plan_conflict");
+        var customer = (await GetAsync<Page<CustomerResponse>>(api, "/api/v1/customers?email=ada@example.com")).Items.ShouldHaveSingleItem();
+        (await GetAsync<Page<SubscriptionResponse>>(api, $"/api/v1/subscriptions?customer={customer.Id}")).Items.ShouldHaveSingleItem();
+        var payments = await host.QueryAsync<string>(
+            $"SELECT p.status || ':' || coalesce((SELECT r.reason FROM tahsil.refunds r WHERE r.payment_id = p.id), '-') AS \"Value\" FROM tahsil.payments p WHERE p.customer_id = {customer.Id}");
+        payments.ShouldBe(["succeeded:-", "succeeded:late_success"], ignoreOrder: true);
+        (thirdSubmitted.StatusCode, thirdPage.QuerySelector("#checkout-error")!.TextContent).ShouldBe(
+            (HttpStatusCode.BadRequest, "You already have a subscription to this service. Change its plan in your account instead."));
+    }
+
+    private static async Task<Uri> SubscriptionSessionAsync(HttpClient api, KimlikSubscriber subscriber)
+    {
+        using var created = await api.PostJsonAsync("/api/v1/checkout-sessions", new CreateCheckoutSessionRequest
+        {
+            Mode = CheckoutMode.Subscription,
+            Items = [new CheckoutItemRequest { Price = "team-monthly-try" }],
+            CustomerDetails = new CheckoutCustomerDetails { Locale = "en", KimlikSubscriber = subscriber },
+            SuccessUrl = "https://shop.example.com/done",
+        });
+        created.StatusCode.ShouldBe(HttpStatusCode.Created, await created.Content.ReadAsStringAsync(CancellationToken));
+        return (await created.ReadAsync<CheckoutSessionResponse>()).Url!;
+    }
+
     private static Task<HttpResponseMessage> ProductAsync(HttpClient api, string key, string plan) =>
         api.PostJsonAsync("/api/v1/products", new CreateProductRequest { Key = key, Name = key, KimlikPlan = plan });
 

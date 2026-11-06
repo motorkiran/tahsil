@@ -80,6 +80,11 @@ public sealed class CreateConnectionHandler(
         }
 
         var connection = created.Value;
+        if (request.VerificationCharge is { } verification && CardSetups.Apply(connection, verification, provider, clock.GetUtcNow()) is { IsFailure: true } invalid)
+        {
+            return invalid.Error;
+        }
+
         context.ProviderConnections.Add(connection);
         idempotency.RecordCreated(ResourceTypes.Connection, connection.Id);
         audit.Record(AuditActions.ConnectionCreated, AuditSubject.Of(AuditSubjects.Connection, connection.Id), new Dictionary<string, object?>
@@ -89,6 +94,7 @@ public sealed class CreateConnectionHandler(
             ["environment"] = request.Environment,
             ["enabled"] = connection.IsEnabled,
             ["credentials"] = credentials.Value.Keys.Order(StringComparer.Ordinal).ToArray(),
+            ["verificationCharge"] = connection.VerificationChargeAmount,
         });
         try
         {
@@ -173,8 +179,24 @@ public sealed class UpdateConnectionHandler(
             return updated.Error;
         }
 
+        // After the settings: they decide what the provider can do (PayTR's direct form mode).
+        if (request.VerificationCharge is { } verification && CardSetups.Apply(connection, verification, provider, now) is { IsFailure: true } invalid)
+        {
+            return invalid.Error;
+        }
+
         var data = new Dictionary<string, object?>(Changes.Of(
-            ("name", request.Name is not null), ("credentials", request.Credentials is { Count: > 0 }), ("settings", request.Settings is not null), ("enabled", request.Enabled is not null), ("checkoutsPaused", request.CheckoutsPaused is not null)));
+            ("name", request.Name is not null),
+            ("credentials", request.Credentials is { Count: > 0 }),
+            ("settings", request.Settings is not null),
+            ("enabled", request.Enabled is not null),
+            ("checkoutsPaused", request.CheckoutsPaused is not null),
+            ("verificationCharge", request.VerificationCharge is not null)));
+        if (request.VerificationCharge is not null)
+        {
+            data["verificationCharge"] = connection.VerificationChargeAmount;
+        }
+
         if (request.Credentials is { Count: > 0 })
         {
             data["credentials"] = request.Credentials.Keys.Order(StringComparer.Ordinal).ToArray();

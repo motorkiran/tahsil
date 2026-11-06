@@ -526,6 +526,28 @@
               "null"
             ]
           },
+          "verificationCharge": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "amount": {
+                "type": [
+                  "string",
+                  "integer"
+                ],
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "default": 100
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          },
           "enabled": {
             "type": "boolean"
           }

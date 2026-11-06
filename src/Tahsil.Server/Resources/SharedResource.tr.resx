@@ -157,6 +157,27 @@
   <data name="Order summary" xml:space="preserve">
     <value>Sipariş özeti</value>
   </data>
+  <data name="+ VAT" xml:space="preserve">
+    <value>+ KDV</value>
+  </data>
+  <data name="You already have a subscription to this service. Change its plan in your account instead." xml:space="preserve">
+    <value>Bu hizmete zaten bir aboneliğiniz var. Bunun yerine hesabınızdan planınızı değiştirin.</value>
+  </data>
+  <data name="You already have a subscription to this service, so this one was not started. Your payment is refunded." xml:space="preserve">
+    <value>Bu hizmete zaten bir aboneliğiniz olduğu için yeni abonelik başlatılmadı. Ödemeniz iade edilir.</value>
+  </data>
+  <data name="{0} will be charged to verify your card and returned at once." xml:space="preserve">
+    <value>Kartınızı doğrulamak için {0} çekilecek ve hemen iade edilecek.</value>
+  </data>
+  <data name="Your card is saved for future payments to {0}." xml:space="preserve">
+    <value>Kartınız {0} için sonraki ödemelerinizde kullanılmak üzere kaydedilir.</value>
+  </data>
+  <data name="The card is charged only for payments you make to {0}." xml:space="preserve">
+    <value>Kartınızdan yalnızca {0} için yaptığınız ödemeler tahsil edilir.</value>
+  </data>
+  <data name="The new card becomes your default and pays for your subscriptions." xml:space="preserve">
+    <value>Yeni kart varsayılan kartınız olur ve aboneliklerinizin ödemelerinde kullanılır.</value>
+  </data>
   <data name="Tax included" xml:space="preserve">
     <value>Dahil olan vergi</value>
   </data>

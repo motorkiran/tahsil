@@ -37,7 +37,13 @@
         </MudTd>
         <MudTd DataLabel="Provider">@context.Provider</MudTd>
         <MudTd DataLabel="Environment">@context.Environment.ToString().ToLowerInvariant()</MudTd>
-        <MudTd DataLabel="Currencies">@string.Join(", ", context.Currencies)</MudTd>
+        <MudTd DataLabel="Currencies">
+            @string.Join(", ", context.Currencies)
+            @if (context.VerificationCharge is { } verification)
+            {
+                <br /><MudText Typo="Typo.caption" Class="verification-charge">Verification charge: @verification.Amount minor units</MudText>
+            }
+        </MudTd>
         <MudTd DataLabel="Last test">
             @if (context.LastTest is { } test)
             {

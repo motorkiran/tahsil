@@ -66,7 +66,14 @@ else
         @if (Model.Setup.IsAvailable)
         {
             <form method="post" asp-page-handler="Add" id="add-card-form">
-                <p class="hint">@L["The new card becomes your default and pays for your subscriptions. Nothing is charged for saving it."]</p>
+                @if (Model.Setup.Amount > 0)
+                {
+                    <p class="hint" id="verification-charge">@L["The new card becomes your default and pays for your subscriptions."] @L["{0} will be charged to verify your card and returned at once.", Model.Money(Model.Setup.Amount, Model.Setup.Currency!)]</p>
+                }
+                else
+                {
+                    <p class="hint">@L["The new card becomes your default and pays for your subscriptions. Nothing is charged for saving it."]</p>
+                }
                 <label class="checkbox"><input type="checkbox" id="card-storage" name="CardStorage" value="true" required /> @Model.ConsentText</label>
                 <button class="button" type="submit" id="add">@L["Add a card"]</button>
             </form>

@@ -68,7 +68,7 @@ From the `Tahsil:Checkout` section: the page's consents and pay button.
 
 | Setting | Default | Description |
 |---|---|---|
-| `ImmediateStartConsent:Enabled` | `true` | Whether the checkout asks customers to agree that the service starts at once, which waives the right of withdrawal. |
+| `ImmediateStartConsent:Enabled` | `true` | Whether the checkout shows the box. |
 | `ImmediateStartConsent:Text` | – | The checkbox text per locale; Tahsil's own when omitted. |
 | `LegalDocuments` | – | The legal documents of the checkout; the starter pre-information form and distance sales contract when none are configured. |
 | `LegalDocuments:{n}:CheckboxText` | – | The checkbox text per locale; a text for the document's type when omitted. |
@@ -81,6 +81,9 @@ From the `Tahsil:Checkout` section: the page's consents and pay button.
 | `LegalDocuments:{n}:Type` | – | `pre_information`, `distance_sales_contract`, `subscription_contract`, `privacy_notice` or `custom`. |
 | `LegalDocuments:{n}:Url` | – | Instead of a template, a page per locale that the checkout links to. |
 | `LegalDocuments:{n}:Version` | – | Changes whenever the content does, so earlier acceptances stay provable. |
+| `MarketingConsent` |  | An optional marketing consent box, off by default; never a condition of the purchase. |
+| `MarketingConsent:Enabled` | `false` | Whether the checkout shows the box. |
+| `MarketingConsent:Text` | – | The checkbox text per locale; Tahsil's own when omitted. |
 | `MaxAttemptsPerAddressPerHour` | `10` | Attempts per network (an IPv4 address or an IPv6 /64) per hour, across sessions. |
 | `MaxFailedAttemptsPerCustomerPerDay` | `10` | Failed attempts per customer per day. |
 | `MaxPaymentAttempts` | `5` | Payment attempts per session. |

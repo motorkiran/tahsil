@@ -229,6 +229,9 @@ public sealed record ProvisionedConnection
     /// <summary>The provider's setting fields, as strings, numbers or booleans; omitted ones keep their values.</summary>
     public IReadOnlyDictionary<string, JsonElement>? Settings { get; init; }
 
+    /// <summary>Kept as it is when omitted.</summary>
+    public VerificationCharge? VerificationCharge { get; init; }
+
     public bool Enabled { get; init; } = true;
 }
 

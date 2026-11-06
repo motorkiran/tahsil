@@ -23,6 +23,23 @@ public sealed class CheckoutSessionTests(TahsilServerFixture server)
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
+    [Trait("Requirement", "CAT-15")]
+    public async Task APriceTaxIsAddedTo_IsShownWithKdv_AndWhatTheCustomerPays()
+    {
+        await using var host = Host();
+        using var client = await host.CreateClientWithAsync(Permissions);
+        await CatalogAsync(client);
+        var session = await CreateAsync(client, Payment(("credits-1000", 1), ("setup-fee", 1)) with { Locale = "tr" });
+        using var browser = host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var response = await browser.GetAsync(session.Url, CancellationToken);
+        var page = await CheckoutBrowser.ParseAsync(response);
+
+        page.QuerySelectorAll("#summary .item .amount").Select(cell => cell.TextContent.Trim()).ShouldBe(["₺299,00", "₺100,00 + KDV (₺120,00)"]);
+        page.QuerySelector("#total-due")!.TextContent.ShouldBe("₺419,00");
+    }
+
+    [Fact]
     [Trait("Requirement", "CHK-1")]
     [Trait("Requirement", "CHK-7")]
     [Trait("Requirement", "CHK-31")]

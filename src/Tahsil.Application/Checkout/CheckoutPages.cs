@@ -31,6 +31,7 @@ public interface IPageCaller
 /// <param name="CollectsAddress">Whether the form asks for the address and phone (CHK-10).</param>
 /// <param name="Subscription">For subscription sessions, the terms the page states.</param>
 /// <param name="Discount">The session's discount as the page names it, such as <c>Launch discount (−50%, 3 months)</c>.</param>
+/// <param name="VerificationCharge">What saving the card charges and gives back at once (ADP-15), which the page says beforehand; 0 when nothing.</param>
 public sealed record CheckoutView(
     CheckoutSession Session,
     Customer? Customer,
@@ -39,7 +40,8 @@ public sealed record CheckoutView(
     ContentSecuritySources ContentSecurity,
     bool CollectsAddress,
     CheckoutSubscriptionView? Subscription,
-    string? Discount);
+    string? Discount,
+    long VerificationCharge = 0);
 
 /// <summary>
 /// A subscription session's terms as the page states them (CHK-8, CHK-13): the plan, how often and how much renewals
@@ -61,7 +63,11 @@ public sealed record CheckoutSubmission(
     bool CardStorage,
     string Locale,
     IPAddress? IpAddress,
-    string? UserAgent);
+    string? UserAgent)
+{
+    /// <summary>Whether the customer ticked the optional marketing box (CHK-15).</summary>
+    public bool Marketing { get; init; }
+}
 
 public enum CheckoutReturnState
 {
@@ -166,7 +172,8 @@ public sealed class CheckoutPages(
             sources.Of(connection),
             session.BillingDetailsCollection == BillingDetailsCollectionMode.Required || requiredFields.Contains(CustomerField.Address) || requiredFields.Contains(CustomerField.Phone),
             await SubscriptionViewAsync(session, locale, cancellationToken),
-            await DiscountTextAsync(session, locale, cancellationToken));
+            await DiscountTextAsync(session, locale, cancellationToken),
+            IsSetup(session) ? CardSetups.AmountFor(connection, provider, session.Currency) ?? 0 : 0);
     }
 
     private async Task<string?> DiscountTextAsync(CheckoutSession session, string locale, CancellationToken cancellationToken)
@@ -286,6 +293,9 @@ public sealed class CheckoutPages(
         return started.IsFailure ? started.Error : new CheckoutSubmitted(started.Value, null);
     }
 
+    /// <summary>Whether submitting saves a card without a purchase: a setup session, or a trial that collects a card (CHK-14).</summary>
+    public static bool IsSetup(CheckoutSession session) => session.Mode == CheckoutMode.Setup || session.Subscription is { HasTrial: true, SavesCard: true };
+
     /// <summary>Whether the session saves the card for future charges, which the customer agrees to in a box of its own (CHK-13).</summary>
     public static bool SavesCard(CheckoutSession session) => session.Mode == CheckoutMode.Setup || session.Subscription is { SavesCard: true };
 
@@ -391,8 +401,12 @@ public sealed class CheckoutPages(
 
         return payment.Status switch
         {
-            Domain.Payments.PaymentStatus.Succeeded when session.Mode == CheckoutMode.Setup && payment.PaymentMethodId is null =>
+            Domain.Payments.PaymentStatus.Succeeded when payment.Purpose == PaymentPurpose.Setup && payment.PaymentMethodId is null =>
                 new CheckoutReturn(CheckoutReturnState.Failed, null, CheckoutPageErrors.CardNotSaved.Code),
+
+            // Otherwise a subscription session stays open after a successful payment only when the Kimlik plan rule refused it (CHK-4).
+            Domain.Payments.PaymentStatus.Succeeded when session.Mode == CheckoutMode.Subscription =>
+                new CheckoutReturn(CheckoutReturnState.Failed, null, Kimlik.KimlikPlanRule.Conflict.Code),
             Domain.Payments.PaymentStatus.Failed or Domain.Payments.PaymentStatus.Canceled => new CheckoutReturn(CheckoutReturnState.Failed, null, payment.FailureCode),
             _ => new CheckoutReturn(CheckoutReturnState.Pending, null, null),
         };
@@ -492,6 +506,12 @@ public sealed class CheckoutPages(
             return CheckoutPageErrors.DiscountRemoved;
         }
 
+        if (await completion.KimlikConflictAsync(session, customer.Value, cancellationToken) is { } kimlikConflict)
+        {
+            // CHK-4: the customer subscribed to a Kimlik plan since the session was created; nothing is charged.
+            return kimlikConflict;
+        }
+
         var shown = new LegalDocumentCustomer(details.Name, details.Email, details.Type, details.TaxId, details.TaxOffice, details.Address, details.Phone);
         var evidence = new Dictionary<string, string>
         {
@@ -522,6 +542,12 @@ public sealed class CheckoutPages(
                 customer.Value.Id, ConsentType.ImmediateStart, CheckoutTexts.ImmediateStart(pageOptions.Value, submission.Locale), evidence, submission.IpAddress, submission.UserAgent, now, session.Id));
         }
 
+        if (submission.Marketing && pageOptions.Value.MarketingConsent.Enabled)
+        {
+            var text = CheckoutTexts.Marketing(pageOptions.Value, merchant.Value.DisplayName ?? string.Empty, submission.Locale);
+            context.ConsentRecords.Add(ConsentRecord.Create(customer.Value.Id, ConsentType.Marketing, text, evidence, submission.IpAddress, submission.UserAgent, now, session.Id));
+        }
+
         if (session.Subscription is { NeedsPayment: false })
         {
             await completion.CompleteTrialAsync(session, customer.Value.Id, now, cancellationToken);
@@ -537,14 +563,21 @@ public sealed class CheckoutPages(
             context.ConsentRecords.Add(cardStorage);
         }
 
-        // A setup saves a card for nothing now: for setup sessions and for a trial that collects a card (CHK-14).
+        // A setup saves a card for nothing now: for setup sessions and for a trial that collects a card (CHK-14). Without
+        // native support it charges the connection's verification amount, which is given back at once (ADP-15).
         var setup = session.Mode == CheckoutMode.Setup || session.Subscription is { HasTrial: true };
+        long? setupAmount = setup && registry.Find(connection.Provider) is { } provider ? CardSetups.AmountFor(connection, provider, session.Currency) : 0;
+        if (setupAmount is null)
+        {
+            return CheckoutErrors.NotSupportedByConnection("save cards without a payment");
+        }
+
         var payment = Payment.ForCustomer(
             customer.Value.Id,
             null,
             session.Id,
             connection.Id,
-            setup ? 0 : session.Quote.AmountDue,
+            setup ? setupAmount.Value : session.Quote.AmountDue,
             session.Currency,
             setup ? PaymentPurpose.Setup : PaymentPurpose.Charge,
             saveCard: SavesCard(session),

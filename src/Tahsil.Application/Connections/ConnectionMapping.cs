@@ -41,6 +41,7 @@ public sealed class ConnectionMapper(ConnectionSecrets secrets, ProviderRegistry
                 ? new ConnectionTestResponse(connection.LastTestStatus!.Value.Map<Contracts.ConnectionTestStatus>(), connection.LastTestMessage, testedAt)
                 : null,
             connection.LastTestPaymentAt,
+            CardSetups.ToResponse(connection),
             connection.CreatedAt,
             connection.UpdatedAt);
     }

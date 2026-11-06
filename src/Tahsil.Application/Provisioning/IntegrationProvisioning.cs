@@ -37,6 +37,7 @@ public sealed class IntegrationProvisioning(
                     Environment = declared.Environment,
                     Credentials = declared.Credentials,
                     Settings = declared.Settings,
+                    VerificationCharge = declared.VerificationCharge,
                     Enabled = declared.Enabled,
                 },
                 cancellationToken);
@@ -68,7 +69,9 @@ public sealed class IntegrationProvisioning(
         var credentialsChange = (declared.Credentials ?? new Dictionary<string, string>())
             .Any(field => string.IsNullOrWhiteSpace(field.Value) ? current.ContainsKey(field.Key) : current.GetValueOrDefault(field.Key) != field.Value.Trim());
         var settingsChange = !Same(existing.Settings, settings.Value);
-        if (existing.Name == declared.Name.Trim() && existing.IsEnabled == declared.Enabled && !credentialsChange && !settingsChange)
+        var verificationChange = declared.VerificationCharge is { } verification
+            && existing.VerificationChargeAmount != (verification.Enabled ? verification.Amount : null);
+        if (existing.Name == declared.Name.Trim() && existing.IsEnabled == declared.Enabled && !credentialsChange && !settingsChange && !verificationChange)
         {
             return ProvisioningItemResult.Unchanged;
         }
@@ -80,6 +83,7 @@ public sealed class IntegrationProvisioning(
                 Name = declared.Name,
                 Credentials = credentialsChange ? declared.Credentials : null,
                 Settings = settingsChange ? declared.Settings : null,
+                VerificationCharge = verificationChange ? declared.VerificationCharge : null,
                 Enabled = declared.Enabled,
             },
             null,

@@ -26,6 +26,9 @@ public sealed class ProviderConnection : AggregateRoot
     public const int ProviderMaxLength = 32;
     public const int TestMessageMaxLength = 500;
 
+    /// <summary>The largest verification charge, in minor units: it is a small charge, given back at once.</summary>
+    public const long VerificationChargeMaxAmount = 10_000;
+
     private ProviderConnection()
     {
     }
@@ -59,6 +62,12 @@ public sealed class ProviderConnection : AggregateRoot
 
     /// <summary>When an operator's test payment last succeeded through the connection (ADP-18).</summary>
     public DateTimeOffset? LastTestPaymentAt { get; private set; }
+
+    /// <summary>
+    /// For providers that cannot save a card without a payment: the amount charged, and given back at once, to save one
+    /// (ADP-15). Off when <see langword="null"/>.
+    /// </summary>
+    public long? VerificationChargeAmount { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private init; }
 
@@ -120,6 +129,23 @@ public sealed class ProviderConnection : AggregateRoot
         Settings = settings;
         IsEnabled = isEnabled;
         UpdatedAt = now;
+        return Result.Success();
+    }
+
+    /// <summary>Turns verification charges on with their amount, or off with <see langword="null"/> (ADP-15).</summary>
+    public Result SetVerificationCharge(long? amount, DateTimeOffset now)
+    {
+        if (amount is < 1 or > VerificationChargeMaxAmount)
+        {
+            return ConnectionErrors.InvalidVerificationCharge;
+        }
+
+        if (amount != VerificationChargeAmount)
+        {
+            VerificationChargeAmount = amount;
+            UpdatedAt = now;
+        }
+
         return Result.Success();
     }
 

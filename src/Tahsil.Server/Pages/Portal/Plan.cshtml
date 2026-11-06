@@ -56,7 +56,7 @@ else
             {
                 <label class="checkbox offer" data-price="@offer.PriceId">
                     <input type="radio" name="Price" value="@offer.PriceId" checked="@(offer.PriceId == Model.Price)" />
-                    <span>@offer.Name: @Model.Money(offer.Amount, currency) (@offer.Recurrence)@if (offer.IsCurrent) { <span class="status">@L["Current plan"]</span> }</span>
+                    <span>@offer.Name: @if (offer.AmountExcludingTax is { } excluding) { <span class="excluding-tax">@Model.Money(excluding, currency) @L["+ VAT"]</span> <span class="including-tax">(@Model.Money(offer.Amount, currency))</span> } else { @Model.Money(offer.Amount, currency) } (@offer.Recurrence)@if (offer.IsCurrent) { <span class="status">@L["Current plan"]</span> }</span>
                 </label>
             }
         </fieldset>

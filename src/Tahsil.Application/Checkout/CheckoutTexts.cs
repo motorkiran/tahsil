@@ -7,6 +7,9 @@ public sealed class CheckoutPageOptions
 
     public ConsentTextOptions ImmediateStartConsent { get; set; } = new() { Enabled = true };
 
+    /// <summary>An optional marketing consent box, off by default (CHK-15); never a condition of the purchase.</summary>
+    public ConsentTextOptions MarketingConsent { get; set; } = new();
+
     /// <summary>Payment attempts per session (CHK-21).</summary>
     public int MaxPaymentAttempts { get; set; } = 5;
 
@@ -22,7 +25,7 @@ public sealed class CheckoutPageOptions
 
 public sealed class ConsentTextOptions
 {
-    /// <summary>Whether the checkout asks customers to agree that the service starts at once, which waives the right of withdrawal.</summary>
+    /// <summary>Whether the checkout shows the box.</summary>
     public bool Enabled { get; set; }
 
     /// <summary>The checkbox text per locale; Tahsil's own when omitted.</summary>
@@ -40,6 +43,12 @@ public static class CheckoutTexts
         options.ImmediateStartConsent.Text.GetValueOrDefault(locale) ?? (locale == "tr"
             ? "Hizmetin hemen başlamasını istiyorum; hizmet başladığında cayma hakkımı kaybedeceğimi kabul ediyorum."
             : "I want the service to start at once, and I acknowledge that I lose my right of withdrawal when it does.");
+
+    /// <summary>The optional consent to receive marketing messages (CHK-15).</summary>
+    public static string Marketing(CheckoutPageOptions options, string merchant, string locale) =>
+        options.MarketingConsent.Text.GetValueOrDefault(locale) ?? (locale == "tr"
+            ? $"{merchant} tarafından kampanya ve duyurular hakkında ticari elektronik ileti gönderilmesini kabul ediyorum."
+            : $"I agree to receive news and offers from {merchant} by email.");
 
     /// <summary>The consent to save the card for future charges (CHK-13), for a setup session.</summary>
     public static string CardStorage(string merchant, string locale) => locale == "tr"

@@ -38,7 +38,10 @@ public enum PaymentPurpose
 {
     Charge,
 
-    /// <summary>Saves a card without collecting money; the amount is 0.</summary>
+    /// <summary>
+    /// Saves a card without collecting money: the amount is 0, or a verification charge that is given back at once
+    /// (ADP-15).
+    /// </summary>
     Setup,
 }
 
@@ -164,11 +167,33 @@ public sealed class Payment : AggregateRoot
         return payment;
     }
 
-    /// <summary>The setup of a card the customer adds in the portal (PRT-11): nothing is charged, and the card is kept with their consent.</summary>
+    /// <summary>
+    /// The setup of a card the customer adds in the portal (PRT-11), kept with their consent: nothing is charged, or a
+    /// verification charge of <paramref name="amount"/> that is given back at once (ADP-15).
+    /// </summary>
+    /// <param name="customerId">The customer.</param>
+    /// <param name="portalSessionId">The portal session the card is added in.</param>
+    /// <param name="connectionId">The connection that saves the card.</param>
+    /// <param name="amount">0, or the verification charge.</param>
+    /// <param name="currency">The currency of the setup.</param>
+    /// <param name="consentRecordId">The consent to keep the card.</param>
+    /// <param name="expiresAt">When the customer's attempt runs out.</param>
+    /// <param name="actor">The customer on the portal.</param>
+    /// <param name="now">The time.</param>
+    /// <param name="clientNetwork">The customer's network, for the attempt limits.</param>
     public static Payment ForCardUpdate(
-        Guid customerId, Guid portalSessionId, Guid connectionId, string currency, Guid consentRecordId, DateTimeOffset expiresAt, Actor actor, DateTimeOffset now, string? clientNetwork)
+        Guid customerId,
+        Guid portalSessionId,
+        Guid connectionId,
+        long amount,
+        string currency,
+        Guid consentRecordId,
+        DateTimeOffset expiresAt,
+        Actor actor,
+        DateTimeOffset now,
+        string? clientNetwork)
     {
-        var payment = New(customerId, null, null, connectionId, null, 0, currency, PaymentPurpose.Setup, PaymentInitiator.Customer, true, consentRecordId, actor, now, portalSessionId: portalSessionId);
+        var payment = New(customerId, null, null, connectionId, null, amount, currency, PaymentPurpose.Setup, PaymentInitiator.Customer, true, consentRecordId, actor, now, portalSessionId: portalSessionId);
         payment.ExpiresAt = expiresAt;
         payment.ReconcileAt = expiresAt;
         payment.ClientNetwork = clientNetwork;
@@ -352,9 +377,9 @@ public sealed class Payment : AggregateRoot
             throw new ArgumentException("A payment collects an invoice or a checkout, or saves a card in the portal (DOM-16).", nameof(invoiceId));
         }
 
-        if (purpose == PaymentPurpose.Setup ? amount != 0 : amount <= 0)
+        if (purpose == PaymentPurpose.Setup ? amount < 0 : amount <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(amount), amount, "A charge is positive; a setup is 0.");
+            throw new ArgumentOutOfRangeException(nameof(amount), amount, "A charge is positive; a setup is 0, or a verification charge (ADP-15).");
         }
 
         var id = Guid.CreateVersion7(now);

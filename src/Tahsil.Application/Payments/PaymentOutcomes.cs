@@ -94,6 +94,12 @@ public sealed class PaymentOutcomes(
             }
         }
 
+        if (payment is { Purpose: Domain.Payments.PaymentPurpose.Setup, Amount: > 0 })
+        {
+            // ADP-15: the verification charge did its work; it goes back to the customer once this commits.
+            outbox.Enqueue(new RefundVerificationCharge(payment.Id));
+        }
+
         if (outcome.ChargedAmount is { } charged && (charged.MinorUnits != payment.Amount || charged.Currency != payment.Currency))
         {
             // PAY-15: the provider charged something else; an operator decides what to do with it.

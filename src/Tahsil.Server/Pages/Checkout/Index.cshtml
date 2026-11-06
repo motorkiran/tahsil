@@ -37,7 +37,15 @@
                 {
                     <tr class="item">
                         <td>@line.Description</td>
-                        <td class="amount">@Model.Money(line.Total)</td>
+                        @if (line is { TaxInclusive: false, TaxAmount: not 0 })
+                        {
+                            @* A price without tax shows it with "+ KDV" and what the customer pays next to it (CAT-15). *@
+                            <td class="amount"><span class="excluding-tax">@Model.Money(line.Total - line.TaxAmount) @L["+ VAT"]</span> <span class="including-tax">(@Model.Money(line.Total))</span></td>
+                        }
+                        else
+                        {
+                            <td class="amount">@Model.Money(line.Total)</td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -90,7 +98,9 @@
 }
 else
 {
-    <p id="summary">@L["Your card is saved for future payments to {0}. Nothing is charged now.", Model.Merchant.DisplayName ?? string.Empty]</p>
+    <p id="summary">@(Model.View.VerificationCharge > 0
+        ? L["Your card is saved for future payments to {0}.", Model.Merchant.DisplayName ?? string.Empty]
+        : L["Your card is saved for future payments to {0}. Nothing is charged now.", Model.Merchant.DisplayName ?? string.Empty])</p>
 }
 
 @if (Model.Embed is { } embed)
@@ -153,7 +163,7 @@ else
             }
         </fieldset>
 
-        @if (Model.View.Documents.Count > 0 || Model.SavesCard || Model.OffersImmediateStart)
+        @if (Model.View.Documents.Count > 0 || Model.SavesCard || Model.OffersImmediateStart || Model.OffersMarketing)
         {
             <fieldset id="documents">
                 <legend>@L["Terms"]</legend>
@@ -189,13 +199,24 @@ else
                 {
                     <label class="checkbox"><input type="checkbox" class="required-consent" id="card-storage" name="Form.CardStorage" value="true" /> @Model.CardStorageText</label>
                 }
+                @if (Model.OffersMarketing)
+                {
+                    <label class="checkbox"><input type="checkbox" id="marketing" name="Form.Marketing" value="true" /> @Model.MarketingText</label>
+                }
             </fieldset>
         }
 
         <section id="final-summary" aria-label="@L["Before you pay"]">
+            @if (Model.View.VerificationCharge > 0)
+            {
+                @* ADP-15: the customer is told before the card is charged. *@
+                <p id="verification-charge">@L["{0} will be charged to verify your card and returned at once.", Model.Money(Model.View.VerificationCharge)]</p>
+            }
             @if (Model.IsSetup)
             {
-                <p>@L["Nothing is charged now. The card is charged only for payments you make to {0}.", Model.Merchant.DisplayName ?? string.Empty]</p>
+                <p>@(Model.View.VerificationCharge > 0
+                    ? L["The card is charged only for payments you make to {0}.", Model.Merchant.DisplayName ?? string.Empty]
+                    : L["Nothing is charged now. The card is charged only for payments you make to {0}.", Model.Merchant.DisplayName ?? string.Empty])</p>
             }
             else if (terms is not null)
             {

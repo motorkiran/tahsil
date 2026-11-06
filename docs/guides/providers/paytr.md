@@ -112,6 +112,12 @@ With **Card fields on Tahsil's page** on:
   3D Secure. One charge runs per card at a time.
 - A connection keeps its mode while it has saved cards: turning the setting on or off is refused then
   (`connection.mode_change_with_cards`).
+- PayTR saves cards only with a payment. Checkout sessions in `setup` mode, trials that collect a card and adding a
+  card in the customer portal need a **verification charge**: turn it on for the connection (`"verificationCharge": {
+  "enabled": true, "amount": 100 }` in the API or the provisioning file, or the switch on the admin panel's connection
+  form). Saving a card then charges that amount (₺1.00 by default, at least the provider's minimum) with the customer
+  present, saves the card and gives the money back at once, by a cancel on the same day. The page tells the customer
+  before they pay. Without it, these flows are not offered.
 
 What to know before relying on it: PayTR's documentation leaves some of this mode's behavior open, and Tahsil has not
 yet been run against a PayTR store with the three permissions. In particular, Tahsil learns which card PayTR stored

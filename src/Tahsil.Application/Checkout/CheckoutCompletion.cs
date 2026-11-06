@@ -36,6 +36,7 @@ public sealed class CheckoutCompletion(
     IAuditLog audit,
     IOutbox outbox,
     Attention attention,
+    Kimlik.KimlikPlanRule kimlikPlans,
     IOptions<BillingOptions> billing,
     IOptions<SubscriptionOptions> subscriptions)
 {
@@ -47,7 +48,8 @@ public sealed class CheckoutCompletion(
         var session = await context.CheckoutSessions.SingleAsync(candidate => candidate.Id == sessionId, cancellationToken);
         if (session.Status != CheckoutStatus.Open)
         {
-            if (session.PaymentId != payment.Id && payment.Amount > 0)
+            // A verification charge goes back anyway (ADP-15).
+            if (session.PaymentId != payment.Id && payment is { Purpose: PaymentPurpose.Charge, Amount: > 0 })
             {
                 // PAY-14: the session expired or another attempt completed it; nothing needs this money.
                 await attention.RaiseAsync(AttentionKind.LateSuccess, AuditSubjects.Payment, payment.Id, payment.CustomerId, new Dictionary<string, string>
@@ -64,6 +66,24 @@ public sealed class CheckoutCompletion(
         if (payment.Purpose == PaymentPurpose.Setup && payment.PaymentMethodId is null)
         {
             // CHK-24: the provider saved no card; the session stays open for another try.
+            return;
+        }
+
+        var customer = await context.Customers.AsNoTracking().SingleAsync(row => row.Id == payment.CustomerId, cancellationToken);
+        if (await KimlikConflictAsync(session, customer, cancellationToken) is not null)
+        {
+            // CHK-4: another subscription with a Kimlik plan began after the form was submitted, such as in a second
+            // tab; this one is not created, and nothing needs the money. The page says so.
+            await attention.RaiseAsync(AttentionKind.LateSuccess, AuditSubjects.Payment, payment.Id, payment.CustomerId, new Dictionary<string, string>
+            {
+                ["checkoutSessionId"] = session.Id.ToString(),
+                ["reason"] = "kimlik_plan_conflict",
+            }, now, cancellationToken);
+            if (payment is { Purpose: PaymentPurpose.Charge, Amount: > 0 })
+            {
+                outbox.Enqueue(new RefundLateSuccess(payment.Id));
+            }
+
             return;
         }
 
@@ -91,6 +111,22 @@ public sealed class CheckoutCompletion(
         var (subscriptionId, _) = await SubscribeAsync(session, customerId, null, now, cancellationToken);
         Finish(session, null, null, null, subscriptionId, now);
         return subscriptionId;
+    }
+
+    /// <summary>
+    /// The Kimlik plan rule (SUB-2) for a subscription session's customer as things are now (CHK-4): checked when the
+    /// session is created, when the form is submitted and when the payment completes it.
+    /// </summary>
+    public async Task<Error?> KimlikConflictAsync(CheckoutSession session, Domain.Customers.Customer customer, CancellationToken cancellationToken)
+    {
+        if (session.Mode != CheckoutMode.Subscription)
+        {
+            return null;
+        }
+
+        var items = await subscriptionLines.PricedAsync(session.Items.Select(item => (item.PriceId, item.Quantity)), cancellationToken);
+        var recurring = items.Where(item => item.Price.Type == Domain.Catalog.PriceType.Recurring).ToList();
+        return await kimlikPlans.CheckAsync(customer.Id, customer.KimlikSubscriber, recurring, null, cancellationToken);
     }
 
     private void Finish(CheckoutSession session, Guid? paymentId, Guid? invoiceId, Guid? paymentMethodId, Guid? subscriptionId, DateTimeOffset now)

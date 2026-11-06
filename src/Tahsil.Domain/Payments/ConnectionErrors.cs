@@ -19,6 +19,14 @@ public static class ConnectionErrors
         "Test mode takes sandbox connections and the simulator; Live mode takes production connections only.",
         "environment");
 
+    public static readonly Error InvalidVerificationCharge = Error.Validation(
+        "connection.invalid", "A verification charge is 1 to 10,000 minor units.", "verificationCharge.amount");
+
+    public static readonly Error VerificationChargeNotApplicable = Error.Validation(
+        "connection.verification_charge_not_applicable",
+        "The connection saves cards without a payment, or cannot save cards at all; verification charges do not apply to it.",
+        "verificationCharge");
+
     public static Error InvalidCredential(string field, string message) => Error.Validation("connection.invalid_credentials", message, $"credentials.{field}");
 
     public static Error InvalidSetting(string field, string message) => Error.Validation("connection.invalid", message, $"settings.{field}");

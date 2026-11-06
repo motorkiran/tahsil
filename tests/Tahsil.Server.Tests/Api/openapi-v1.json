@@ -8735,6 +8735,7 @@
           "notificationUrl",
           "lastTest",
           "lastTestPaymentAt",
+          "verificationCharge",
           "createdAt",
           "updatedAt"
         ],
@@ -8797,6 +8798,16 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "verificationCharge": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VerificationCharge"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -9323,6 +9334,17 @@
               "object"
             ],
             "description": "The provider's setting fields, as strings, numbers or booleans."
+          },
+          "verificationCharge": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Off when omitted.",
+                "$ref": "#/components/schemas/VerificationCharge"
+              }
+            ]
           },
           "enabled": {
             "type": "boolean"
@@ -13468,6 +13490,17 @@
             ],
             "description": "The provider's setting fields, as strings, numbers or booleans; omitted ones keep their values."
           },
+          "verificationCharge": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Kept as it is when omitted.",
+                "$ref": "#/components/schemas/VerificationCharge"
+              }
+            ]
+          },
           "enabled": {
             "type": "boolean"
           }
@@ -15012,6 +15045,17 @@
               "object"
             ]
           },
+          "verificationCharge": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Unchanged when omitted.",
+                "$ref": "#/components/schemas/VerificationCharge"
+              }
+            ]
+          },
           "enabled": {
             "type": [
               "null",
@@ -15601,6 +15645,29 @@
           "metered",
           null
         ]
+      },
+      "VerificationCharge": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether setups use a verification charge."
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Minor units, 1 to 10,000; the provider's minimum for the currency when that is higher.",
+            "format": "int64",
+            "default": 100
+          }
+        },
+        "description": "For providers that cannot save a card without a payment (capability `setup: verification_charge`): saving a\ncard without a purchase charges Amount with the customer present and gives it back at once, by a\nvoid on the same day or a refund. Without it, setup sessions and trials that collect a card are unavailable on the\nconnection."
       },
       "WebhookDeliveryResponse": {
         "required": [

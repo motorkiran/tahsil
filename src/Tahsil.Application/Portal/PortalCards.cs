@@ -22,7 +22,11 @@ namespace Tahsil.Application.Portal;
 /// the connection has none, by paying <paramref name="InvoiceUrl"/>; with neither, the card is updated at their next
 /// payment.
 /// </summary>
-public sealed record PortalCardSetup(string? Currency, ProviderConnection? Connection, Uri? InvoiceUrl)
+/// <param name="Currency">The currency the card is set up in.</param>
+/// <param name="Connection">The connection that saves it, when it can without a purchase.</param>
+/// <param name="InvoiceUrl">Otherwise, the open invoice whose payment saves a card.</param>
+/// <param name="Amount">What the setup charges and gives back at once: 0, or a verification charge (ADP-15).</param>
+public sealed record PortalCardSetup(string? Currency, ProviderConnection? Connection, Uri? InvoiceUrl, long Amount = 0)
 {
     public bool IsAvailable => Connection is not null;
 }
@@ -86,9 +90,10 @@ public sealed class PortalCards(
                 .FirstOrDefaultAsync(cancellationToken);
         if (currency is not null
             && await context.RoutedConnectionAsync(currency, cancellationToken) is { CheckoutsPausedAt: null } connection
-            && registry.Find(connection.Provider)?.CapabilitiesFor(connection.Settings) is { SavesCards: not CardSaving.None, Setup: CardSetup.Native })
+            && registry.Find(connection.Provider) is { } provider
+            && CardSetups.AmountFor(connection, provider, currency) is { } amount)
         {
-            return new PortalCardSetup(currency, connection, null);
+            return new PortalCardSetup(currency, connection, null, amount);
         }
 
         // Without a setup, paying the oldest open invoice by card is how the card is updated.
@@ -115,7 +120,7 @@ public sealed class PortalCards(
             return CheckoutPageErrors.ConsentRequired;
         }
 
-        if (await SetupAsync(session, cancellationToken) is not { Connection: { } connection, Currency: { } currency })
+        if (await SetupAsync(session, cancellationToken) is not { Connection: { } connection, Currency: { } currency } setup)
         {
             return PortalCardErrors.SetupUnavailable;
         }
@@ -133,7 +138,7 @@ public sealed class PortalCards(
             session.CustomerId, ConsentType.CardStorage, ConsentText(locale), new Dictionary<string, string> { ["currency"] = currency }, session.Id, null, address, userAgent, now);
         context.ConsentRecords.Add(agreed);
         var payment = Payment.ForCardUpdate(
-            session.CustomerId, session.Id, connection.Id, currency, agreed.Id, now + paymentOptions.Value.CustomerActionTimeout, actor.ToActor(), now, network);
+            session.CustomerId, session.Id, connection.Id, setup.Amount, currency, agreed.Id, now + paymentOptions.Value.CustomerActionTimeout, actor.ToActor(), now, network);
         context.Payments.Add(payment);
         await context.SaveChangesAsync(cancellationToken);
         return await payments.StartWrittenAsync(

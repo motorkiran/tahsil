@@ -55,6 +55,10 @@ public sealed class IndexModel(
 
     public string ImmediateStartText => CheckoutTexts.ImmediateStart(pageOptions.Value, View.Locale);
 
+    public bool OffersMarketing => pageOptions.Value.MarketingConsent.Enabled;
+
+    public string MarketingText => CheckoutTexts.Marketing(pageOptions.Value, Merchant.DisplayName ?? string.Empty, View.Locale);
+
     /// <summary>Whether the page asks to save the card for future charges, in a box of its own (CHK-13).</summary>
     public bool SavesCard => CheckoutPages.SavesCard(View.Session);
 
@@ -103,7 +107,7 @@ public sealed class IndexModel(
             return NotFound();
         }
 
-        var started = await pages.SubmitAsync(token, new CheckoutSubmission(
+        var submission = new CheckoutSubmission(
             Form.Email,
             Form.Name,
             Form.Company ? CustomerType.Company : CustomerType.Individual,
@@ -116,7 +120,11 @@ public sealed class IndexModel(
             Form.CardStorage,
             View.Locale,
             HttpContext.Connection.RemoteIpAddress,
-            Request.Headers.UserAgent.ToString()), cancellationToken);
+            Request.Headers.UserAgent.ToString())
+        {
+            Marketing = Form.Marketing,
+        };
+        var started = await pages.SubmitAsync(token, submission, cancellationToken);
         if (started.IsFailure)
         {
             ErrorMessage = started.Error.Code switch
@@ -127,6 +135,7 @@ public sealed class IndexModel(
                 "checkout.attempts_exceeded" => localizer["Too many payment attempts. Please try again later."],
                 "checkout.paused" => localizer["Payments are paused for now. Please try again later."],
                 "checkout.discount_removed" => localizer["The discount does not apply to you and was removed. Check the total and continue."],
+                "subscription.kimlik_plan_conflict" => localizer["You already have a subscription to this service. Change its plan in your account instead."],
                 _ => started.Error.Field is null ? localizer["The payment could not be started. Please try again."] : started.Error.Message,
             };
             Response.StatusCode = started.Error.Code == "checkout.attempts_exceeded" ? StatusCodes.Status429TooManyRequests : StatusCodes.Status400BadRequest;
@@ -256,6 +265,11 @@ public sealed class IndexModel(
             return localizer["The card was not saved. Please try again."];
         }
 
+        if (code == Application.Kimlik.KimlikPlanRule.Conflict.Code)
+        {
+            return localizer["You already have a subscription to this service, so this one was not started. Your payment is refunded."];
+        }
+
         var failure = Enum.GetValues<FailureCode>().FirstOrDefault(candidate => Application.Payments.FailureMessages.Name(candidate) == code, FailureCode.ProviderError);
         return View.Locale == "tr" ? Application.Payments.FailureMessages.Turkish(failure) : Application.Payments.FailureMessages.English(failure);
     }
@@ -290,4 +304,6 @@ public sealed class CheckoutForm
     public bool ImmediateStart { get; set; }
 
     public bool CardStorage { get; set; }
+
+    public bool Marketing { get; set; }
 }

@@ -52,14 +52,8 @@ public sealed partial class RequirementCoverageTests
         ["SUB-36"] = "The API has no fixed term; the starter legal documents say so.",
     };
 
-    /// <summary>Requirements that wait for the product owner's decision before they are built or tested.</summary>
-    private static readonly Dictionary<string, string> Deferred = new(StringComparer.Ordinal)
-    {
-        ["ADP-15"] = "Verification charges for setups without native support are not built.",
-        ["CAT-15"] = "Pages show amounts including tax; the '+ KDV' form for tax-exclusive prices is not used.",
-        ["CHK-4"] = "The Kimlik plan rule is checked when a session is created, not again when it completes: what to do then needs a decision.",
-        ["CHK-15"] = "The optional marketing consent checkbox is not built.",
-    };
+    /// <summary>Requirements that wait for the product owner's decision before they are built or tested; none now.</summary>
+    private static readonly Dictionary<string, string> Deferred = new(StringComparer.Ordinal);
 
     [Fact]
     public void EveryRequirement_IsTested_OrAccountedFor()

@@ -130,3 +130,29 @@ public sealed partial class LateSuccessRefunder(ITahsilDbContext context, Refund
     [LoggerMessage(LogLevel.Warning, "The late success of payment {PaymentId} was not refunded automatically: {Code}; its attention item stays open")]
     private static partial void LogNotRefunded(ILogger logger, Guid paymentId, string code);
 }
+
+/// <summary>A verification charge saved a card (ADP-15); it is given back in full after the outcome is recorded, by a void on the same day.</summary>
+[OutboxMessage("payments.refund_verification_charge")]
+public sealed record RefundVerificationCharge(Guid PaymentId);
+
+public sealed partial class VerificationChargeRefunder(ITahsilDbContext context, Refunds refunds, ILogger<VerificationChargeRefunder> logger)
+    : IOutboxMessageHandler<RefundVerificationCharge>
+{
+    public async Task HandleAsync(RefundVerificationCharge message, CancellationToken cancellationToken)
+    {
+        // Delivery is at least once: a refund of the charge that exists ends here.
+        if (await context.Refunds.AnyAsync(row => row.PaymentId == message.PaymentId && row.Reason == RefundReason.CardVerification && row.Status != RefundStatus.Failed, cancellationToken))
+        {
+            return;
+        }
+
+        var refunded = await refunds.CreateAsync(message.PaymentId, null, RefundReason.CardVerification, "Given back automatically: the charge that verified the card.", cancellationToken);
+        if (refunded.IsFailure)
+        {
+            LogNotRefunded(logger, message.PaymentId, refunded.Error.Code);
+        }
+    }
+
+    [LoggerMessage(LogLevel.Error, "The verification charge {PaymentId} was not given back automatically: {Code}; refund it in the admin panel")]
+    private static partial void LogNotRefunded(ILogger logger, Guid paymentId, string code);
+}

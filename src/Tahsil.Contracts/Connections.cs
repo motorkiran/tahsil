@@ -56,6 +56,16 @@ public sealed record CredentialState(bool Set, string? Last4);
 
 public sealed record ConnectionTestResponse(ConnectionTestStatus Status, string? Message, DateTimeOffset TestedAt);
 
+/// <summary>
+/// For providers that cannot save a card without a payment (capability <c>setup: verification_charge</c>): saving a
+/// card without a purchase charges <paramref name="Amount"/> with the customer present and gives it back at once, by a
+/// void on the same day or a refund. Without it, setup sessions and trials that collect a card are unavailable on the
+/// connection.
+/// </summary>
+/// <param name="Enabled">Whether setups use a verification charge.</param>
+/// <param name="Amount">Minor units, 1 to 10,000; the provider's minimum for the currency when that is higher.</param>
+public sealed record VerificationCharge(bool Enabled, long Amount = 100);
+
 public sealed record ConnectionResponse(
     Guid Id,
     string Key,
@@ -70,6 +80,7 @@ public sealed record ConnectionResponse(
     Uri NotificationUrl,
     ConnectionTestResponse? LastTest,
     DateTimeOffset? LastTestPaymentAt,
+    VerificationCharge? VerificationCharge,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -93,6 +104,9 @@ public sealed record CreateConnectionRequest
     /// <summary>The provider's setting fields, as strings, numbers or booleans.</summary>
     public IReadOnlyDictionary<string, JsonElement>? Settings { get; init; }
 
+    /// <summary>Off when omitted.</summary>
+    public VerificationCharge? VerificationCharge { get; init; }
+
     public bool Enabled { get; init; } = true;
 }
 
@@ -107,6 +121,9 @@ public sealed record UpdateConnectionRequest
     public IReadOnlyDictionary<string, string>? Credentials { get; init; }
 
     public IReadOnlyDictionary<string, JsonElement>? Settings { get; init; }
+
+    /// <summary>Unchanged when omitted.</summary>
+    public VerificationCharge? VerificationCharge { get; init; }
 
     public bool? Enabled { get; init; }
 

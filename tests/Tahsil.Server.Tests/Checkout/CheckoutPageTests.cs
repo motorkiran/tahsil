@@ -149,6 +149,37 @@ public sealed class CheckoutPageTests(TahsilServerFixture server)
         (await QueryAsync(host, context => context.AuditEvents.Where(auditEvent => auditEvent.Action == "checkout.completed").CountAsync(CancellationToken))).ShouldBe(1);
     }
 
+    [Theory]
+    [Trait("Requirement", "CHK-15")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TheMarketingBox_IsOptional_AndRecordedWhenTicked(bool ticked)
+    {
+        await using var host = IsolatedHosts.Create(
+            server, server.NewDatabase("checkout_page"), _time, settings: new Dictionary<string, string?> { ["Tahsil:Checkout:MarketingConsent:Enabled"] = "true" });
+        var session = await PaymentSessionAsync(host, "en");
+        using var browser = Open(host);
+        using var shown = await browser.GetAsync(session.Url, CancellationToken);
+        var box = (await ParseAsync(shown)).QuerySelector("#marketing");
+        var form = Form("ada@example.com", "Ada Lovelace", ["pre-information", "distance-sales"]);
+        if (ticked)
+        {
+            form["Form.Marketing"] = "true";
+        }
+
+        using var submitted = await SubmitAsync(browser, session.Url!, form);
+        using var returned = await PayOnTheEmbedAsync(host, browser, submitted, "4242424242424242");
+
+        box.ShouldNotBeNull();
+        (box.HasAttribute("checked"), box.ClassList.Contains("required-consent")).ShouldBe((false, false));
+        var stored = await QueryAsync(host, context => context.CheckoutSessions.SingleAsync(candidate => candidate.Id == session.Id, CancellationToken));
+        stored.Status.ShouldBe(CheckoutStatus.Complete, "the box is never a condition of the purchase");
+        var marketing = await QueryAsync(host, context => context.ConsentRecords
+            .Where(record => record.CheckoutSessionId == session.Id && record.Type == ConsentType.Marketing).Select(record => record.TextShown).ToListAsync(CancellationToken));
+        marketing.Count.ShouldBe(ticked ? 1 : 0);
+        marketing.ShouldAllBe(text => text.StartsWith("I agree to receive news and offers from", StringComparison.Ordinal));
+    }
+
     [Fact]
     [Trait("Requirement", "CHK-19")]
     [Trait("Requirement", "PAY-26")]
@@ -203,6 +234,44 @@ public sealed class CheckoutPageTests(TahsilServerFixture server)
         (consent.Type, consent.CheckoutSessionId).ShouldBe((ConsentType.CardStorage, (Guid?)session.Id));
         consent.TextShown.ShouldStartWith("I agree that Acme saves my card");
         (await QueryAsync(host, context => context.Payments.SingleAsync(payment => payment.CheckoutSessionId == session.Id, CancellationToken))).Amount.ShouldBe(0);
+    }
+
+    [Fact]
+    [Trait("Requirement", "ADP-15")]
+    public async Task WithoutANativeSetup_AVerificationChargeSavesTheCard_AndIsGivenBackAtOnce()
+    {
+        await using var host = Host();
+        using var api = await host.CreateClientWithAsync(Permissions);
+        var setup = new CreateCheckoutSessionRequest { Mode = CheckoutMode.Setup, Currency = "TRY", Locale = "en", SuccessUrl = "https://shop.example.com/card-saved" };
+
+        // The simulator saves cards natively until told to behave like iyzico: then setups need a verification charge.
+        using var notApplicable = await PatchSimulatorAsync(api, new { verificationCharge = new { enabled = true } });
+        using var likeIyzico = await PatchSimulatorAsync(api, new { settings = new { setup = "verification_charge" } });
+        using var refused = await api.PostJsonAsync("/api/v1/checkout-sessions", setup);
+        using var tooLarge = await PatchSimulatorAsync(api, new { verificationCharge = new { enabled = true, amount = 10_001 } });
+        using var enabled = await PatchSimulatorAsync(api, new { verificationCharge = new { enabled = true } });
+        using var created = await api.PostJsonAsync("/api/v1/checkout-sessions", setup);
+        var session = await created.ReadAsync<CheckoutSessionResponse>();
+        using var browser = Open(host);
+        using var shown = await browser.GetAsync(session.Url, CancellationToken);
+        var page = await ParseAsync(shown);
+        var form = Form("ada@example.com", "Ada", []);
+        form["Form.CardStorage"] = "true";
+        using var returned = await PayOnTheEmbedAsync(host, browser, await SubmitAsync(browser, session.Url!, form), "4242424242424242");
+        await host.RunWorkersUntilIdleAsync();
+
+        (await notApplicable.ProblemCodeAsync()).ShouldBe("connection.verification_charge_not_applicable");
+        (await refused.ProblemCodeAsync()).ShouldBe("checkout.not_supported_by_connection");
+        (await tooLarge.ProblemCodeAsync()).ShouldBe("connection.invalid");
+        (await enabled.ReadAsync<ConnectionResponse>()).VerificationCharge.ShouldBe(new VerificationCharge(true, 100));
+        page.QuerySelector("#verification-charge")!.TextContent.ShouldBe("₺1.00 will be charged to verify your card and returned at once.");
+        returned.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var stored = await QueryAsync(host, context => context.CheckoutSessions.SingleAsync(candidate => candidate.Id == session.Id, CancellationToken));
+        var payment = await QueryAsync(host, context => context.Payments.SingleAsync(candidate => candidate.CheckoutSessionId == session.Id, CancellationToken));
+        var refund = await QueryAsync(host, context => context.Refunds.SingleAsync(candidate => candidate.PaymentId == payment.Id, CancellationToken));
+        (stored.Status, stored.PaymentMethodId).ShouldBe((CheckoutStatus.Complete, payment.PaymentMethodId));
+        (payment.Status, payment.Amount, payment.PaymentMethodId.HasValue).ShouldBe((PaymentStatus.Succeeded, 100L, true));
+        (refund.Reason, refund.Amount, refund.Status).ShouldBe((Domain.Payments.RefundReason.CardVerification, 100L, Domain.Payments.RefundStatus.Succeeded));
     }
 
     [Fact]
@@ -281,6 +350,15 @@ public sealed class CheckoutPageTests(TahsilServerFixture server)
         });
         created.StatusCode.ShouldBe(HttpStatusCode.Created, await created.Content.ReadAsStringAsync(CancellationToken));
         return await created.ReadAsync<CheckoutSessionResponse>();
+    }
+
+    private static async Task<HttpResponseMessage> PatchSimulatorAsync(HttpClient api, object change)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri("/api/v1/provider-connections/simulator", UriKind.Relative))
+        {
+            Content = JsonContent.Create(change, options: ApiClients.Json),
+        };
+        return await api.SendAsync(request, CancellationToken);
     }
 
     private static async Task<HttpResponseMessage> NotifyAsync(WebApplicationFactory<Program> host, string reference)

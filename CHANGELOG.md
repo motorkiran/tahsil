@@ -24,6 +24,10 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 
 ### Added
 
+- Verification charges for providers that cannot save a card without a payment (iyzico, Craftgate, PayTR's direct form mode): with `verificationCharge: { "enabled": true, "amount": 100 }` on a connection (API, provisioning or the admin panel), checkout sessions in `setup` mode, trials that collect a card and adding a card in the portal charge that amount with the customer present, save the card and give the money back at once with the refund reason `card_verification`. The page says so before the customer pays.
+- An optional marketing consent box on the checkout page (`Tahsil:Checkout:MarketingConsent:Enabled`, off by default), never a condition of the purchase, recorded as a `marketing` consent when ticked.
+- Prices that tax is added to are shown on the checkout and portal pages with "+ KDV" ("+ VAT") and what the customer pays next to them.
+- The Kimlik plan rule is checked again when the checkout form is submitted, before any payment, and when the payment completes the session: a second checkout for the same Kimlik plan, such as in another tab, creates no second subscription, and its payment is refunded.
 - Load tests for the performance targets (opt-in with `TAHSIL_LOAD_TESTS=1`) and their results in `docs/guides/operations/performance.md`.
 
 - The server foundation: configuration validated at startup, with Test and Live modes (Live mode refuses plain HTTP and the public development master key) and a `Tahsil-Mode: test` header and page banner in Test mode.

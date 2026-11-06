@@ -48,6 +48,15 @@
                                       Label="@field.Label" HelperText="@field.Description" />
                     }
                 }
+                @if (provider.Capabilities.Setup != "native")
+                {
+                    <MudSwitch T="bool" @bind-Value="_verificationCharge" Label="Verification charge" Color="Color.Primary" id="connection-verification-charge" />
+                    @if (_verificationCharge)
+                    {
+                        <MudNumericField T="long" @bind-Value="_verificationAmount" Label="Verification amount (minor units)" Min="1" Max="10000"
+                                         HelperText="Charged to save a card without a purchase, and given back at once." id="connection-verification-amount" />
+                    }
+                }
             }
         </MudStack>
     </DialogContent>
@@ -64,6 +73,8 @@
     private string _key = string.Empty;
     private string _name = string.Empty;
     private ConnectionEnvironment _environment = ConnectionEnvironment.Sandbox;
+    private bool _verificationCharge;
+    private long _verificationAmount = 100;
 
     [CascadingParameter]
     private IMudDialogInstance Dialog { get; set; } = null!;
@@ -87,6 +98,7 @@
         _provider = provider;
         _credentials.Clear();
         _settings.Clear();
+        _verificationCharge = false;
         _environment = Selected?.Environments.FirstOrDefault() ?? ConnectionEnvironment.Sandbox;
     }
 
@@ -105,6 +117,7 @@
                 .ToDictionary(pair => pair.Key, pair => provider.Settings.FirstOrDefault(field => field.Key == pair.Key)?.Type == "boolean"
                     ? JsonSerializer.SerializeToElement(pair.Value == "true")
                     : JsonSerializer.SerializeToElement(pair.Value)),
+            VerificationCharge = _verificationCharge ? new VerificationCharge(true, _verificationAmount) : null,
         }));
     }
 }

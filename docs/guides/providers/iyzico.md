@@ -91,8 +91,13 @@ iyzico documents more test cards for declines: `4111 1111 1111 1129` (insufficie
   refund before calling iyzico and says when it becomes possible.
 - **Saving cards.** iyzico's page may let the customer decide whether to save the card. When a card is not saved, the
   purchase still completes, and the customer can add a card later.
-- **Saving a card without a payment.** iyzico has no documented way to save a card without charging it, so checkout
-  sessions in `setup` mode are not available with iyzico yet.
+- **Saving a card without a payment.** iyzico has no way to save a card without charging it. Checkout sessions in
+  `setup` mode, trials that collect a card and adding a card in the customer portal need a **verification charge**:
+  turn it on for the connection (`"verificationCharge": { "enabled": true, "amount": 100 }` in the API or the
+  provisioning file, or the switch on the admin panel's connection form). Saving a card then charges that amount
+  (₺1.00 by default, at least the provider's minimum) with the customer present, saves the card and gives the money
+  back at once, by a cancel on the same day. The page tells the customer before they pay. Without it, these flows are
+  not offered.
 - **Amounts.** iyzico takes at least ₺1.00 per payment, and less than 100,000 per transaction unless iyzico raises
   your limit.
 - **Failures.** Tahsil turns iyzico's error codes into its own failure codes, such as `insufficient_funds` or

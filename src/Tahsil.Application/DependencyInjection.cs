@@ -234,6 +234,7 @@ public static class DependencyInjection
         services.AddScoped<GetWebhookDeliveryHandler>();
         services.AddScoped<RedeliverWebhookHandler>();
         services.AddScoped<IOutboxMessageHandler<RefundLateSuccess>, LateSuccessRefunder>();
+        services.AddScoped<IOutboxMessageHandler<RefundVerificationCharge>, VerificationChargeRefunder>();
         services.AddScoped<IOutboxMessageHandler<Connections.RefundConnectionTestPayment>, Connections.ConnectionTestRefunder>();
         services.AddScoped<DefaultCards>();
         services.AddScoped<IOutboxMessageHandler<RetryWaitingInvoices>, WaitingInvoiceRetrier>();

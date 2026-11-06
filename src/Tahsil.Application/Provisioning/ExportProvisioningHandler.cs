@@ -121,6 +121,7 @@ public sealed class ExportProvisioningHandler(ITahsilDbContext context, IAuthori
                 ? null
                 : connection.Settings.OrderBy(setting => setting.Key, StringComparer.Ordinal).ToDictionary(
                     setting => setting.Key, setting => ConnectionFields.ToJson(fields.FirstOrDefault(field => field.Key == setting.Key), setting.Value), StringComparer.Ordinal),
+            VerificationCharge = CardSetups.ToResponse(connection),
             Enabled = connection.IsEnabled,
         };
     }

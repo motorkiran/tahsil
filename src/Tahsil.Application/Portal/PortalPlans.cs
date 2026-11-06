@@ -20,7 +20,13 @@ using SubscriptionStatus = Tahsil.Domain.Subscriptions.SubscriptionStatus;
 namespace Tahsil.Application.Portal;
 
 /// <summary>A price a customer may switch to (PRT-5): its name, how often it bills, and one unit's amount per period with tax.</summary>
-public sealed record PlanOffer(Guid PriceId, string Name, string Recurrence, long Amount, bool IsCurrent);
+/// <param name="PriceId">The offered price.</param>
+/// <param name="Name">The plan's name.</param>
+/// <param name="Recurrence">How often it bills, in the customer's locale.</param>
+/// <param name="Amount">What a period costs the customer, tax included.</param>
+/// <param name="IsCurrent">Whether the subscription has it now.</param>
+/// <param name="AmountExcludingTax">For a price that tax is added to, its amount without the tax (CAT-15).</param>
+public sealed record PlanOffer(Guid PriceId, string Name, string Recurrence, long Amount, bool IsCurrent, long? AmountExcludingTax = null);
 
 /// <summary>What a customer may change a subscription to: the prices on offer, the quantities allowed, and whether a code may be entered.</summary>
 public sealed record PlanChoices(Subscription Subscription, int Quantity, IReadOnlyList<PlanOffer> Offers, int MinimumQuantity, int MaximumQuantity, bool TakesCodes)
@@ -120,7 +126,8 @@ public sealed class PortalPlans(
                 PriceDisplay.Name(spec.Product.Name, price.Name),
                 PriceDisplay.Recurrence(price.Interval.Value.Map<PriceInterval>(), price.IntervalCount.Value, locale),
                 unit.Total,
-                price.Id == item.PriceId));
+                price.Id == item.PriceId,
+                unit.Lines.Any(line => line is { TaxInclusive: false, TaxAmount: not 0 }) ? unit.TotalExcludingTax : null));
         }
 
         // The quantity they have stays possible, whatever the limits say now.

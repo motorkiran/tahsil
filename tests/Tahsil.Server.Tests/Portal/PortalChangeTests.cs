@@ -248,6 +248,38 @@ public sealed class PortalChangeTests(TahsilServerFixture server)
         page.QuerySelector("#next-payment")!.TextContent.ShouldBe("Your card is updated when you make your next payment.");
     }
 
+    [Fact]
+    [Trait("Requirement", "ADP-15")]
+    public async Task WithoutANativeSetup_ANewCardIsVerifiedByACharge_ThatIsGivenBack()
+    {
+        await using var host = Host();
+        using var api = await ClientAsync(host);
+        var (customer, _, _) = await SubscriberAsync(api, "ada@example.com");
+        using (var request = new HttpRequestMessage(HttpMethod.Patch, new Uri("/api/v1/provider-connections/simulator", UriKind.Relative))
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { settings = new { setup = "verification_charge" }, verificationCharge = new { enabled = true, amount = 250 } }, options: ApiClients.Json),
+        })
+        {
+            (await api.SendAsync(request, CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        using var browser = Open(host);
+        var session = await SessionAsync(api, new CreatePortalSessionRequest { Customer = customer, ReturnUrl = "https://app.example.com/billing", Locale = "en" });
+        var cards = new Uri($"{session.Url}/payment-method");
+        using var start = await browser.GetAsync(session.Url, CancellationToken);
+        using var shown = await browser.GetAsync(cards, CancellationToken);
+        var page = await ParseAsync(shown);
+        using var returned = await PayOnTheEmbedAsync(host, browser, await PostHandlerAsync(browser, cards, "Add", ("CardStorage", "true")), "4000000000007726");
+        await host.RunWorkersUntilIdleAsync();
+
+        page.QuerySelector("#verification-charge")!.TextContent.ShouldEndWith("₺2.50 will be charged to verify your card and returned at once.");
+        var saved = (await GetAsync<Page<PaymentMethodResponse>>(api, $"/api/v1/customers/{customer}/payment-methods")).Items.Single(method => method.Last4 == "7726");
+        saved.IsDefault.ShouldBeTrue();
+        var verified = await QueryAsync(host, context => context.Payments.SingleAsync(payment => payment.PaymentMethodId == saved.Id && payment.PortalSessionId != null, CancellationToken));
+        var refund = await QueryAsync(host, context => context.Refunds.SingleAsync(row => row.PaymentId == verified.Id, CancellationToken));
+        (verified.Amount, refund.Reason, refund.Amount).ShouldBe((250L, Domain.Payments.RefundReason.CardVerification, 250L));
+    }
+
     /// <summary>A customer with a monthly subscription paid by a card, which is the subscription's own when asked.</summary>
     private static async Task<(Guid Customer, SubscriptionResponse Subscription, Guid Card)> SubscriberAsync(
         HttpClient api, string email, string price = "team-monthly-try", bool ownCard = false)

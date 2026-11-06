@@ -426,12 +426,13 @@ public sealed partial class CreateCheckoutSessionHandler(
             return Model.CheckoutErrors.Paused;
         }
 
-        // Verification charges (ADP-15) come with the providers that need them; until then, setup needs native support.
+        // Saving a card without a purchase needs native support or the connection's verification charge (ADP-15).
         var capabilities = provider.CapabilitiesFor(connection.Settings);
-        var setsUp = capabilities.SavesCards != CardSaving.None && capabilities.Setup == CardSetup.Native;
         if (mode == CheckoutMode.Setup || subscription is { CollectsCardForTrial: true, HasTrial: true })
         {
-            return setsUp ? subscription : Model.CheckoutErrors.NotSupportedByConnection("save cards without a payment");
+            return Connections.CardSetups.AmountFor(connection, provider, currency) is not null
+                ? subscription
+                : Model.CheckoutErrors.NotSupportedByConnection("save cards without a payment");
         }
 
         if (subscription is not null && capabilities.SavesCards == CardSaving.None)
