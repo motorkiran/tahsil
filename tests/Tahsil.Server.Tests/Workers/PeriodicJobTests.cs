@@ -8,6 +8,7 @@ using Tahsil.Infrastructure.Workers;
 namespace Tahsil.Server.Tests.Workers;
 
 [Trait("Requirement", "FND-38")]
+[Trait("Suite", "FailureInjection")]
 public sealed class PeriodicJobTests(TahsilServerFixture server)
 {
     [Fact]

@@ -37,6 +37,31 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build
 
+  failure-injection:
+    name: Failure injection
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build tests/Tahsil.Server.Tests --configuration Release
+
+      # Timeouts before and after a charge, a process killed between write-ahead and recording, duplicate and racing
+      # outcomes, late successes, workers sharing items and resuming expired leases. Each scenario runs five times
+      # in a row, so that a race shows up here rather than in production.
+      - name: Run the scenarios five times
+        run: |
+          for run in 1 2 3 4 5; do
+            echo "::group::Run $run"
+            dotnet test --project tests/Tahsil.Server.Tests --configuration Release --no-build --filter-trait "Suite=FailureInjection"
+            echo "::endgroup::"
+          done
+
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'

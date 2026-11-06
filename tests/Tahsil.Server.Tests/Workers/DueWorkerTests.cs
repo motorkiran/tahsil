@@ -5,6 +5,7 @@ using Tahsil.Infrastructure.Workers;
 
 namespace Tahsil.Server.Tests.Workers;
 
+[Trait("Suite", "FailureInjection")]
 public sealed class DueWorkerTests(TahsilServerFixture server)
 {
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
