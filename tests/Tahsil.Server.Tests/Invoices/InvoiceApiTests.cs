@@ -26,6 +26,7 @@ public sealed partial class InvoiceApiTests(TahsilServerFixture server)
     [Trait("Requirement", "INV-21")]
     [Trait("Requirement", "INV-8")]
     [Trait("Requirement", "DOM-14")]
+    [Trait("Requirement", "CUS-6")]
     public async Task AManualInvoice_IsDrafted_Finalized_AndThenFrozen()
     {
         await using var host = Host();
@@ -265,6 +266,7 @@ public sealed partial class InvoiceApiTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "CUS-18")]
     [Trait("Requirement", "CUS-19")]
+    [Trait("Requirement", "CUS-20")]
     public async Task BalanceAdjustments_NeedADescription_AndAreListedNewestFirst()
     {
         await using var host = Host();

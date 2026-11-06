@@ -4,7 +4,7 @@ using Tahsil.Providers.Abstractions;
 namespace Tahsil.Providers.Simulator;
 
 /// <summary>The simulator's settings, which restrict its capabilities to mimic a real provider (SIM-2).</summary>
-public sealed record SimulatorSettings(CardSetup Setup, RefundSupport Refunds, CardSaving SavesCards)
+public sealed record SimulatorSettings(CardSetup Setup, RefundSupport Refunds, CardSaving SavesCards, bool OneChargePerCard = false)
 {
     public static SimulatorSettings Read(IReadOnlyDictionary<string, string> settings) => new(
         settings.GetValueOrDefault("setup") switch
@@ -24,7 +24,8 @@ public sealed record SimulatorSettings(CardSetup Setup, RefundSupport Refunds, C
             "during_payment_when_customer_agrees" => CardSaving.DuringPaymentWhenCustomerAgrees,
             "none" => CardSaving.None,
             _ => CardSaving.DuringPayment,
-        });
+        },
+        settings.GetValueOrDefault("oneChargePerCard") == "true");
 }
 
 /// <summary>
@@ -116,6 +117,14 @@ public sealed class SimulatorProvider(SimulatorBank bank, Uri publicUrl) : IPaym
                 Default = "during_payment",
                 Description = "Mimics providers whose page asks the customer whether to save the card, or that save no cards at all.",
             },
+            new FieldDefinition
+            {
+                Key = "oneChargePerCard",
+                Label = "One charge per card at a time",
+                Type = FieldType.Boolean,
+                Default = "false",
+                Description = "Mimics providers that refuse a second charge on a card while one is in progress, such as PayTR.",
+            },
         ],
         Currencies = new HashSet<string>(CurrencyCodes.Split(' '), StringComparer.Ordinal),
         MinimumAmounts = CurrencyCodes.Split(' ').ToDictionary(code => code, _ => 1L, StringComparer.Ordinal),
@@ -128,7 +137,13 @@ public sealed class SimulatorProvider(SimulatorBank bank, Uri publicUrl) : IPaym
     public ProviderCapabilities CapabilitiesFor(IReadOnlyDictionary<string, string> settings)
     {
         var simulator = SimulatorSettings.Read(settings);
-        return Permissive with { Setup = simulator.Setup, Refunds = simulator.Refunds, SavesCards = simulator.SavesCards };
+        return Permissive with
+        {
+            Setup = simulator.Setup,
+            Refunds = simulator.Refunds,
+            SavesCards = simulator.SavesCards,
+            ConcurrentChargesPerCard = simulator.OneChargePerCard ? 1 : null,
+        };
     }
 
     public Task<ConnectionTestResult> TestConnectionAsync(ProviderContext context, CancellationToken cancellationToken) =>

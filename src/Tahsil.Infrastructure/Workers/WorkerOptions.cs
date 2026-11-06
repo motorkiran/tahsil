@@ -26,7 +26,10 @@ public sealed class WorkerOptions
     /// </summary>
     public TimeSpan Lease { get; set; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>The most provider calls for payments that run at once, per instance and connection.</summary>
+    /// <summary>
+    /// The most invoices one instance charges at once. Each instance charges this many; keep the sum across instances
+    /// within the providers' rate limits.
+    /// </summary>
     public int PaymentConcurrency { get; set; } = 4;
 
     internal bool IsValid() =>

@@ -65,6 +65,57 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
         (await host.QueryAsync<string>($"SELECT data->>'failureCode' AS \"Value\" FROM tahsil.audit_events WHERE action = 'invoice.payment_failed'")).ShouldBe(["payment_method_missing"]);
     }
 
+    [Fact]
+    [Trait("Requirement", "ENG-5")]
+    public async Task AFinalizedInvoice_WakesThePaymentWorker_WithoutWaitingForItsPoll()
+    {
+        await using var host = server.WithSettings(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Tahsil"] = server.NewDatabase("signals"),
+            ["Tahsil:Workers:PollingInterval"] = "01:00:00",
+        });
+        using var client = await host.CreateClientWithAsync(Permissions);
+        var customer = await CustomerAsync(client);
+        await SaveSimulatorCardAsync(host, client, customer, "4242424242424242");
+
+        var invoice = await FinalizedInvoiceAsync(client, customer);
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while ((await InvoiceAsync(client, invoice)).Status != InvoiceStatus.Paid && waited.Elapsed < TimeSpan.FromSeconds(30))
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(100), CancellationToken);
+        }
+
+        (await InvoiceAsync(client, invoice)).Status.ShouldBe(InvoiceStatus.Paid, "the worker charged it long before its next poll");
+    }
+
+    [Fact]
+    [Trait("Requirement", "PAY-11")]
+    public async Task AProviderTakingOneChargePerCard_GetsTheNextCharge_OnlyWhenTheFirstIsSettled()
+    {
+        await using var host = Host();
+        using var client = await host.CreateClientWithAsync(Permissions);
+        await WithoutSimulatorNotificationsAsync(client, oneChargePerCard: true);
+        var customer = await CustomerAsync(client);
+        await SaveSimulatorCardAsync(host, client, customer, "4000000000001000");
+        var first = await FinalizedInvoiceAsync(client, customer);
+        var second = await FinalizedInvoiceAsync(client, customer);
+
+        await host.RunWorkersUntilIdleAsync();
+        var charged = (await PaymentsAsync(client, first)).Concat(await PaymentsAsync(client, second)).ShouldHaveSingleItem();
+        charged.Status.ShouldBe(PaymentStatus.Processing);
+        var waiting = charged.InvoiceId == first ? second : first;
+        (await InvoiceAsync(client, waiting)).NextPaymentAttemptAt.ShouldNotBeNull().ShouldBeGreaterThan(_time.GetUtcNow());
+
+        for (var minute = 1; minute <= 5; minute++)
+        {
+            _time.Advance(TimeSpan.FromMinutes(1));
+            await host.RunWorkersUntilIdleAsync();
+        }
+
+        (await PaymentAsync(client, charged.Id)).Status.ShouldBe(PaymentStatus.Succeeded);
+        (await PaymentsAsync(client, waiting)).ShouldHaveSingleItem().Status.ShouldBe(PaymentStatus.Processing);
+    }
+
     [Theory]
     [Trait("Requirement", "ENG-15")]
     [Trait("Requirement", "ADP-4")]
@@ -248,11 +299,11 @@ public sealed class PaymentWorkerTests(TahsilServerFixture server)
     /// The simulator would settle unanswered charges by notifying itself, at a moment of its own; these tests settle
     /// them through reconciliation only.
     /// </summary>
-    private static async Task WithoutSimulatorNotificationsAsync(HttpClient client)
+    private static async Task WithoutSimulatorNotificationsAsync(HttpClient client, bool oneChargePerCard = false)
     {
         using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri("/api/v1/provider-connections/simulator", UriKind.Relative))
         {
-            Content = JsonContent.Create(new { settings = new { notifications = false } }, options: ApiClients.Json),
+            Content = JsonContent.Create(new { settings = new { notifications = false, oneChargePerCard } }, options: ApiClients.Json),
         };
         using var response = await client.SendAsync(request, CancellationToken);
         response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(CancellationToken));

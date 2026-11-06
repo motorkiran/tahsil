@@ -155,6 +155,7 @@ public sealed partial class SimulatorTests
 
     [Fact]
     [Trait("Requirement", "SIM-6")]
+    [Trait("Requirement", "CHK-20")]
     public async Task CancellingOrNeverPaying_Abandons_AndCancelGoesToTheCancelUrl()
     {
         var cancelled = await StartAsync("pay-1");
@@ -245,6 +246,7 @@ public sealed partial class SimulatorTests
 
     [Fact]
     [Trait("Requirement", "SIM-2")]
+    [Trait("Requirement", "ADP-1")]
     public async Task Settings_RestrictTheCapabilities_ToMimicARealProvider()
     {
         var settings = new Dictionary<string, string> { ["setup"] = "verification_charge", ["refunds"] = "partial_after_settlement_day" };
@@ -308,6 +310,7 @@ public sealed partial class SimulatorTests
 
     [Fact]
     [Trait("Requirement", "SIM-3")]
+    [Trait("Requirement", "SEC-5")]
     public async Task ThePage_IsEmbeddedFromTahsil_AndItsTokenIsStoredOnlyAsAHash()
     {
         var started = await _simulator.StartAsync(Context(), Request("pay-1"), CancellationToken);

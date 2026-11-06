@@ -90,6 +90,9 @@ public interface IBillingLocks
     /// <summary>Locks a payment until the transaction ends; load it after this.</summary>
     Task LockPaymentAsync(Guid paymentId, CancellationToken cancellationToken);
 
+    /// <summary>Locks a saved card, so that charges on it are decided one at a time.</summary>
+    Task LockPaymentMethodAsync(Guid paymentMethodId, CancellationToken cancellationToken);
+
     /// <summary>Locks a checkout session until the transaction ends; load it after this.</summary>
     Task LockCheckoutSessionAsync(Guid sessionId, CancellationToken cancellationToken);
 

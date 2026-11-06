@@ -71,6 +71,7 @@ public sealed class CatalogRuleTests
 
     [Theory]
     [Trait("Requirement", "MNY-1")]
+    [Trait("Requirement", "MNY-2")]
     [InlineData("TRY", 2)]
     [InlineData("USD", 2)]
     [InlineData("EUR", 2)]

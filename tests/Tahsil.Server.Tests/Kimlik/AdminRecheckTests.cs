@@ -61,6 +61,8 @@ public sealed class AdminRecheckTests : IDisposable
 
     [Fact]
     [Trait("Requirement", "KML-9")]
+    [Trait("Requirement", "KML-5")]
+    [Trait("Requirement", "SEC-8")]
     public async Task TheCookie_IsCheckedEveryFiveMinutes_AndRejectedOnceTheSessionIsOver()
     {
         await using var host = Host();

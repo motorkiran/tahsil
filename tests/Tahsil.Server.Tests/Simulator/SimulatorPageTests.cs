@@ -24,6 +24,8 @@ public sealed partial class SimulatorPageTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "SIM-3")]
     [Trait("Requirement", "SIM-6")]
+    [Trait("Requirement", "ADP-7")]
+    [Trait("Requirement", "SEC-3")]
     public async Task ACustomerPaysOnThePage_AndCompleteReadsTheResult()
     {
         await using var host = Host();
@@ -65,6 +67,7 @@ public sealed partial class SimulatorPageTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "SIM-4")]
+    [Trait("Requirement", "ADP-2")]
     public async Task OtherCardNumbers_AreRefused_WithoutBeingStoredOrLogged()
     {
         const string RealLooking = "4111111111111111";
@@ -97,6 +100,7 @@ public sealed partial class SimulatorPageTests(TahsilServerFixture server)
 
     [Theory]
     [Trait("Requirement", "SIM-1")]
+    [Trait("Requirement", "SEC-18")]
     [InlineData("Test", true)]
     [InlineData("Live", false)]
     public void ThePageAndTheProvider_ExistInTestModeOnly(string mode, bool exists)

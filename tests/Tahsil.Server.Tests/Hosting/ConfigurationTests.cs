@@ -18,6 +18,7 @@ public sealed class ConfigurationTests
 
     [Theory]
     [Trait("Requirement", "FND-8")]
+    [Trait("Requirement", "FND-9")]
     [MemberData(nameof(InvalidSettings))]
     public void InvalidSettings_StopStartup_NamingTheSetting(string key, string? value, string message)
     {

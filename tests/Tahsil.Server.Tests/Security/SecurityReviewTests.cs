@@ -78,6 +78,8 @@ public sealed class SecurityReviewTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "SEC-15")]
     [Trait("Requirement", "SEC-9")]
+    [Trait("Requirement", "ADP-2")]
+    [Trait("Requirement", "SEC-1")]
     public async Task APurchaseAndThePortal_LogNoSecretTokenCardOrIdentityNumber()
     {
         var logs = new CapturingLoggerProvider();

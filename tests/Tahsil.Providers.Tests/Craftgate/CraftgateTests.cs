@@ -39,6 +39,7 @@ public sealed class CraftgateTests
     }
 
     [Theory]
+    [Trait("Requirement", "CRG-5")]
     [InlineData("NOT_SUFFICIENT_FUNDS", FailureCode.InsufficientFunds)]
     [InlineData("DO_NOT_HONOUR", FailureCode.CardDeclined)]
     [InlineData("NOT_PERMITTED_TO_FOREIGN_CARD", FailureCode.CardNotSupported)]
@@ -62,6 +63,7 @@ public sealed class CraftgateTests
     [Trait("Requirement", "CRG-7")]
     [Trait("Requirement", "CRG-8")]
     [Trait("Requirement", "CRG-13")]
+    [Trait("Requirement", "ADP-11")]
     public async Task ACheckout_IsPaidOnTheCommonPaymentPage_AndStoresTheCardWithItsExpiry()
     {
         var handler = new RecordedExchangeHandler("craftgate/checkout.json");

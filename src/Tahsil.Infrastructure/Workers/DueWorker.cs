@@ -52,19 +52,29 @@ internal abstract partial class DueWorker(
 
     protected virtual int BatchSize => Options.BatchSize;
 
+    /// <summary>How many items this instance processes at once. Only workers that lease their items take more than one.</summary>
+    protected virtual int Concurrency => 1;
+
     /// <summary>
     /// Processes due items until none is left or a batch is done; returns how many it took. The hosted loop calls it,
     /// and tests call it directly.
     /// </summary>
     public async Task<int> RunBatchAsync(CancellationToken cancellationToken)
     {
-        var conflicts = new Dictionary<Guid, int>();
+        var claimed = 0;
         var processed = 0;
-        while (processed < BatchSize && await ProcessNextAsync(conflicts, cancellationToken))
+
+        async Task DrainAsync()
         {
-            processed++;
+            var conflicts = new Dictionary<Guid, int>();
+            while (Interlocked.Increment(ref claimed) <= BatchSize && await ProcessNextAsync(conflicts, cancellationToken))
+            {
+                Interlocked.Increment(ref processed);
+            }
         }
 
+        var lanes = CallsOtherServices ? Math.Max(Concurrency, 1) : 1;
+        await Task.WhenAll(Enumerable.Range(0, lanes).Select(_ => DrainAsync()));
         return processed;
     }
 

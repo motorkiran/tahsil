@@ -41,6 +41,8 @@ public sealed class ProviderHttpTests
 
     [Theory]
     [Trait("Requirement", "ADP-4")]
+    [Trait("Requirement", "ADP-3")]
+    [Trait("Requirement", "ADP-5")]
     [InlineData("timeout", ProviderCallFailure.Timeout)]
     [InlineData("connection_failed", ProviderCallFailure.ConnectionFailed)]
     public async Task CallsWithoutAnAnswer_AreResults_NotExceptions(string failure, ProviderCallFailure expected)
@@ -58,6 +60,7 @@ public sealed class ProviderHttpTests
 
     [Fact]
     [Trait("Requirement", "ADP-10")]
+    [Trait("Requirement", "FND-39")]
     public async Task TheOperationTimeout_EndsASlowCall()
     {
         var time = new FakeTimeProvider();

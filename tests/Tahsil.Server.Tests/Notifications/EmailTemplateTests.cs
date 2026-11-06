@@ -26,6 +26,7 @@ public sealed class EmailTemplateTests(TahsilServerFixture server)
     [MemberData(nameof(Templates))]
     [Trait("Requirement", "NTF-8")]
     [Trait("Requirement", "NTF-5")]
+    [Trait("Requirement", "NTF-10")]
     public async Task ATemplate_RendersInBothLanguages_EscapingHtmlOnlyInTheHtmlPart(string template, string locale)
     {
         var renderer = server.Services.GetRequiredService<IEmailTemplateRenderer>();

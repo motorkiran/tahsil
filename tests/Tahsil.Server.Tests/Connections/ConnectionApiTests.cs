@@ -157,6 +157,7 @@ public sealed class ConnectionApiTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "DOM-8")]
+    [Trait("Requirement", "SEC-18")]
     public async Task Startup_Fails_WhenConnectionsBreakTheModeRule()
     {
         var database = server.NewDatabase("connections");

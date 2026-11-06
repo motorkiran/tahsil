@@ -22,6 +22,7 @@ public sealed class OutOfBandPaymentTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "INV-14")]
     [Trait("Requirement", "INV-15")]
+    [Trait("Requirement", "INV-18")]
     public async Task ABankTransfer_IsRecordedInParts_UntilTheInvoiceIsPaid()
     {
         await using var host = Host();
@@ -31,12 +32,14 @@ public sealed class OutOfBandPaymentTests(TahsilServerFixture server)
 
         var part = await PayAsync(client, invoice, new OutOfBandPaymentRequest { Amount = 5_000, ReceivedAt = receivedAt, Reference = " EFT 4471 ", Note = "Received at Ziraat" });
         var afterPart = await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{invoice}");
+        using var voiding = await client.PostPathAsync($"/api/v1/invoices/{invoice}/void");
         var rest = await PayAsync(client, invoice, new OutOfBandPaymentRequest { Method = OutOfBandMethod.Cash });
         var paid = await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{invoice}");
 
         (part.Status, part.Initiator, part.Method, part.ConnectionId, part.Amount).ShouldBe((PaymentStatus.Succeeded, PaymentInitiator.Operator, PaymentMethodKind.BankTransfer, null, 5_000L));
         part.OutOfBand.ShouldBe(new OutOfBandResponse(receivedAt, "EFT 4471", "Received at Ziraat"));
         (afterPart.Status, afterPart.AmountRemaining).ShouldBe((InvoiceStatus.Open, 7_500L));
+        (await voiding.ProblemCodeAsync()).ShouldBe("invoice.has_payments");
         (rest.Method, rest.Amount).ShouldBe((PaymentMethodKind.Cash, 7_500L));
         (paid.Status, paid.AmountPaid, paid.AmountRemaining).ShouldBe((InvoiceStatus.Paid, 12_500L, 0L));
         (await host.QueryAsync<string>($"SELECT actor_type AS \"Value\" FROM tahsil.audit_events WHERE action = 'payment.succeeded'")).ShouldBe(["api_key", "api_key"]);

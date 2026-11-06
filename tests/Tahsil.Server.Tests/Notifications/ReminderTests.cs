@@ -18,6 +18,7 @@ public sealed class ReminderTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "SUB-16")]
+    [Trait("Requirement", "ENG-20")]
     public async Task ACardTrial_IsRemindedOfItsEndOnce_ThreeDaysAhead_WithTheFirstCharge()
     {
         await using var host = Host();

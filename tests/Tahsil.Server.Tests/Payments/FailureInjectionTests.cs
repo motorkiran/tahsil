@@ -128,6 +128,7 @@ public sealed partial class FailureInjectionTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "PAY-13")]
     [Trait("Requirement", "PAY-25")]
+    [Trait("Requirement", "SEC-12")]
     public async Task RepeatedAndOutOfOrderNotifications_ApplyOneOutcome()
     {
         await using var host = Host();

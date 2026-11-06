@@ -29,4 +29,9 @@ entitlements in Kimlik, and access ends when the subscription does.
 - When Kimlik deletes a user or an organization, Tahsil cancels its subscription.
 
 Administrators can also sign in to Tahsil's admin panel through Kimlik (`Tahsil:Admin:Oidc`), with panel roles
-mapped from Kimlik roles.
+mapped from Kimlik roles (`tahsil-admin`, `tahsil-operator` and `tahsil-viewer` by default;
+`samples/kimlik/provisioning.json` declares them with the panel's client).
+
+The panel refuses sessions without a second factor (`Tahsil:Admin:RequireMfa`, on by default) and sends the
+administrator to Kimlik's account page to set one up. Kimlik asks for a second factor only from some users unless told
+otherwise, so set `Kimlik__Mfa__RequireForEveryone=true` on the Kimlik that signs administrators in.

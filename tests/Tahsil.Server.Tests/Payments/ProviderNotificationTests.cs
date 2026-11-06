@@ -50,6 +50,7 @@ public sealed class ProviderNotificationTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "PAY-23")]
     [Trait("Requirement", "SEC-4")]
+    [Trait("Requirement", "SEC-3")]
     public async Task BadSignatures_AreRejected_AndNothingIsStored()
     {
         await using var host = Host();

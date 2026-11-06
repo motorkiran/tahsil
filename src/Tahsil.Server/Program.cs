@@ -32,6 +32,15 @@ builder.Services.AddScoped<IRequestContext>(services =>
 builder.Services.AddTahsilAdmin(builder.Configuration);
 builder.Services.AddTahsilApi();
 builder.Services.AddHostedPages();
+builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.RazorPages.RazorPagesOptions>().Configure<IConfiguration>((options, configuration) =>
+{
+    if (!configuration.IsAdminPanelEnabled())
+    {
+        // The panel's sign-in pages go with it.
+        options.Conventions.AddFolderRouteModelConvention("/Admin", model => model.Selectors.Clear());
+    }
+});
+
 builder.Services.AddSimulator();
 builder.Services.AddPaymentProviders();
 builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));

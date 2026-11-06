@@ -17,6 +17,7 @@ public sealed class SubscriptionPersistenceTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "DOM-11")]
     [Trait("Requirement", "ENG-10")]
+    [Trait("Requirement", "DOM-3")]
     public async Task ASubscription_RoundTripsWithItsItems_AndKeepsItsProductsFromDeletion()
     {
         var now = FakeBillingClock.Start;

@@ -46,6 +46,12 @@ public sealed class PaymentRequests(ITahsilDbContext context, ISecretEncryption 
             ProviderCustomer = await ProviderCustomerAsync(payment.CustomerId, connectionId, cancellationToken),
         };
 
+    /// <summary>Whether a charge on the saved card is waiting for the provider's answer.</summary>
+    public static async Task<bool> HasChargeInFlightOnCardAsync(ITahsilDbContext context, Guid paymentMethodId, CancellationToken cancellationToken) =>
+        await context.Payments.AnyAsync(
+            payment => payment.PaymentMethodId == paymentMethodId && (payment.Status == Domain.Payments.PaymentStatus.Processing || payment.Status == Domain.Payments.PaymentStatus.RequiresAction),
+            cancellationToken);
+
     public static async Task<bool> HasPaymentInFlightAsync(ITahsilDbContext context, Guid invoiceId, CancellationToken cancellationToken) =>
         await context.Payments.AnyAsync(
             payment => payment.InvoiceId == invoiceId && (payment.Status == Domain.Payments.PaymentStatus.Processing || payment.Status == Domain.Payments.PaymentStatus.RequiresAction),

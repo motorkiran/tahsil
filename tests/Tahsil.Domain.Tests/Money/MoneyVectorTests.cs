@@ -45,11 +45,14 @@ public sealed class MoneyVectorTests
     [Theory]
     [Trait("Requirement", "MNY-10")]
     [Trait("Requirement", "MNY-11")]
+    [Trait("Requirement", "MNY-7")]
     [InlineData(TiersMode.Graduated, 12345, 93725)]
     [InlineData(TiersMode.Graduated, 1000, 10000)]
     [InlineData(TiersMode.Volume, 12345, 61725)]
     [InlineData(TiersMode.Volume, 1000, 10000)]
     [InlineData(TiersMode.Volume, 1001, 8008)]
+    [InlineData(TiersMode.Graduated, 0, 0)]
+    [InlineData(TiersMode.Volume, 0, 0)]
     public void TieredAmounts(TiersMode mode, long quantity, long expected)
     {
         PriceAmounts.For(BillingScheme.Tiered, null, null, null, null, mode, T, quantity).ShouldBe(expected);
@@ -57,6 +60,7 @@ public sealed class MoneyVectorTests
 
     [Theory]
     [Trait("Requirement", "MNY-10")]
+    [Trait("Requirement", "MNY-7")]
     [InlineData(3, 5000)]
     [InlineData(7, 6800)]
     [InlineData(0, 0)]
@@ -70,12 +74,17 @@ public sealed class MoneyVectorTests
     [Theory]
     [Trait("Requirement", "MNY-8")]
     [Trait("Requirement", "MNY-9")]
+    [Trait("Requirement", "MNY-2")]
+    [Trait("Requirement", "MNY-7")]
     [InlineData(BillingScheme.PerUnit, null, "0.25", null, null, 12345, 3086)]
     [InlineData(BillingScheme.PerUnit, null, "0.25", null, null, 2, 1)]
     [InlineData(BillingScheme.Package, 500L, null, 1000, PackageRounding.Up, 1, 500)]
     [InlineData(BillingScheme.Package, 500L, null, 1000, PackageRounding.Up, 1001, 1000)]
     [InlineData(BillingScheme.Package, 500L, null, 1000, PackageRounding.Down, 1999, 500)]
     [InlineData(BillingScheme.PerUnit, 29900L, null, null, null, 3, 89700)]
+    [InlineData(BillingScheme.PerUnit, 29900L, null, null, null, 0, 0)]
+    [InlineData(BillingScheme.PerUnit, null, "0.25", null, null, 0, 0)]
+    [InlineData(BillingScheme.Package, 500L, null, 1000, PackageRounding.Up, 0, 0)]
     public void PerUnitAndPackageAmounts(
         BillingScheme scheme, long? unitAmount, string? unitDecimal, int? packageSize, PackageRounding? rounding, long quantity, long expected)
     {
@@ -88,6 +97,7 @@ public sealed class MoneyVectorTests
     [Trait("Requirement", "MNY-13")]
     [Trait("Requirement", "MNY-14")]
     [Trait("Requirement", "MNY-16")]
+    [Trait("Requirement", "MNY-12")]
     [InlineData(20, false, 10000, 0, 2000, 12000, 10000)]
     [InlineData(18, false, 12345, 0, 2222, 14567, 12345)]
     [InlineData(20, true, 29900, 0, 4983, 29900, 24917)]
@@ -148,6 +158,7 @@ public sealed class MoneyVectorTests
 
     [Fact]
     [Trait("Requirement", "MNY-21")]
+    [Trait("Requirement", "MNY-17")]
     public void InvoiceTotals_AreSumsOfLines()
     {
         var kdv = new TaxRateSnapshot(20, Inclusive: true);

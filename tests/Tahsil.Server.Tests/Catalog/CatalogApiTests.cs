@@ -97,6 +97,7 @@ public sealed class CatalogApiTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "CAT-6")]
     [Trait("Requirement", "CAT-11")]
+    [Trait("Requirement", "CAT-3")]
     public async Task ArchivedProductsAndTaxRates_TakeNoNewPrices()
     {
         await using var host = Host();
@@ -117,6 +118,7 @@ public sealed class CatalogApiTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "CAT-7")]
+    [Trait("Requirement", "DOM-3")]
     public async Task AnUnusedProduct_IsDeletedWithItsPrices()
     {
         await using var host = Host();

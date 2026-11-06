@@ -118,6 +118,7 @@ public sealed class CheckoutPageTests(TahsilServerFixture server)
     [Trait("Requirement", "CHK-19")]
     [Trait("Requirement", "CHK-23")]
     [Trait("Requirement", "PAY-8")]
+    [Trait("Requirement", "CHK-12")]
     public async Task AOneTimePurchase_PaysAPaidInvoice_AndRecordsTheAcceptedDocuments()
     {
         await using var host = Host();
@@ -207,6 +208,7 @@ public sealed class CheckoutPageTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "PAY-13")]
     [Trait("Requirement", "CHK-23")]
+    [Trait("Requirement", "SEC-12")]
     public async Task TheReturnAndANotificationTogether_CompleteTheSessionOnce()
     {
         await using var host = Host();

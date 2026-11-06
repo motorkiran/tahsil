@@ -24,6 +24,7 @@ public sealed class WebhookTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "EVT-7")]
+    [Trait("Requirement", "SEC-14")]
     public void Signatures_FollowTheStandardWebhooksVector()
     {
         // The example of the Standard Webhooks specification.
@@ -35,6 +36,7 @@ public sealed class WebhookTests(TahsilServerFixture server)
     [Trait("Requirement", "EVT-1")]
     [Trait("Requirement", "EVT-4")]
     [Trait("Requirement", "EVT-9")]
+    [Trait("Requirement", "EVT-3")]
     public async Task Endpoints_ReceiveSignedEvents_ThatAreTheAuditEventsOfTheirChange()
     {
         await using var host = Host();
@@ -63,6 +65,7 @@ public sealed class WebhookTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "EVT-11")]
     [Trait("Requirement", "EVT-14")]
+    [Trait("Requirement", "EVT-13")]
     public async Task FailedDeliveries_AreRetried_WithTheSameId_GiveUpAfterNineAttempts_AndCanBeSentAgain()
     {
         await using var host = Host();
@@ -132,6 +135,7 @@ public sealed class WebhookTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "EVT-8")]
+    [Trait("Requirement", "SEC-14")]
     public async Task ARotatedSecret_KeepsSigningBesideTheNewOne_ForTheOverlap()
     {
         await using var host = Host();
@@ -236,6 +240,7 @@ public sealed class WebhookTests(TahsilServerFixture server)
 
     [Theory]
     [Trait("Requirement", "FND-40")]
+    [Trait("Requirement", "SEC-10")]
     [InlineData("127.0.0.1", false)]
     [InlineData("10.1.2.3", false)]
     [InlineData("172.20.0.5", false)]
@@ -261,6 +266,8 @@ public sealed class WebhookTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "FND-40")]
+    [Trait("Requirement", "FND-39")]
+    [Trait("Requirement", "SEC-10")]
     public async Task TheSender_RefusesToConnectToThisMachine_AndUsesNoProxy()
     {
         using var handler = WebhookHttpClient.Handler(allowPrivateNetworks: false);

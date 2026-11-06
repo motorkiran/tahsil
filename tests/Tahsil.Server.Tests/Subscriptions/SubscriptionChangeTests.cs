@@ -170,6 +170,7 @@ public sealed class SubscriptionChangeTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "SUB-22")]
     [Trait("Requirement", "SUB-17")]
+    [Trait("Requirement", "MNY-31")]
     public async Task DuringATrial_ChangesApplyWithoutProration_AndTheTrialCanEndNow()
     {
         await using var host = Host();
@@ -266,6 +267,47 @@ public sealed class SubscriptionChangeTests(TahsilServerFixture server)
         (await strangers.ProblemCodeAsync()).ShouldBe("subscription.payment_method_unusable");
         (changed.DefaultPaymentMethodId, changed.CollectionMethod, changed.DaysUntilDue).ShouldBe((card, CollectionMethod.SendInvoice, 10));
         stale.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
+    }
+
+    [Fact]
+    [Trait("Requirement", "SUB-18")]
+    public async Task Changes_KeepTheCurrency_AndEndWithTheSubscription()
+    {
+        await using var host = Host();
+        using var client = await ClientAsync(host);
+        using (var price = await client.PostJsonAsync("/api/v1/prices", new CreatePriceRequest
+        {
+            Product = "team",
+            Key = "team-monthly-usd",
+            Currency = "USD",
+            Type = PriceType.Recurring,
+            Interval = PriceInterval.Month,
+            UnitAmount = 1_000,
+        }))
+        {
+            price.StatusCode.ShouldBe(HttpStatusCode.Created, await price.Content.ReadAsStringAsync(CancellationToken));
+        }
+
+        var subscription = await PayingCompanyAsync(client, "team-monthly-try");
+        using var dollars = await PatchAsync(client, subscription.Id, new { items = Items("team-monthly-usd") });
+        using (var canceled = await client.PostJsonAsync($"/api/v1/subscriptions/{subscription.Id}/cancel", new CancelSubscriptionRequest { At = "now" }))
+        {
+            canceled.StatusCode.ShouldBe(HttpStatusCode.OK, await canceled.Content.ReadAsStringAsync(CancellationToken));
+        }
+
+        using var ended = await PatchAsync(client, subscription.Id, new { items = Items("team-plus-monthly-try") });
+
+        (dollars.StatusCode, await dollars.ProblemCodeAsync()).ShouldBe((HttpStatusCode.BadRequest, "subscription.currency_mismatch"));
+        (ended.StatusCode, await ended.ProblemCodeAsync()).ShouldBe((HttpStatusCode.Conflict, "subscription.invalid_state"));
+    }
+
+    private static async Task<HttpResponseMessage> PatchAsync(HttpClient client, Guid subscription, object body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri($"/api/v1/subscriptions/{subscription}", UriKind.Relative))
+        {
+            Content = JsonContent.Create(body, options: ApiClients.Json),
+        };
+        return await client.SendAsync(request, CancellationToken);
     }
 
     private static object[] Items(string price, int quantity = 1) => [new { price, quantity }];

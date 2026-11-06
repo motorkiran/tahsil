@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Tahsil.Application.Notifications;
 using Tahsil.Application.Payments;
@@ -115,6 +116,41 @@ public sealed class NotificationTests(TahsilServerFixture server)
 
         Drain().ShouldBeEmpty();
         (await host.QueryAsync<string>($"SELECT reason AS \"Value\" FROM tahsil.notification_log WHERE type = 'receipt'")).ShouldBe(["disabled"]);
+    }
+
+    [Fact]
+    [Trait("Requirement", "NTF-4")]
+    public async Task ALegallyRelevantTypeTurnedOff_IsWarnedOfAtStartup()
+    {
+        var logs = new CapturingLoggerProvider();
+        await using var host = IsolatedHosts.Create(
+            server,
+            server.NewDatabase("notifications"),
+            _time,
+            services => services.AddSingleton<ILoggerProvider>(logs),
+            new Dictionary<string, string?> { ["Tahsil:Notifications:Types:order_confirmation:Enabled"] = "false", ["Tahsil:Notifications:Types:receipt:Enabled"] = "false" });
+
+        using var client = host.CreateClient();
+
+        logs.Entries.Where(entry => entry.Level == LogLevel.Warning && entry.Message.Contains("backs a legal duty", StringComparison.Ordinal))
+            .Select(entry => entry.Message).ShouldHaveSingleItem().ShouldStartWith("The order_confirmation email is turned off");
+    }
+
+    [Fact]
+    [Trait("Requirement", "NTF-14")]
+    public async Task ACustomerWithoutAnEmailAddress_GetsNoEmail_AndTheSkipIsRecorded()
+    {
+        await using var host = Host();
+        using var client = await ClientAsync(host);
+        using var created = await client.PostJsonAsync("/api/v1/customers", new CreateCustomerRequest { Name = "Ada Lovelace" });
+        var customer = await created.ReadAsync<CustomerResponse>();
+        await SaveCardAsync(client, customer.Id, "4242424242424242");
+        await CreateAsync(client, new CreateSubscriptionRequest { Customer = customer.Id, Items = [new() { Price = "team-monthly-try" }] });
+
+        await host.RunWorkersUntilIdleAsync();
+
+        Drain().ShouldBeEmpty();
+        (await host.QueryAsync<string>($"SELECT reason AS \"Value\" FROM tahsil.notification_log WHERE type = 'receipt'")).ShouldBe(["no_email_address"]);
     }
 
     [Fact]

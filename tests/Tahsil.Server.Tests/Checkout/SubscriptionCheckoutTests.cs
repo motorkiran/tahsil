@@ -35,6 +35,7 @@ public sealed class SubscriptionCheckoutTests(TahsilServerFixture server)
     [Trait("Requirement", "CHK-13")]
     [Trait("Requirement", "CHK-17")]
     [Trait("Requirement", "CHK-23")]
+    [Trait("Requirement", "CUS-11")]
     public async Task ASubscription_IsBought_WithItsFirstInvoicePaid_AndTheCardSavedWithItsConsent()
     {
         await using var host = Host();
@@ -150,6 +151,8 @@ public sealed class SubscriptionCheckoutTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "CHK-3")]
+    [Trait("Requirement", "ADP-1")]
+    [Trait("Requirement", "PTR-3")]
     public async Task AConnectionThatSavesNoCards_InvoicesTheSubscription_AndRefusesTrialsWithACard()
     {
         await using var host = Host();

@@ -79,6 +79,7 @@ public sealed class EventCatalogTests(TahsilServerFixture server)
     }
 
     [Theory]
+    [Trait("Requirement", "EVT-2")]
     [MemberData(nameof(Catalog))]
     public async Task EachEvent_IsEmittedByItsScenario_WithItsDetails(string type, string[] details)
     {

@@ -23,6 +23,8 @@ internal sealed class TestItemsWorker(
 
     protected override bool CallsOtherServices => behavior.Leased;
 
+    protected override int Concurrency => behavior.Concurrency;
+
     protected override async Task<Guid?> LockNextDueAsync(TahsilDbContext context, DateTimeOffset now, CancellationToken cancellationToken) =>
         (await context.Database.SqlQuery<Guid>($"""
             SELECT id AS "Value" FROM tahsil.test_items WHERE due_at <= {now} ORDER BY due_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
@@ -51,6 +53,8 @@ internal sealed class TestItemsWorker(
     public sealed class Behavior
     {
         public bool Leased { get; init; }
+
+        public int Concurrency { get; init; } = 1;
 
         public HashSet<Guid> Failing { get; } = [];
 

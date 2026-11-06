@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Tahsil.Infrastructure.Workers;
@@ -13,6 +14,8 @@ public sealed class DueWorkerTests(TahsilServerFixture server)
     [Theory]
     [Trait("Requirement", "ENG-3")]
     [Trait("Requirement", "ENG-4")]
+    [Trait("Requirement", "ENG-1")]
+    [Trait("Requirement", "ENG-2")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task TwoInstances_ShareTheWork_WithoutProcessingAnItemTwice(bool leased)
@@ -30,6 +33,37 @@ public sealed class DueWorkerTests(TahsilServerFixture server)
         var counts = await first.QueryAsync<int>($"SELECT processed AS \"Value\" FROM tahsil.test_items");
         counts.Count.ShouldBe(200);
         counts.ShouldAllBe(count => count == 1);
+    }
+
+    [Theory]
+    [Trait("Requirement", "ENG-14")]
+    [InlineData(false, 1, 1)]
+    [InlineData(true, 2, 4)]
+    public async Task AWorker_ProcessesAtMostItsConcurrency_AtOnce(bool leased, int least, int greatest)
+    {
+        var time = new FakeTimeProvider(FakeBillingClock.Start);
+        await using var host = IsolatedHosts.Create(server, server.NewDatabase("concurrency"), time);
+        await host.ExecuteRawAsync(TestItemsWorker.CreateTable);
+        await AddItemsAsync(host, time, 40);
+        var (running, most) = (0, 0);
+        var behavior = new TestItemsWorker.Behavior
+        {
+            Leased = leased,
+            Concurrency = 4,
+            BeforeProcessing = async (_, token) =>
+            {
+                var now = Interlocked.Increment(ref running);
+                InterlockedMax(ref most, now);
+                await Task.Delay(20, token);
+                Interlocked.Decrement(ref running);
+            },
+        };
+
+        (await Worker(host, behavior).RunBatchAsync(CancellationToken)).ShouldBe(40);
+
+        // Only workers that lease their items run several at once; the database ones keep one transaction each.
+        most.ShouldBeInRange(least, greatest);
+        (await host.QueryAsync<int>($"SELECT processed AS \"Value\" FROM tahsil.test_items")).ShouldAllBe(count => count == 1);
     }
 
     [Fact]
@@ -109,6 +143,42 @@ public sealed class DueWorkerTests(TahsilServerFixture server)
         behavior.Failing.Clear();
         (await worker.RunBatchAsync(CancellationToken)).ShouldBe(1);
         (await host.QueryAsync<int>($"SELECT count(*)::int AS \"Value\" FROM tahsil.worker_failures")).ShouldBe([0]);
+    }
+
+    [Theory]
+    [Trait("Requirement", "ENG-7")]
+    [InlineData(false, 2, true)]
+    [InlineData(false, 3, false)]
+    [InlineData(true, 2, true)]
+    [InlineData(true, 3, false)]
+    public async Task LostConcurrencyRaces_AreRetriedAtOnce_ThenCountAsAFailure(bool leased, int races, bool processed)
+    {
+        var time = new FakeTimeProvider(FakeBillingClock.Start);
+        await using var host = IsolatedHosts.Create(server, server.NewDatabase("races"), time);
+        await host.ExecuteRawAsync(TestItemsWorker.CreateTable);
+        await AddItemsAsync(host, time, 1);
+        var lost = 0;
+        var behavior = new TestItemsWorker.Behavior
+        {
+            Leased = leased,
+            BeforeProcessing = (_, _) => ++lost <= races ? throw new DbUpdateConcurrencyException("Lost a race.") : Task.CompletedTask,
+        };
+
+        await Worker(host, behavior).RunBatchAsync(CancellationToken);
+
+        (await host.QueryAsync<int>($"SELECT processed AS \"Value\" FROM tahsil.test_items")).ShouldBe([processed ? 1 : 0]);
+        (await host.QueryAsync<int>($"SELECT count(*)::int AS \"Value\" FROM tahsil.worker_failures")).ShouldBe([processed ? 0 : 1]);
+    }
+
+    private static void InterlockedMax(ref int target, int value)
+    {
+        for (var current = Volatile.Read(ref target); value > current; current = Volatile.Read(ref target))
+        {
+            if (Interlocked.CompareExchange(ref target, value, current) == current)
+            {
+                return;
+            }
+        }
     }
 
     private static TestItemsWorker Worker(WebApplicationFactory<Program> host, TestItemsWorker.Behavior behavior) =>

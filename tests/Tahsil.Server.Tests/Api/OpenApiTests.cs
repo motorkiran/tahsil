@@ -11,6 +11,7 @@ public sealed class OpenApiTests
     private const string UpdateSnapshotVariable = "TAHSIL_UPDATE_SNAPSHOTS";
 
     [Fact]
+    [Trait("Requirement", "API-15")]
     public async Task Document_MatchesTheSnapshot()
     {
         using var host = new TestHost();
@@ -51,6 +52,24 @@ public sealed class OpenApiTests
         var operations = document["paths"]!.AsObject().SelectMany(path => path.Value!.AsObject().Select(operation => operation.Value!));
         operations.ShouldAllBe(operation => operation["description"]!.GetValue<string>().Contains("Requires the `tahsil.")
             && operation["security"]![0]!["ApiKey"] != null);
+    }
+
+    [Fact]
+    [Trait("Requirement", "CAT-3")]
+    [Trait("Requirement", "CAT-12")]
+    [Trait("Requirement", "CPN-3")]
+    public async Task PricesTaxRatesAndCoupons_CannotBeDeleted()
+    {
+        using var host = new TestHost();
+        using var http = host.CreateClient();
+
+        var document = JsonNode.Parse(await http.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
+
+        // Products without history are deleted with their prices (DOM-3); nothing deletes a price by itself.
+        string[] kept = ["/api/v1/prices", "/api/v1/tax-rates", "/api/v1/coupons"];
+        var paths = document["paths"]!.AsObject().Where(path => kept.Any(prefix => path.Key.StartsWith(prefix, StringComparison.Ordinal))).ToList();
+        paths.Count.ShouldBeGreaterThanOrEqualTo(kept.Length);
+        paths.Where(path => path.Value!.AsObject().ContainsKey("delete")).Select(path => path.Key).ShouldBeEmpty();
     }
 
     [Fact]

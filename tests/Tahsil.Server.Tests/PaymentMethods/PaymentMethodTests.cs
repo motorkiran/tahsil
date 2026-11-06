@@ -61,6 +61,7 @@ public sealed class PaymentMethodTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "CUS-16")]
+    [Trait("Requirement", "DOM-7")]
     public async Task RemovingACard_ClearsTheDefault_AndDeletesItsTokenAtTheProvider()
     {
         await using var host = Host();
@@ -92,6 +93,7 @@ public sealed class PaymentMethodTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "CUS-14")]
+    [Trait("Requirement", "DOM-7")]
     public async Task CardsExpire_AtTheEndOfTheirExpiryMonth()
     {
         await using var host = Host();
@@ -113,6 +115,7 @@ public sealed class PaymentMethodTests(TahsilServerFixture server)
 
     [Theory]
     [Trait("Requirement", "SIM-1")]
+    [Trait("Requirement", "SEC-18")]
     [InlineData("Test", HttpStatusCode.Unauthorized)]
     [InlineData("Live", HttpStatusCode.NotFound)]
     public async Task TheTestApi_ExistsInTestModeOnly(string mode, HttpStatusCode status)

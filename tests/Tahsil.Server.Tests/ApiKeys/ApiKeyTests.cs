@@ -15,6 +15,7 @@ public sealed class ApiKeyTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "API-7")]
+    [Trait("Requirement", "SEC-7")]
     public async Task AValidKey_Authenticates_AndItsUseIsRecorded()
     {
         await using var host = Host();
@@ -115,6 +116,7 @@ public sealed class ApiKeyTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "API-8")]
+    [Trait("Requirement", "SEC-7")]
     public async Task EveryWrite_IsAuditedWithTheKeysId_AndARevokedKeyStopsWorking()
     {
         await using var host = Host();

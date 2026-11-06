@@ -52,6 +52,7 @@ public sealed class IyzicoTests
         IyzicoSigning.Price(decimal.Parse(price, NumberStyles.Float, CultureInfo.InvariantCulture)).ShouldBe(normalized);
 
     [Theory]
+    [Trait("Requirement", "IYZ-3")]
     [InlineData("NOT_SUFFICIENT_FUNDS", "10051", false, FailureCode.InsufficientFunds)]
     [InlineData("DO_NOT_HONOUR", "10005", false, FailureCode.CardDeclined)]
     [InlineData(null, "5184", false, FailureCode.CardNotSupported)]
@@ -69,6 +70,7 @@ public sealed class IyzicoTests
 
     [Fact]
     [Trait("Requirement", "IYZ-6")]
+    [Trait("Requirement", "CUS-5")]
     public void TheBuyer_IsTheCustomer_WithTheConnectionsFallbacks()
     {
         var context = Context(new RecordedExchangeHandler(new RecordedExchanges("none", [])), new Dictionary<string, string> { ["identityNumberFallback"] = "22222222222" });
@@ -103,6 +105,8 @@ public sealed class IyzicoTests
 
     [Fact]
     [Trait("Requirement", "IYZ-6")]
+    [Trait("Requirement", "ADP-11")]
+    [Trait("Requirement", "IYZ-5")]
     public async Task Start_SendsTheCustomerToTheCheckoutForm()
     {
         var handler = new RecordedExchangeHandler("iyzico/cf-initialize-success.json");
@@ -169,6 +173,7 @@ public sealed class IyzicoTests
 
     [Fact]
     [Trait("Requirement", "IYZ-7")]
+    [Trait("Requirement", "ADP-7")]
     public async Task Complete_RefusesAReturnForAnotherForm()
     {
         var handler = new RecordedExchangeHandler(new RecordedExchanges("none", []));
@@ -211,6 +216,7 @@ public sealed class IyzicoTests
 
     [Theory]
     [Trait("Requirement", "IYZ-10")]
+    [Trait("Requirement", "ADP-6")]
     [InlineData("report-success", "found", PaymentStatus.Succeeded)]
     [InlineData("report-failed", "found", PaymentStatus.Failed)]
     [InlineData("report-pending", "found", PaymentStatus.Pending)]

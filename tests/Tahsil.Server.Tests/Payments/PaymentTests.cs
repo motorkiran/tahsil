@@ -24,6 +24,7 @@ public sealed class PaymentTests(TahsilServerFixture server)
     [Trait("Requirement", "PAY-8")]
     [Trait("Requirement", "PAY-12")]
     [Trait("Requirement", "CUS-13")]
+    [Trait("Requirement", "PAY-7")]
     public async Task ACustomerPresentPayment_PaysTheInvoice_AndSavesTheCardAsTheDefault()
     {
         await using var host = Host();

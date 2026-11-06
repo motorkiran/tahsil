@@ -20,6 +20,7 @@ public sealed class ContentSecurityPolicyTests
     };
 
     [Fact]
+    [Trait("Requirement", "SEC-20")]
     public void ThePageSources_AreAddedToTheirDirectives_AndNowhereElse()
     {
         var policy = ContentSecurityPolicy.Build("n0nce", runsScripts: false, Stripe);

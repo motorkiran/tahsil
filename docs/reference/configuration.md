@@ -314,5 +314,5 @@ Background worker settings from the `Tahsil:Workers` configuration section.
 | `BatchSize` | `100` | The most items a worker processes before it looks at the time again. |
 | `Enabled` | `true` | Runs the workers and periodic jobs on this instance. Any number of instances may run them; turn them off on instances that should only serve requests. |
 | `Lease` | `00:05:00` | How long a worker that calls other services owns an item. If the instance dies, the item is due again once the lease runs out. |
-| `PaymentConcurrency` | `4` | The most provider calls for payments that run at once, per instance and connection. |
+| `PaymentConcurrency` | `4` | The most invoices one instance charges at once. Each instance charges this many; keep the sum across instances within the providers' rate limits. |
 | `PollingInterval` | `00:00:10` | How often workers look for due items. Items this instance makes due are picked up at once; polling covers other instances and scheduled times. |

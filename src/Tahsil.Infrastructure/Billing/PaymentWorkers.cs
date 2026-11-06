@@ -21,6 +21,9 @@ internal sealed class PaymentCollectionWorker(
 
     protected override bool CallsOtherServices => true;
 
+    /// <summary>Renewals at the start of a period are charged a few at a time, within the providers' rate limits (ENG-14).</summary>
+    protected override int Concurrency => Options.PaymentConcurrency;
+
     protected override async Task<Guid?> LockNextDueAsync(TahsilDbContext context, DateTimeOffset now, CancellationToken cancellationToken) =>
         (await context.Database.SqlQuery<Guid>($"""
             SELECT id AS "Value" FROM tahsil.invoices

@@ -52,6 +52,7 @@ public sealed class TahsilWebhookTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "SDK-11")]
     [Trait("Requirement", "SDK-12")]
+    [Trait("Requirement", "EVT-13")]
     public async Task TheEndpoint_RefusesWhatItCannotVerify_AndHandlesEachWebhookOnce()
     {
         var handled = new List<string>();

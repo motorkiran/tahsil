@@ -28,6 +28,8 @@ public sealed class RefundTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "PAY-20")]
     [Trait("Requirement", "PAY-22")]
+    [Trait("Requirement", "DOM-18")]
+    [Trait("Requirement", "INV-19")]
     public async Task AFullRefundOnTheDayOfThePayment_IsAVoid_AndChangesNoStatus()
     {
         await using var host = Host();

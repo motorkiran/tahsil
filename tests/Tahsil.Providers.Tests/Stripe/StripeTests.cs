@@ -138,6 +138,7 @@ public sealed class StripeTests
 
     [Fact]
     [Trait("Requirement", "STR-8")]
+    [Trait("Requirement", "STR-13")]
     public async Task ASavedCard_IsChargedOffSession_WithTahsilsIdempotencyKey()
     {
         var handler = new RecordedExchangeHandler("stripe/charge-succeeded.json");

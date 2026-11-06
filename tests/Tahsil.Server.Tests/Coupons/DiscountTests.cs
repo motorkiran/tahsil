@@ -94,6 +94,7 @@ public sealed class DiscountTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "CPN-10")]
     [Trait("Requirement", "CPN-14")]
+    [Trait("Requirement", "SUB-9")]
     public async Task ADiscount_IsReplaced_ThenRemoved_AndAnOpenDraftDropsIt()
     {
         await using var host = Host();

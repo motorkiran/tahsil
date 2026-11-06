@@ -27,6 +27,7 @@ public sealed class UsageExitTests(TahsilServerFixture server)
     [Trait("Requirement", "USG-10")]
     [Trait("Requirement", "USG-11")]
     [Trait("Requirement", "MNY-10")]
+    [Trait("Requirement", "INV-3")]
     public async Task AMeteredSubscription_BillsTieredUsageAtTheEndOfEachPeriod_ToTheCard()
     {
         await using var host = IsolatedHosts.Create(server, server.NewDatabase("usage_exit"), _time);

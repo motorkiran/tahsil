@@ -60,6 +60,7 @@ public sealed partial class HostedInvoicePageTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "INV-24")]
+    [Trait("Requirement", "SEC-5")]
     public async Task Links_AreVerified_AndAnotherKeyVersionInvalidatesThem()
     {
         var database = server.NewDatabase("invoice_page");

@@ -7,6 +7,7 @@ namespace Tahsil.Server.Tests.Sdk;
 public sealed class TahsilMoneyTests
 {
     [Theory]
+    [Trait("Requirement", "MNY-2")]
     [InlineData(123450L, "TRY", "tr-TR", "₺1.234,50")]
     [InlineData(123450L, "TRY", "en-US", "₺1,234.50")]
     [InlineData(-500L, "EUR", "en-US", "-€5.00")]

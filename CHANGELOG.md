@@ -12,6 +12,11 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 
 - In Test mode, moving the clock while the background workers were sending an email could send it twice: time travel and the workers no longer run at the same time.
 - Request traces no longer record the access tokens in the paths of hosted pages (checkout, portal, invoice and simulator pages); they record `{token}` instead.
+- The payment worker charged one invoice at a time on each instance and ignored `Tahsil:Workers:PaymentConcurrency`; it now charges up to that many at once (4 by default).
+- An operator's retry of an invoice in dunning (`POST /api/v1/invoices/{id}/pay` or the admin panel) that failed moved the dunning schedule; now only a retry that pays changes it.
+- With `Tahsil:Admin:Enabled` set to `false`, the panel's sign-in pages were still served; they now go with the panel.
+- Expired portal sessions are kept for a week, as documented, instead of a day, so late links still lead back to the application.
+- With a provider that takes one charge per card at a time, the payment worker no longer starts a second charge on a card while the first waits for its answer; the second invoice is tried once the first is settled. The simulator mimics such a provider with `oneChargePerCard`.
 
 ### Added
 

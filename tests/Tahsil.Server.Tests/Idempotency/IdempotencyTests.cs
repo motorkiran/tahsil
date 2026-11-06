@@ -21,6 +21,7 @@ public sealed class IdempotencyTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "API-12")]
+    [Trait("Requirement", "SEC-12")]
     public async Task ARepeatedRequest_GetsTheKeptResponse_WithoutActingTwice()
     {
         await using var host = Host(new Widgets());

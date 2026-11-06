@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Tahsil.Application.Notifications;
 using Tahsil.Contracts;
+using Tahsil.Infrastructure.Portal;
 using Tahsil.Server.Tests.Notifications;
 using static Tahsil.Server.Tests.Checkout.CheckoutBrowser;
 using static Tahsil.Server.Tests.Subscriptions.SubscriptionScenarios;
@@ -61,6 +62,27 @@ public sealed partial class PortalSessionTests(TahsilServerFixture server)
         expired.QuerySelector("h1")!.TextContent.ShouldBe("Page not found");
         expired.QuerySelector("#return")!.GetAttribute("href").ShouldBe("https://app.example.com/billing");
         expired.QuerySelector("#subscriptions").ShouldBeNull();
+    }
+
+    [Fact]
+    [Trait("Requirement", "ENG-19")]
+    public async Task AnExpiredSession_IsDeletedAWeekLater()
+    {
+        await using var host = Host();
+        using var api = await ClientAsync(host);
+        var (customer, _) = await SubscriberAsync(api, "Ada Lovelace", "ada@example.com", "4242424242424242");
+        var session = await SessionAsync(api, new CreatePortalSessionRequest { Customer = customer, ReturnUrl = "https://app.example.com/billing" });
+        var cleanup = host.Services.GetRequiredService<PortalSessionCleanup>();
+        var sessions = () => host.QueryAsync<int>($"SELECT count(*)::int AS \"Value\" FROM tahsil.portal_sessions WHERE customer_id = {customer}");
+
+        _time.Advance(session.ExpiresAt.AddDays(7) - _time.GetUtcNow() - TimeSpan.FromMinutes(1));
+        (await cleanup.RunOnceAsync(CancellationToken)).ShouldBeTrue();
+        var kept = await sessions();
+        _time.Advance(TimeSpan.FromMinutes(2));
+        (await cleanup.RunOnceAsync(CancellationToken)).ShouldBeTrue();
+
+        kept.ShouldBe([1]);
+        (await sessions()).ShouldBe([0]);
     }
 
     [Fact]
@@ -141,6 +163,7 @@ public sealed partial class PortalSessionTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "PRT-4")]
+    [Trait("Requirement", "NTF-2")]
     public async Task AFailedPaymentsEmail_LinksIntoThePortal_ForAWeek()
     {
         await using var host = Host();

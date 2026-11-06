@@ -9,8 +9,8 @@ using Tahsil.Infrastructure.Workers;
 namespace Tahsil.Infrastructure.Portal;
 
 /// <summary>
-/// Deletes portal sessions a day after they expired, every hour: until then an expired link still leads to a page that
-/// says so and sends the customer back (PRT-1).
+/// Deletes portal sessions a week after they expired, every hour (ENG-19): until then an expired link still leads to a
+/// page that says so and sends the customer back (PRT-1).
 /// </summary>
 internal sealed class PortalSessionCleanup(
     IServiceScopeFactory scopes,
@@ -28,7 +28,7 @@ internal sealed class PortalSessionCleanup(
 
     protected override async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var expired = _clock.GetUtcNow().AddDays(-1);
+        var expired = _clock.GetUtcNow().AddDays(-7);
         await services.GetRequiredService<TahsilDbContext>().PortalSessions
             .Where(session => session.ExpiresAt < expired)
             .ExecuteDeleteAsync(cancellationToken);

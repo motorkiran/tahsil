@@ -59,6 +59,9 @@ public sealed class PayTRTests
     [Trait("Requirement", "PTR-6")]
     [Trait("Requirement", "PTR-7")]
     [Trait("Requirement", "PTR-15")]
+    [Trait("Requirement", "ADP-6")]
+    [Trait("Requirement", "ADP-11")]
+    [Trait("Requirement", "PTR-5")]
     public async Task APayment_GetsATokenForPayTRsIFrame_WithTheExactFieldsSigned()
     {
         var handler = new RecordedExchangeHandler("paytr/get-token.json");

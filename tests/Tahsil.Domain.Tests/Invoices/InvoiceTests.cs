@@ -13,6 +13,7 @@ public sealed class InvoiceTests
 
     [Fact]
     [Trait("Requirement", "INV-4")]
+    [Trait("Requirement", "MNY-17")]
     public void DraftTotals_AreSumsOfRoundedLines_WithTaxPerLine()
     {
         var invoice = Draft();

@@ -25,6 +25,7 @@ public sealed class DunningTests(TahsilServerFixture server)
     [Trait("Requirement", "DUN-2")]
     [Trait("Requirement", "DUN-5")]
     [Trait("Requirement", "DUN-10")]
+    [Trait("Requirement", "INV-11")]
     public async Task ARetryableDecline_IsRetriedOnTheSchedule_AndRecovers()
     {
         await using var host = Host();
@@ -50,8 +51,41 @@ public sealed class DunningTests(TahsilServerFixture server)
         (await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{invoice}")).Status.ShouldBe(InvoiceStatus.Paid);
     }
 
+    [Fact]
+    [Trait("Requirement", "DUN-13")]
+    public async Task AnOperatorsRetry_LeavesTheScheduleAlone_UnlessItPays()
+    {
+        await using var host = Host();
+        using var client = await ClientAsync(host);
+        var (subscription, card) = await PayingAsync(client);
+        await SetBehaviorAsync(client, card, "insufficient_funds");
+        await FailRenewalAsync(host);
+        var invoice = (await GetSubscriptionAsync(client, subscription.Id)).LatestInvoice!.Id;
+        await AdvanceToAsync(host, FirstFailure.AddHours(6));
+
+        using (var declined = await client.PostJsonAsync($"/api/v1/invoices/{invoice}/pay", new PayInvoiceRequest { PaymentMethod = card }))
+        {
+            declined.StatusCode.ShouldBe(HttpStatusCode.Created, await declined.Content.ReadAsStringAsync(CancellationToken));
+        }
+
+        var waiting = await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{invoice}");
+        (waiting.Status, waiting.NextPaymentAttemptAt).ShouldBe((InvoiceStatus.Open, FirstFailure.AddDays(1)));
+
+        await SetBehaviorAsync(client, card, "succeed");
+        using (var paid = await client.PostJsonAsync($"/api/v1/invoices/{invoice}/pay", new PayInvoiceRequest { PaymentMethod = card }))
+        {
+            paid.StatusCode.ShouldBe(HttpStatusCode.Created, await paid.Content.ReadAsStringAsync(CancellationToken));
+        }
+
+        var settled = await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{invoice}");
+        (settled.Status, settled.NextPaymentAttemptAt).ShouldBe((InvoiceStatus.Paid, null));
+        (await GetSubscriptionAsync(client, subscription.Id)).Status.ShouldBe(SubscriptionStatus.Active);
+        (await PaymentTimesAsync(client, invoice)).Select(payment => payment.FailureCode).ShouldBe(["insufficient_funds", "insufficient_funds", null], ignoreOrder: true);
+    }
+
     [Theory]
     [Trait("Requirement", "DUN-6")]
+    [Trait("Requirement", "SUB-32")]
     [InlineData("leave_open", InvoiceStatus.Open)]
     [InlineData("mark_uncollectible", InvoiceStatus.Uncollectible)]
     [InlineData("void", InvoiceStatus.Void)]
@@ -141,6 +175,7 @@ public sealed class DunningTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "DUN-7")]
+    [Trait("Requirement", "PAY-5")]
     public async Task TheMerchantsFailures_NeverCountAgainstTheCustomer_AndReachTheOperatorAfterADay()
     {
         await using var host = Host();
@@ -170,6 +205,7 @@ public sealed class DunningTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "DUN-9")]
+    [Trait("Requirement", "SUB-13")]
     public async Task SeveralOpenInvoices_AreCollectedOldestFirst()
     {
         await using var host = Host();

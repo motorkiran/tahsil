@@ -55,6 +55,7 @@ public sealed class HostedPageTests
 
     [Fact]
     [Trait("Requirement", "FND-41")]
+    [Trait("Requirement", "SEC-20")]
     public async Task EveryResponse_CarriesTheSecurityHeaders()
     {
         using var host = new TestHost();

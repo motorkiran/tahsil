@@ -211,6 +211,7 @@ public sealed class UsageBillingTests(TahsilServerFixture server)
     [InlineData(ProrationBehavior.AlwaysInvoice)]
     [InlineData(ProrationBehavior.CreateProrations)]
     [Trait("Requirement", "SUB-25")]
+    [Trait("Requirement", "MNY-31")]
     public async Task RemovingAMeteredItem_BillsItsUsageSoFar_AndAddingOneStartsMeteringThen(ProrationBehavior behavior)
     {
         await using var host = Host();

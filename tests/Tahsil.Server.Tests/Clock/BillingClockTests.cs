@@ -15,6 +15,7 @@ public sealed class BillingClockTests(TahsilServerFixture server)
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
+    [Trait("Requirement", "ENG-24")]
     public async Task InTestMode_TheBillingClock_IncludesTheTestClockOffset_AndAspNetCoreTimeDoesNot()
     {
         await using var host = server.WithSettings(new Dictionary<string, string?> { ["ConnectionStrings:Tahsil"] = server.NewDatabase("clock") });

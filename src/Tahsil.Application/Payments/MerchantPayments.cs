@@ -21,6 +21,7 @@ public sealed class MerchantPayments(
     IIdempotency idempotency,
     IRequestContext request,
     ProviderAccess providers,
+    ProviderRegistry registry,
     ChargeableCards chargeable,
     PaymentRequests requests,
     PaymentOutcomes outcomes,
@@ -105,6 +106,15 @@ public sealed class MerchantPayments(
                 return payment;
             }
 
+            if (await ChargeInProgressOnCardAsync(method, connection, cancellationToken))
+            {
+                // The provider refuses a second charge on the card while one runs (PAY-11): this invoice waits for it.
+                invoice.PostponePaymentAttempt(now + options.Value.ReconcileAfter, now);
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return null;
+            }
+
             payment = Payment.ForMerchant(
                 invoice.CustomerId, invoice.Id, connection.Id, method.Id, invoice.AmountRemaining, invoice.Currency, now + options.Value.ReconcileAfter, request.Caller.ToActor(), now);
             context.Payments.Add(payment);
@@ -113,6 +123,21 @@ public sealed class MerchantPayments(
         }
 
         return await ChargeWrittenAsync(payment, method, connection, cancellationToken);
+    }
+
+    /// <summary>
+    /// For providers that take one charge per card at a time: whether a charge on the card is still waiting for its
+    /// answer. The card stays locked until the caller's transaction ends, so two instances never both decide to charge it.
+    /// </summary>
+    private async Task<bool> ChargeInProgressOnCardAsync(PaymentMethod method, ProviderConnection connection, CancellationToken cancellationToken)
+    {
+        if (registry.Find(connection.Provider)?.CapabilitiesFor(connection.Settings).ConcurrentChargesPerCard is not 1)
+        {
+            return false;
+        }
+
+        await locks.LockPaymentMethodAsync(method.Id, cancellationToken);
+        return await PaymentRequests.HasChargeInFlightOnCardAsync(context, method.Id, cancellationToken);
     }
 
     /// <summary>Steps 2 and 3 of ENG-13. The charge and its record run to the end even if the caller goes away: an abandoned call is only reconciled.</summary>

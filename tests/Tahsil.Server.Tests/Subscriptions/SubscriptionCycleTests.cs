@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Tahsil.Contracts;
@@ -15,6 +16,7 @@ public sealed class SubscriptionCycleTests(TahsilServerFixture server)
     [Fact]
     [Trait("Requirement", "ENG-9")]
     [Trait("Requirement", "SUB-11")]
+    [Trait("Requirement", "ENG-8")]
     public async Task ASubscriptionThreePeriodsBehind_GetsThreeCycleInvoices_EachForItsPeriod()
     {
         await using var host = Host();
@@ -33,6 +35,7 @@ public sealed class SubscriptionCycleTests(TahsilServerFixture server)
 
     [Fact]
     [Trait("Requirement", "INV-5")]
+    [Trait("Requirement", "INV-2")]
     public async Task ACycleInvoice_IsADraft_ThatFinalizesItselfAfterTheDraftPeriod()
     {
         await using var host = Host();
@@ -47,6 +50,47 @@ public sealed class SubscriptionCycleTests(TahsilServerFixture server)
         (invoice.Status, invoice.BillingReason, invoice.AutoAdvance, invoice.FinalizeAt, invoice.Total).ShouldBe(
             (InvoiceStatus.Draft, BillingReason.SubscriptionCycle, true, _time.GetUtcNow().AddHours(1), 90_000L));
         invoice.Lines.ShouldHaveSingleItem().Description.ShouldBe("Team (Aylık) × 3");
+    }
+
+    [Fact]
+    [Trait("Requirement", "INV-6")]
+    public async Task WithoutADraftPeriod_TheCycleInvoiceIsFinalizedInTheSameRun()
+    {
+        await using var host = IsolatedHosts.Create(
+            server, server.NewDatabase("cycles"), _time, settings: new Dictionary<string, string?> { ["Tahsil:Billing:DraftPeriod"] = "00:00:00" });
+        using var client = await ClientAsync(host);
+        var subscription = await SendingInvoicesAsync(client, await CustomerAsync(client));
+
+        _time.Advance(subscription.CurrentPeriodEnd - _time.GetUtcNow());
+        await host.RunWorkersUntilIdleAsync();
+
+        var renewed = await GetSubscriptionAsync(client, subscription.Id);
+        var invoice = await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{renewed.LatestInvoice!.Id}");
+        (invoice.Status, invoice.BillingReason).ShouldBe((InvoiceStatus.Open, BillingReason.SubscriptionCycle));
+    }
+
+    [Fact]
+    [Trait("Requirement", "ENG-12")]
+    public async Task ACycleDraft_IsStillFinalized_WhenItsSubscriptionIsCanceledFirst()
+    {
+        await using var host = Host();
+        using var client = await ClientAsync(host);
+        var subscription = await SendingInvoicesAsync(client, await CustomerAsync(client));
+        _time.Advance(subscription.CurrentPeriodEnd - _time.GetUtcNow());
+        await host.RunWorkersUntilIdleAsync();
+        var draft = (await GetSubscriptionAsync(client, subscription.Id)).LatestInvoice!.Id;
+
+        using (var canceled = await client.PostJsonAsync($"/api/v1/subscriptions/{subscription.Id}/cancel", new CancelSubscriptionRequest { At = "now" }))
+        {
+            canceled.StatusCode.ShouldBe(HttpStatusCode.OK, await canceled.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+
+        _time.Advance(TimeSpan.FromHours(1));
+        await host.RunWorkersUntilIdleAsync();
+
+        (await GetSubscriptionAsync(client, subscription.Id)).Status.ShouldBe(SubscriptionStatus.Canceled);
+        var invoice = await GetAsync<InvoiceResponse>(client, $"/api/v1/invoices/{draft}");
+        (invoice.Status, invoice.BillingReason, invoice.Total).ShouldBe((InvoiceStatus.Open, BillingReason.SubscriptionCycle, 30_000L), "the period it bills was provided");
     }
 
     [Fact]

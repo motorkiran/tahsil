@@ -37,6 +37,7 @@ public sealed class AdminSignInRulesTests
 
     [Fact]
     [Trait("Requirement", "KML-4")]
+    [Trait("Requirement", "SEC-8")]
     public void WithoutASecondFactor_SignInIsDenied_UnlessMfaIsNotRequired()
     {
         AdminSignInRules.Decide(["tahsil-admin"], ["pwd"], Kimlik).Denial.ShouldBe(AdminDenial.SecondFactorRequired);

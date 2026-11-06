@@ -25,6 +25,20 @@ public sealed class AdminAccessTests(TahsilServerFixture server)
         response.Headers.Location!.PathAndQuery.ShouldBe("/admin/signin?returnUrl=%2Fadmin");
     }
 
+    [Fact]
+    [Trait("Requirement", "ADM-3")]
+    public async Task WithThePanelTurnedOff_ItsPagesDoNotExist()
+    {
+        await using var host = server.WithSettings(new Dictionary<string, string?> { ["Tahsil:Admin:Enabled"] = "false" });
+        using var client = host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var panel = await client.GetAsync(new Uri("/admin", UriKind.Relative), CancellationToken);
+        using var signIn = await client.GetAsync(new Uri("/admin/signin", UriKind.Relative), CancellationToken);
+        using var health = await client.GetAsync(new Uri("/health/live", UriKind.Relative), CancellationToken);
+
+        (panel.StatusCode, signIn.StatusCode, health.StatusCode).ShouldBe((HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.OK));
+    }
+
     [Theory]
     [Trait("Requirement", "KML-2")]
     [InlineData(AdminRoles.Admin, HttpStatusCode.OK, null)]
@@ -43,6 +57,7 @@ public sealed class AdminAccessTests(TahsilServerFixture server)
 
     [Theory]
     [Trait("Requirement", "KML-6")]
+    [Trait("Requirement", "SEC-18")]
     [InlineData("Testing", "Test")]
     [InlineData("Development", "Live")]
     public void TheDevelopmentSignIn_IsRefusedOutsideTestModeDevelopment(string environment, string mode)

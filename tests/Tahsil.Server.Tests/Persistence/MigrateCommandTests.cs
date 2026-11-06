@@ -8,6 +8,7 @@ namespace Tahsil.Server.Tests.Persistence;
 public sealed class MigrateCommandTests(TahsilServerFixture server)
 {
     [Fact]
+    [Trait("Requirement", "OPS-4")]
     public async Task Migrate_AppliesMigrations_AndExits()
     {
         var database = server.NewDatabase("migrate");

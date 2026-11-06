@@ -71,6 +71,7 @@ public abstract class ConformanceSuite
 
     [Theory]
     [Trait("Requirement", "ADP-17")]
+    [Trait("Requirement", "ADP-3")]
     [InlineData(TestCardScenario.InsufficientFunds, FailureCode.InsufficientFunds)]
     [InlineData(TestCardScenario.Declined, FailureCode.CardDeclined)]
     public async Task RefusedCharges_FailWithTheirCodes(TestCardScenario scenario, FailureCode failure)

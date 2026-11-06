@@ -100,6 +100,12 @@ public sealed class Dunning(
     /// </summary>
     public async Task PaymentFailedAsync(Payment payment, Invoice invoice, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        if (payment.Actor.Type != ActorType.System && invoice.DunningStartedAt is not null)
+        {
+            // An operator's retry during dunning changes the schedule only when it pays (DUN-13).
+            return;
+        }
+
         if (payment.FailureCategory == "merchant")
         {
             invoice.RecordMerchantFailure(now);

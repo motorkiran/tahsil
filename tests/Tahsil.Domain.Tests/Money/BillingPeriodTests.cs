@@ -78,6 +78,7 @@ public sealed class BillingPeriodTests
     [Fact]
     [Trait("Requirement", "MNY-29")]
     [Trait("Requirement", "MNY-30")]
+    [Trait("Requirement", "MNY-32")]
     public void Proration_CreditsFullyAtTheStart_NothingAtTheEnd_AndNetsTheRoundedShares() =>
         Gen.Select(Gen.Long[0, 10_000_000_000L], Gen.Long[0, 10_000_000_000L], Gen.Int[1, 400 * 86_400], Gen.Int[0, 400 * 86_400]).Sample((oldAmount, newAmount, length, offset) =>
         {
