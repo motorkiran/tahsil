@@ -6,6 +6,13 @@
     <ContainerFamily>noble-chiseled-extra</ContainerFamily>
   </PropertyGroup>
 
+  <PropertyGroup Label="Runtime">
+    <!-- Workstation GC: an idle instance on two cores takes about 230 MB instead of 350 MB with server GC, and the
+         performance targets are met with it (docs/guides/operations/performance.md). DOTNET_gcServer=1 turns server GC
+         back on for instances with many cores and a high request rate. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+
   <PropertyGroup Label="Development">
     <!-- Development settings kept out of the repository, such as the Kimlik webhook secret of samples/kimlik/setup.cs. -->
     <UserSecretsId>tahsil-server</UserSecretsId>

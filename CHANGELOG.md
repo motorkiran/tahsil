@@ -18,7 +18,13 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 - Expired portal sessions are kept for a week, as documented, instead of a day, so late links still lead back to the application.
 - With a provider that takes one charge per card at a time, the payment worker no longer starts a second charge on a card while the first waits for its answer; the second invoice is tried once the first is settled. The simulator mimics such a provider with `oneChargePerCard`.
 
+### Changed
+
+- The server runs with workstation garbage collection: an idle instance on two cores takes about 230 MB instead of 350 MB. `DOTNET_gcServer=1` turns server garbage collection back on.
+
 ### Added
+
+- Load tests for the performance targets (opt-in with `TAHSIL_LOAD_TESTS=1`) and their results in `docs/guides/operations/performance.md`.
 
 - The server foundation: configuration validated at startup, with Test and Live modes (Live mode refuses plain HTTP and the public development master key) and a `Tahsil-Mode: test` header and page banner in Test mode.
 - PostgreSQL storage with automatic migrations, or the `migrate` command as a separate deployment step.
