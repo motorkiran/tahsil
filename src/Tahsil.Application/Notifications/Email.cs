@@ -58,6 +58,7 @@ public sealed class NotificationOptions
 
 public sealed class NotificationTypeOptions
 {
+    /// <summary>Whether emails of this type are sent.</summary>
     public bool Enabled { get; set; } = true;
 }
 

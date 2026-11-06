@@ -22,6 +22,7 @@ public sealed class CheckoutPageOptions
 
 public sealed class ConsentTextOptions
 {
+    /// <summary>Whether the checkout asks customers to agree that the service starts at once, which waives the right of withdrawal.</summary>
     public bool Enabled { get; set; }
 
     /// <summary>The checkbox text per locale; Tahsil's own when omitted.</summary>

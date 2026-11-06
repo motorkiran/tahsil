@@ -14,6 +14,12 @@ using Tahsil.Server.Ui;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Commands write their result to the standard output, so their logs go to the standard error.
+if (args is ["create-api-key", ..])
+{
+    builder.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+}
+
 builder.AddTelemetry();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
@@ -52,6 +58,13 @@ if (args is ["reencrypt", ..])
 if (app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.MigrateOnStartup)
 {
     await app.Services.PrepareDatabaseAsync();
+}
+
+// A key for an application without the admin panel, such as the first one of a new installation.
+if (args is ["create-api-key", var keyName, .. var permissions])
+{
+    Environment.ExitCode = await ApiKeyCommand.RunAsync(app.Services, keyName, permissions);
+    return;
 }
 
 app.UseErrorResponses();

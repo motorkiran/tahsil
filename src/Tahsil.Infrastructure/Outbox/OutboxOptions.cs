@@ -11,6 +11,7 @@ public sealed class OutboxOptions
     /// </summary>
     public TimeSpan PollingInterval { get; set; } = TimeSpan.FromSeconds(5);
 
+    /// <summary>How many messages the dispatcher takes at once.</summary>
     public int BatchSize { get; set; } = 20;
 
     /// <summary>Attempts before a message is marked as failed. Retries back off exponentially, up to an hour apart.</summary>

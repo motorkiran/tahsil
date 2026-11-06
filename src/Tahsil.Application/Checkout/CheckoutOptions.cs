@@ -18,22 +18,31 @@ public sealed class MerchantOptions
     /// <summary>The registered name, such as <c>Acme Yazılım A.Ş.</c>.</summary>
     public string? LegalName { get; set; }
 
+    /// <summary>The MERSİS number, printed on the pages and documents.</summary>
     public string? MersisNumber { get; set; }
 
+    /// <summary>The tax office.</summary>
     public string? TaxOffice { get; set; }
 
+    /// <summary>The tax number (VKN).</summary>
     public string? TaxNumber { get; set; }
 
+    /// <summary>The registered address.</summary>
     public string? Address { get; set; }
 
+    /// <summary>The registered electronic mail (KEP) address.</summary>
     public string? KepAddress { get; set; }
 
+    /// <summary>The phone number customers can call.</summary>
     public string? Phone { get; set; }
 
+    /// <summary>The address customers can write to.</summary>
     public string? Email { get; set; }
 
+    /// <summary>The merchant's website.</summary>
     public Uri? Website { get; set; }
 
+    /// <summary>The merchant's logo, when it differs from the branding's.</summary>
     public Uri? LogoUrl { get; set; }
 
     /// <summary>The name to show: the trade name, or the legal name.</summary>
@@ -93,6 +102,7 @@ public sealed class LegalDocumentOptions
         },
     ];
 
+    /// <summary>The document's key, such as <c>distance-sales</c>, recorded with each acceptance.</summary>
     public string Key { get; set; } = string.Empty;
 
     /// <summary><c>pre_information</c>, <c>distance_sales_contract</c>, <c>subscription_contract</c>, <c>privacy_notice</c> or <c>custom</c>.</summary>

@@ -49,15 +49,19 @@ public sealed class PortalOptions
 /// <summary>A product offered for switching, by key, with the keys of its prices on offer; all of its prices when none are named.</summary>
 public sealed class PortalProductOptions
 {
+    /// <summary>The product, by key, whose prices customers may change between.</summary>
     public string Product { get; set; } = string.Empty;
 
+    /// <summary>The prices of the product that the portal offers, by lookup key; all its prices when empty.</summary>
     public List<string> Prices { get; set; } = [];
 }
 
 public sealed class PortalQuantityOptions
 {
+    /// <summary>The fewest units a customer may choose.</summary>
     public int Minimum { get; set; } = 1;
 
+    /// <summary>The most units a customer may choose.</summary>
     public int Maximum { get; set; } = 1;
 }
 

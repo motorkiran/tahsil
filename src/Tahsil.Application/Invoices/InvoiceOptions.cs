@@ -47,7 +47,7 @@ public sealed partial class InvoiceOptions
     /// <summary>Bank accounts per currency for transfers, shown on hosted invoice pages (INV-26).</summary>
     public Dictionary<string, BankTransferOptions> BankTransfer { get; set; } = [];
 
-    /// <summary>The title of hosted invoice pages per locale and status (<c>open</c>, <c>paid</c>…), replacing the defaults of INV-27.</summary>
+    /// <summary>The title of hosted invoice pages per locale and status (<c>open</c>, <c>paid</c>…), replacing the default titles.</summary>
     public Dictionary<string, Dictionary<string, string>> DocumentTitle { get; set; } = [];
 
     internal bool HasValidPrefix() => PrefixPattern().IsMatch(NumberPrefix);
@@ -62,10 +62,13 @@ public sealed partial class InvoiceOptions
 /// <summary>A bank account customers can pay invoices to (INV-26).</summary>
 public sealed class BankTransferOptions
 {
+    /// <summary>The bank's name.</summary>
     public string? Bank { get; set; }
 
+    /// <summary>Whose account it is, as the bank knows them.</summary>
     public string? AccountHolder { get; set; }
 
+    /// <summary>The account's IBAN.</summary>
     public string? Iban { get; set; }
 }
 

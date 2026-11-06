@@ -37,6 +37,7 @@ public sealed class WebhookOptions
     /// </summary>
     public TimeSpan[]? RetryDelays { get; set; }
 
+    /// <summary>How many deliveries the sender takes at once.</summary>
     public int BatchSize { get; set; } = 20;
 
     /// <summary>Deliveries to one endpoint at a time, across a batch (EVT-10).</summary>

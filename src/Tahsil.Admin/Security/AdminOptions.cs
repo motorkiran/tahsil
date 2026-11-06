@@ -37,17 +37,22 @@ public enum AdminRoleSource
 /// <summary>Sign-in through an OpenID Connect provider, such as Kimlik, from <c>Tahsil:Admin:Oidc</c>.</summary>
 public sealed class AdminOidcOptions
 {
+    /// <summary>The OpenID Connect provider administrators sign in with, such as Kimlik's URL.</summary>
     public Uri? Authority { get; set; }
 
+    /// <summary>The panel's client ID at the provider.</summary>
     public string? ClientId { get; set; }
 
+    /// <summary>The panel's client secret at the provider.</summary>
     public string? ClientSecret { get; set; }
 
     /// <summary>Space-separated; <c>openid profile email</c> by default.</summary>
     public string Scopes { get; set; } = "openid profile email";
 
+    /// <summary>The claim that carries the administrator's roles.</summary>
     public string RoleClaim { get; set; } = "roles";
 
+    /// <summary>Where the roles are read: the ID token, the userinfo endpoint or the access token.</summary>
     public AdminRoleSource RoleSource { get; set; } = AdminRoleSource.IdToken;
 
     /// <summary>The audience access tokens must have when the role comes from them, such as <c>tahsil</c>.</summary>

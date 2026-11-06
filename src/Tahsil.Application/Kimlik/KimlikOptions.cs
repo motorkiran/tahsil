@@ -8,13 +8,16 @@ public sealed class KimlikOptions
     public const string KeepUntilFinalAction = "keep_until_final_action";
     public const string EndImmediately = "end_immediately";
 
+    /// <summary>Turns the Kimlik connector on.</summary>
     public bool Enabled { get; set; }
 
     /// <summary>Kimlik's public URL, with a trailing slash.</summary>
     public Uri? Authority { get; set; }
 
+    /// <summary>Tahsil's service client in Kimlik.</summary>
     public string? ClientId { get; set; }
 
+    /// <summary>The service client's secret.</summary>
     public string? ClientSecret { get; set; }
 
     /// <summary>The <c>whsec_…</c> secret of the endpoint registered in Kimlik for its webhooks (KML-22).</summary>

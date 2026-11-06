@@ -8,6 +8,10 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 
 - `System.Security.Cryptography.Pkcs` and `System.Security.Cryptography.Xml`, which MimeKit and Data Protection bring in, are pinned to 10.0.14 against GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj and GHSA-r955-8q5j-3h83; the Microsoft packages are on 10.0.14.
 
+### Fixed
+
+- In Test mode, moving the clock while the background workers were sending an email could send it twice: time travel and the workers no longer run at the same time.
+
 ### Added
 
 - The server foundation: configuration validated at startup, with Test and Live modes (Live mode refuses plain HTTP and the public development master key) and a `Tahsil-Mode: test` header and page banner in Test mode.
@@ -84,3 +88,5 @@ All notable changes to Tahsil are recorded here. The format follows [Keep a Chan
 - `GET /api/v1/customers/{id}/consents` lists the evidence of what a customer was shown and accepted (`?includeDocuments=true` adds the documents as they saw them), and the admin panel shows it on the customer's page. The customer export (`GET /customers/{id}/export`) now holds everything that names the customer: subscriptions, invoices, payments, refunds, cards, balance history, checkout sessions, consents, emails and how much usage is kept.
 - `Tahsil.Client`, a typed .NET client for the API: one client per resource, an idempotency key on every `POST` that its retries reuse, retries after connection errors, `429` and `503`, problem details as `TahsilApiException`, `ListAll…Async` that follows pages, and versions through `RequestOptions` (`ETag`, `IfMatch`). `Tahsil.Contracts` is a package too, with `TahsilMoney.Format` for amounts in minor units.
 - `Tahsil.AspNetCore` for webhooks: `MapTahsilWebhooks` verifies Standard Webhooks signatures (with both secrets during a rotation), answers `401` to anything else, skips webhooks it handled already and gives back those whose handler failed; `TahsilEvent.DetailsAs<T>()` reads the details as their record, which `Tahsil.Contracts` now has for every event type.
+- Documentation: a getting started guide (Test mode, the simulator's test cards, a first checkout, webhooks and time travel), a guide to the API's conventions, concept guides (catalog, subscriptions, invoices, dunning, coupons, usage, portal, Kimlik), a payment providers index, and configuration and API references generated from the code, which tests keep up to date.
+- `create-api-key <name> <permission>…`: the server command creates an API key without the admin panel, such as for a new installation's first application, and prints it.

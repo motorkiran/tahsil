@@ -7,6 +7,7 @@ public sealed class BrandingOptions
 {
     public const string SectionName = "Tahsil:Branding";
 
+    /// <summary>The name shown on the pages and in emails.</summary>
     [Required]
     [StringLength(64, MinimumLength = 1)]
     public string ProductName { get; set; } = "Tahsil";
