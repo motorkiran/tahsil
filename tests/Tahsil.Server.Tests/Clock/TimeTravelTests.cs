@@ -122,6 +122,55 @@ public sealed class TimeTravelTests(TahsilServerFixture server)
             .ShouldBe(new DateTimeOffset(2026, 2, 28, 22, 0, 0, TimeSpan.Zero));
     }
 
+    [Fact]
+    [Trait("Requirement", "ENG-23")]
+    public async Task TimeTravel_AndTheHostedWorkers_DoNotRunAtTheSameTime()
+    {
+        var database = server.NewDatabase("clock_workers");
+        await using var host = server.WithSettings(new Dictionary<string, string?> { ["ConnectionStrings:Tahsil"] = database });
+        using var client = await host.CreateClientWithAsync(Permissions);
+        await using var worker = new Npgsql.NpgsqlConnection(database);
+        await worker.OpenAsync(CancellationToken);
+
+        // A hosted batch in progress, as the workers hold it: the travel waits for it.
+        await LockAsync(worker, "pg_advisory_lock_shared");
+        var travel = client.PostJsonAsync("/api/v1/test/clock", new AdvanceClockRequest { AdvanceBy = "PT1H" });
+        await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
+        var waited = !travel.IsCompleted;
+        await LockAsync(worker, "pg_advisory_unlock_shared");
+        using var traveled = await travel;
+
+        // A travel in progress: the hosted workers leave the outbox to it.
+        await LockAsync(worker, "pg_advisory_lock");
+        using (var created = await client.PostJsonAsync("/api/v1/customers", new CreateCustomerRequest { Name = "Ada", Email = "ada@example.com" }))
+        {
+            created.StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(2), CancellationToken);
+        var pendingWhileTraveling = await PendingAsync(host);
+        await LockAsync(worker, "pg_advisory_unlock");
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        while (await PendingAsync(host) > 0 && stopwatch.Elapsed < TimeSpan.FromSeconds(20))
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(200), CancellationToken);
+        }
+
+        waited.ShouldBeTrue("the travel waited for the batch in progress");
+        traveled.StatusCode.ShouldBe(HttpStatusCode.OK);
+        pendingWhileTraveling.ShouldBeGreaterThan(0, "the workers did not process the outbox while the clock was being moved");
+        (await PendingAsync(host)).ShouldBe(0, "they did once it was over");
+    }
+
+    private static async Task LockAsync(Npgsql.NpgsqlConnection connection, string function)
+    {
+        await using var command = new Npgsql.NpgsqlCommand($"SELECT {function}({Tahsil.Infrastructure.Persistence.AdvisoryLockKeys.TimeTravelWorkers})", connection);
+        await command.ExecuteNonQueryAsync(CancellationToken);
+    }
+
+    private static async Task<long> PendingAsync(WebApplicationFactory<Program> host) =>
+        (await host.QueryAsync<long>($"SELECT count(*) AS \"Value\" FROM tahsil.outbox_messages WHERE status = 'pending'")).Single();
+
     private WebApplicationFactory<Program> Host() =>
         server.WithSettings(new Dictionary<string, string?>
         {

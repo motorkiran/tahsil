@@ -40,7 +40,16 @@ internal sealed class TimeTravel(
 
             try
             {
-                return await StepAsync(target, actor, cancellationToken);
+                // Waits for the hosted workers' batches in progress, and keeps new ones from starting (DueWorker).
+                await database.ExecuteSqlAsync($"SELECT pg_advisory_lock({AdvisoryLockKeys.TimeTravelWorkers})", cancellationToken);
+                try
+                {
+                    return await StepAsync(target, actor, cancellationToken);
+                }
+                finally
+                {
+                    await database.ExecuteSqlAsync($"SELECT pg_advisory_unlock({AdvisoryLockKeys.TimeTravelWorkers})", CancellationToken.None);
+                }
             }
             finally
             {

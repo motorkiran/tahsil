@@ -27,4 +27,10 @@ internal static class AdvisoryLockKeys
     public const long KimlikReconciliation = 0x544148_53494C_000A;
 
     public const long UsageRetention = 0x544148_53494C_000B;
+
+    /// <summary>
+    /// In Test mode, the hosted workers hold it shared while they run a batch, and time travel exclusively while it
+    /// moves the clock: a lease taken at one instant must not expire under a worker because the clock jumped.
+    /// </summary>
+    public const long TimeTravelWorkers = 0x544148_53494C_000C;
 }

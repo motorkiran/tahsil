@@ -78,7 +78,7 @@ internal abstract partial class DueWorker(
         {
             try
             {
-                while (await RunBatchAsync(stoppingToken) == BatchSize)
+                while (await RunHostedBatchAsync(stoppingToken) == BatchSize)
                 {
                     // A full batch means more items may be due.
                 }
@@ -90,6 +90,43 @@ internal abstract partial class DueWorker(
             }
 
             await signals.WaitAsync(Name, PollingInterval, stoppingToken);
+        }
+    }
+
+    /// <summary>
+    /// A batch of the hosted loop. In Test mode it runs under the shared <see cref="AdvisoryLockKeys.TimeTravelWorkers"/>
+    /// lock and is skipped while a time travel runs: the travel processes everything itself, and moving the clock
+    /// past a lease this loop holds would hand the leased item to another worker while this one still processes it.
+    /// </summary>
+    private async Task<int> RunHostedBatchAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        if (!scope.ServiceProvider.GetRequiredService<IOptions<ServerOptions>>().Value.IsTestMode)
+        {
+            return await RunBatchAsync(cancellationToken);
+        }
+
+        var database = scope.ServiceProvider.GetRequiredService<TahsilDbContext>().Database;
+        await database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            if (!await database.SqlQuery<bool>($"SELECT pg_try_advisory_lock_shared({AdvisoryLockKeys.TimeTravelWorkers}) AS \"Value\"").SingleAsync(cancellationToken))
+            {
+                return 0;
+            }
+
+            try
+            {
+                return await RunBatchAsync(cancellationToken);
+            }
+            finally
+            {
+                await database.ExecuteSqlAsync($"SELECT pg_advisory_unlock_shared({AdvisoryLockKeys.TimeTravelWorkers})", CancellationToken.None);
+            }
+        }
+        finally
+        {
+            await database.CloseConnectionAsync();
         }
     }
 
