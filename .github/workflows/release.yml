@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
   packages: write
+  # Signs the attestations of the image and the packages with Sigstore, through GitHub's OIDC token.
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release
@@ -64,12 +67,52 @@ jobs:
             -t:PublishContainer -p:ContainerRegistry=ghcr.io -p:ContainerRepository="${GITHUB_REPOSITORY,,}" \
             -p:ContainerImageTags="\"$tags\"" -p:RuntimeIdentifiers="$runtimes" -p:ContainerRuntimeIdentifiers="$runtimes"
 
+      - name: Image digest
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+          echo "digest=$(docker buildx imagetools inspect "$image:$VERSION" --format '{{json .Manifest.Digest}}' | tr -d '"')" >> "$GITHUB_OUTPUT"
+
+      # The image's software bill of materials (SPDX), attached to the release and attested to the image.
+      - name: SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
+          format: spdx-json
+          output-file: artifacts/tahsil-${{ env.VERSION }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      # Signed provenance and SBOM attestations, pushed to the registry beside the image. Anyone can check them:
+      #   gh attestation verify oci://ghcr.io/motorkiran/tahsil:<version> --owner motorkiran
+      - name: Attest the image's provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest the image's SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          sbom-path: artifacts/tahsil-${{ env.VERSION }}.spdx.json
+          push-to-registry: true
+
+      - name: Attest the packages' provenance
+        if: hashFiles('artifacts/*.nupkg') != ''
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: artifacts/*.nupkg
+
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
-          files=(artifacts/*.nupkg artifacts/*.snupkg)
+          files=(artifacts/*.nupkg artifacts/*.snupkg artifacts/*.spdx.json)
           prerelease=""
           if [[ "$VERSION" == *-* ]]; then prerelease="--prerelease"; fi
           gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "Tahsil $VERSION" --generate-notes $prerelease
