@@ -270,7 +270,8 @@ Host settings from the `Tahsil:Server` configuration section.
 | `DefaultLocale` | `tr` | The locale of customers that have none, `tr` or `en`. |
 | `Mode` | `Test` | `Test` until the installation is ready to take real payments. |
 | `PublicUrl` | – | The public base URL of this installation, such as `https://billing.example.com/`. Every link Tahsil produces (hosted pages, emails, provider notification and return URLs) starts with it, so it is never inferred from request headers. |
-| `RequireHttps` | `true` | Rejects plain HTTP. Only disable it for local development; behind a TLS-terminating proxy, enable forwarded headers (`ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`) instead. Live mode requires it. |
+| `RequireHttps` | `true` | Requires HTTPS: the public URL must use it, and browsers are told to use nothing else (HSTS). Only disable it for local development; behind a TLS-terminating proxy, list the proxy in `TrustedProxies` instead. Live mode requires it. |
+| `TrustedProxies` | – | The reverse proxies in front of Tahsil, as addresses (`10.0.0.5`) or networks (`10.0.0.0/8`). From them only, `X-Forwarded-For` and `X-Forwarded-Proto` give the client's address and the scheme it used. List only proxies you run: the client's address feeds rate limits, consent records and provider requests. |
 
 ## `Tahsil:Subscriptions`
 

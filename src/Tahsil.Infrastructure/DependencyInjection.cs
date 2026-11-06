@@ -148,6 +148,8 @@ public static class DependencyInjection
         services.AddScoped<IBillingLocks>(provider => provider.GetRequiredService<BillingLocks>());
         services.AddScoped<Application.Usage.IUsageStore, Usage.UsageStore>();
         AddHostedSingleton<Usage.UsageRetention>(services);
+        services.AddSingleton<WorkerLag>();
+        AddHostedSingleton<WorkerLagMonitor>(services);
         services.AddScoped<IInvoiceNumbers>(provider => provider.GetRequiredService<BillingLocks>());
     }
 

@@ -67,6 +67,8 @@ if (args is ["create-api-key", var keyName, .. var permissions])
     return;
 }
 
+// First: everything after it sees the client's address and scheme, not the proxy's.
+app.UseTrustedProxies();
 app.UseErrorResponses();
 app.UseHealthProbes();
 app.UseSecurityHeaders();

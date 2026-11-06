@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -157,11 +158,13 @@ internal abstract partial class DueWorker(
             return false;
         }
 
+        var started = Stopwatch.GetTimestamp();
         if (CallsOtherServices)
         {
             await PostponeAsync(context, id, now + Options.Lease, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             await ProcessLeasedAsync(id, now, cancellationToken);
+            Measure(started);
             return true;
         }
 
@@ -171,6 +174,7 @@ internal abstract partial class DueWorker(
             await ProcessAsync(scope.ServiceProvider, id, now, cancellationToken);
             await ClearFailuresAsync(context, id, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            Measure(started);
         }
         catch (DbUpdateConcurrencyException) when (CanRetry(conflicts, id))
         {
@@ -185,6 +189,14 @@ internal abstract partial class DueWorker(
         }
 
         return true;
+    }
+
+    /// <summary>Counts an item this worker took, and how long it took (ENG §11).</summary>
+    private void Measure(long started)
+    {
+        var worker = new KeyValuePair<string, object?>("worker", Name);
+        TahsilDiagnostics.ItemsProcessed.Add(1, worker);
+        TahsilDiagnostics.ItemDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, worker);
     }
 
     private async Task ProcessLeasedAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken)

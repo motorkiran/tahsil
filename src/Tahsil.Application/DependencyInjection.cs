@@ -38,6 +38,9 @@ public static class DependencyInjection
             .Validate(
                 options => options.HasSupportedLocale(),
                 $"{ServerOptions.SectionName}:DefaultLocale must be one of: {string.Join(", ", ServerOptions.SupportedLocales)}.")
+            .Validate(
+                options => options.HasValidTrustedProxies(),
+                $"{ServerOptions.SectionName}:TrustedProxies takes IP addresses and networks, such as 10.0.0.5 or 10.0.0.0/8.")
             .ValidateOnStart();
 
         services.AddOptions<BrandingOptions>()

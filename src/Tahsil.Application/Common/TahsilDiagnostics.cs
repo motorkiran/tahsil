@@ -19,6 +19,16 @@ public static class TahsilDiagnostics
         description: "Worker items that failed ten times in a row and need an operator.");
 
     /// <summary>Worker items that failed and were postponed, by worker.</summary>
+    public static readonly Counter<long> ItemsProcessed = Meter.CreateCounter<long>(
+        "tahsil.worker.items_processed",
+        unit: "{item}",
+        description: "Worker items processed, by worker.");
+
+    public static readonly Histogram<double> ItemDuration = Meter.CreateHistogram<double>(
+        "tahsil.worker.item_duration",
+        unit: "s",
+        description: "How long workers take to process an item, by worker.");
+
     public static readonly Counter<long> ItemFailures = Meter.CreateCounter<long>(
         "tahsil.worker.item_failures",
         unit: "{failure}",

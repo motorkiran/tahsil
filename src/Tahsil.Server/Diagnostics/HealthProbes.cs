@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Tahsil.Infrastructure.Persistence;
+using Tahsil.Infrastructure.Workers;
 
 namespace Tahsil.Server.Diagnostics;
 
@@ -15,7 +16,8 @@ internal static class HealthProbes
     {
         services.AddSingleton<MigrationState>();
         services.AddHealthChecks()
-            .AddCheck<DatabaseReadiness>("database", tags: [ReadinessTag]);
+            .AddCheck<DatabaseReadiness>("database", tags: [ReadinessTag])
+            .AddCheck<WorkerLagReadiness>("workers", tags: [ReadinessTag]);
 
         return services;
     }
@@ -61,6 +63,21 @@ internal static class HealthProbes
             {
                 return HealthCheckResult.Unhealthy("The database is unreachable.", exception);
             }
+        }
+    }
+
+    /// <summary>
+    /// Warns, without making the instance unready, when a worker queue's oldest item has waited more than ten minutes
+    /// (ENG §11): requests still work, but something is falling behind.
+    /// </summary>
+    private sealed class WorkerLagReadiness(WorkerLag lag) : IHealthCheck
+    {
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        {
+            var behind = lag.Lags.Where(queue => queue.Value > WorkerLag.WarningThreshold).Select(queue => $"{queue.Key} ({queue.Value.TotalMinutes:0} min)").ToList();
+            return Task.FromResult(behind.Count == 0
+                ? HealthCheckResult.Healthy()
+                : HealthCheckResult.Degraded($"Workers are behind: {string.Join(", ", behind)}."));
         }
     }
 

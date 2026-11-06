@@ -147,29 +147,12 @@ internal sealed class TimeTravel(
     private async Task<DateTimeOffset?> NextDueAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
-        var due = await scope.ServiceProvider.GetRequiredService<TahsilDbContext>().Database.SqlQuery<DateTimeOffset?>($"""
-            SELECT min(due) AS "Value" FROM (
-                SELECT min(finalize_at) AS due FROM tahsil.invoices WHERE status = 'draft' AND auto_advance
-                UNION ALL SELECT min(next_cycle_at) FROM tahsil.subscriptions
-                UNION ALL SELECT min(next_reminder_at) FROM tahsil.invoices WHERE status = 'open'
-                UNION ALL SELECT min(dunning_deadline_at) FROM tahsil.invoices AS invoice
-                    WHERE status = 'open' AND dunning_ended_at IS NULL AND next_payment_attempt_at IS NULL
-                        AND NOT EXISTS (SELECT 1 FROM tahsil.payments AS payment WHERE payment.invoice_id = invoice.id AND payment.status IN ('processing', 'requires_action'))
-                UNION ALL SELECT min(next_payment_attempt_at) FROM tahsil.invoices WHERE status = 'open' AND collection_method = 'charge_automatically'
-                UNION ALL SELECT min(reconcile_at) FROM tahsil.payments WHERE status IN ('processing', 'requires_action')
-                UNION ALL SELECT min(reconcile_at) FROM tahsil.refunds WHERE status = 'processing'
-                UNION ALL SELECT min(next_attempt_at) FROM tahsil.provider_notifications WHERE status = 'pending'
-                UNION ALL SELECT min(next_attempt_at) FROM tahsil.webhook_deliveries WHERE status = 'pending'
-                UNION ALL SELECT min(next_attempt_at) FROM tahsil.outbox_messages WHERE status = 'pending'
-                UNION ALL SELECT min(expires_at) FROM tahsil.payment_methods WHERE status = 'active'
-                UNION ALL SELECT min(expires_at) FROM tahsil.checkout_sessions WHERE status = 'open'
-            ) AS instants
-            """).ToListAsync(cancellationToken);
+        var due = (await DueQueues.OldestAsync(scope.ServiceProvider.GetRequiredService<TahsilDbContext>(), cancellationToken)).Min(queue => queue.Due);
 
 #pragma warning disable EF1002 // The windows hold no input: only validated whole numbers from configuration.
         var reminder = await scope.ServiceProvider.GetRequiredService<TahsilDbContext>().Database
             .SqlQueryRaw<DateTimeOffset?>(Email.ReminderWindows.NextOpening(notifications.Value), clock.GetUtcNow()).ToListAsync(cancellationToken);
 #pragma warning restore EF1002
-        return new[] { due.SingleOrDefault(), reminder.SingleOrDefault() }.Min();
+        return new[] { due, reminder.SingleOrDefault() }.Min();
     }
 }

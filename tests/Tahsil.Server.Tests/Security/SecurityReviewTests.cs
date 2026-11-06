@@ -13,6 +13,8 @@ using static Tahsil.Server.Tests.Subscriptions.SubscriptionScenarios;
 namespace Tahsil.Server.Tests.Security;
 
 /// <summary>Findings of the M12 security review (SEC §4) that the other suites did not cover, kept fixed by tests.</summary>
+/// <remarks>Alone: the trace test listens to every request of the process.</remarks>
+[Collection(nameof(SecurityReviewTests))]
 public sealed class SecurityReviewTests(TahsilServerFixture server)
 {
     private const string TaxId = "10000000146";
@@ -61,6 +63,14 @@ public sealed class SecurityReviewTests(TahsilServerFixture server)
 
         page.StatusCode.ShouldBe(HttpStatusCode.OK);
         var token = session.Url!.Segments[^1];
+
+        // The server's activity stops once the response is written, which may be a moment after the client has it.
+        var waited = Stopwatch.StartNew();
+        while (!paths.Contains("/checkout/{token}") && waited.Elapsed < TimeSpan.FromSeconds(5))
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(50), CancellationToken);
+        }
+
         paths.ShouldContain("/checkout/{token}");
         paths.ShouldAllBe(path => !path.Contains(token, StringComparison.Ordinal));
     }
@@ -129,3 +139,8 @@ public sealed class SecurityReviewTests(TahsilServerFixture server)
 
     private WebApplicationFactory<Program> Host() => IsolatedHosts.Create(server, server.NewDatabase("security"), _time);
 }
+
+/// <summary>Runs <see cref="SecurityReviewTests"/> apart from every other test.</summary>
+[CollectionDefinition(nameof(SecurityReviewTests), DisableParallelization = true)]
+public sealed class RunsAlone;
+
