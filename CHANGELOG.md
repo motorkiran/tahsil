@@ -2,7 +2,9 @@
 
 All notable changes to Tahsil are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/); until 1.0, minor versions may break compatibility.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-07
+
+The first release. The provider adapters follow each provider's documentation and are tested against recorded exchanges; they have not yet been run against iyzico's or Stripe's sandboxes or against live PayTR and Craftgate stores, so try them in a sandbox or Test mode first. The starter legal documents must be reviewed by the merchant's lawyer before use, as they say on their first line.
 
 ### Security
 

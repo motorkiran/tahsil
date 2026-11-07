@@ -4,7 +4,14 @@ Tahsil ("collection", as in collecting a payment, in Turkish) is an open-source,
 
 It works with iyzico, Stripe, PayTR and Craftgate (and through Craftgate with bank POSes such as Kuveyt Türk), using the merchant's own credentials, and integrates with [Kimlik](https://github.com/motorkiran/kimlik) to turn subscriptions into plans and entitlements.
 
-> **Status:** early development. Not usable yet.
+> **Status:** first release, 0.1.0. Try it in Test mode with the built-in payment simulator before relying on it. The
+> provider adapters follow each provider's documentation and are tested against recorded exchanges; they have not yet
+> been run against iyzico's or Stripe's sandboxes or against live PayTR and Craftgate stores. Until 1.0, minor
+> versions may break compatibility.
+
+Start with the [getting started guide](docs/guides/getting-started.md); the [guides](docs/guides/README.md) cover the
+concepts, the payment providers and running Tahsil in production. The container image is
+`ghcr.io/motorkiran/tahsil`.
 
 ## Platform
 

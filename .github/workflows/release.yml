@@ -115,4 +115,7 @@ jobs:
           files=(artifacts/*.nupkg artifacts/*.snupkg artifacts/*.spdx.json)
           prerelease=""
           if [[ "$VERSION" == *-* ]]; then prerelease="--prerelease"; fi
-          gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "Tahsil $VERSION" --generate-notes $prerelease
+          # The release notes are the version's section of CHANGELOG.md; GitHub's generated notes when it has none.
+          awk -v heading="## [$VERSION]" 'index($0, heading) == 1 { found = 1; next } found && /^## \[/ { exit } found { print }' CHANGELOG.md > release-notes.md
+          if [[ -s release-notes.md ]]; then notes=(--notes-file release-notes.md); else notes=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "Tahsil $VERSION" "${notes[@]}" $prerelease
